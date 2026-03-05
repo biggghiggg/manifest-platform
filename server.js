@@ -229,36 +229,147 @@ app.delete('/api/manifests/:id', (req, res) => {
 });
 
 // ============ QUICKBOOKS IMPORT ============
+// Parses the QuickBooks "Customer Contact List" export format
+// which has a title row, company name row, blank row, then headers on row 4:
+// "Customer full name", "Phone numbers", "Bill address", "Ship address", "EPA ID  Number"
+function parseAddress(addr) {
+  if (!addr || typeof addr !== 'string') return { street: '', city: '', state: '', zip: '' };
+  addr = addr.trim();
+
+  // QuickBooks format is typically: "street city state zip"
+  // Try to parse from the end: zip is last token, state before that, city before that, rest is street
+  // Common pattern: "4780 E Carmen Ave Fresno CA 93702"
+  const parts = addr.split(/\s+/);
+  if (parts.length < 3) return { street: addr, city: '', state: '', zip: '' };
+
+  const zip = parts[parts.length - 1];
+  const state = parts[parts.length - 2];
+
+  // Check if zip looks like a zip code (5 digits or 5+4)
+  if (/^\d{5}(-\d{4})?$/.test(zip) && /^[A-Za-z]{2}$/.test(state)) {
+    // Find where city starts - work backwards from state
+    // City is usually one or two words before state
+    // Heuristic: try common city patterns
+    let cityEnd = parts.length - 2;
+    let cityStart = cityEnd - 1;
+
+    // Check if 2-word city (e.g., "Union City", "San Mateo", "Los Angeles")
+    if (cityStart > 0) {
+      const twoWordCity = parts[cityStart - 1] + ' ' + parts[cityStart];
+      const oneWordCity = parts[cityStart];
+      // If the word before looks like part of a city name (capitalized, not a number)
+      if (cityStart - 1 > 0 && /^[A-Z][a-z]/.test(parts[cityStart - 1]) && !/^\d/.test(parts[cityStart - 1])) {
+        // Could be 2-word city, but also could be end of street
+        // Use heuristic: if previous word is a common street suffix, it's not city
+        const streetSuffixes = ['St', 'St.', 'Ave', 'Ave.', 'Blvd', 'Blvd.', 'Dr', 'Dr.', 'Rd', 'Rd.', 'Ln', 'Ln.', 'Way', 'Ct', 'Ct.', 'Pl', 'Pl.', 'Circle', 'Pkwy'];
+        if (!streetSuffixes.includes(parts[cityStart - 1])) {
+          cityStart = cityStart - 1;
+        }
+      }
+    }
+
+    const street = parts.slice(0, cityStart).join(' ');
+    const city = parts.slice(cityStart, cityEnd).join(' ');
+    return { street, city, state, zip };
+  }
+
+  // Fallback: couldn't parse, return whole thing as street
+  return { street: addr, city: '', state: '', zip: '' };
+}
+
+function parsePhone(phoneStr) {
+  if (!phoneStr || typeof phoneStr !== 'string') return '';
+  // Extract phone number from formats like "Phone:(559) 806-4349 "
+  const match = phoneStr.match(/\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/);
+  return match ? match[0] : phoneStr.trim();
+}
+
 app.post('/api/import/quickbooks', upload.single('file'), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     const workbook = XLSX.readFile(req.file.path);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+    // Find the header row - look for "Customer full name" or similar
+    let headerIdx = -1;
+    let headers = [];
+    for (let i = 0; i < Math.min(allRows.length, 20); i++) {
+      const row = allRows[i];
+      if (row && row.some(cell => {
+        const s = String(cell || '').toLowerCase();
+        return s.includes('customer') && (s.includes('name') || s.includes('full'));
+      })) {
+        headerIdx = i;
+        headers = row.map(h => String(h || '').trim());
+        break;
+      }
+    }
+
+    if (headerIdx === -1) {
+      // Fallback: try first row as headers
+      headerIdx = 0;
+      headers = allRows[0].map(h => String(h || '').trim());
+    }
+
+    console.log('Found headers at row', headerIdx + 1, ':', headers);
+
+    // Map header names to indices (flexible matching)
+    function findCol(...keywords) {
+      return headers.findIndex(h => {
+        const lower = h.toLowerCase();
+        return keywords.some(kw => lower.includes(kw));
+      });
+    }
+
+    const nameCol = findCol('customer', 'name');
+    const phoneCol = findCol('phone');
+    const billAddrCol = findCol('bill');
+    const shipAddrCol = findCol('ship');
+    const epaCol = findCol('epa');
+
+    console.log('Column mapping:', { nameCol, phoneCol, billAddrCol, shipAddrCol, epaCol });
 
     const data = loadData();
     let imported = 0;
+    let skipped = 0;
 
-    for (const row of rows) {
-      // Map QuickBooks columns to generator fields
-      const name = row['Customer'] || row['Company Name'] || row['Display Name'] || row['Name'] || '';
+    // Process data rows (after header)
+    for (let i = headerIdx + 1; i < allRows.length; i++) {
+      const row = allRows[i];
+      if (!row || row.every(cell => !cell && cell !== 0)) continue; // skip empty rows
+
+      const name = nameCol >= 0 ? String(row[nameCol] || '').trim() : '';
       if (!name) continue;
 
       // Check for duplicate
-      if (data.generators.find(g => g.name.toLowerCase() === name.toLowerCase())) continue;
+      if (data.generators.find(g => g.name && g.name.toLowerCase() === name.toLowerCase())) {
+        skipped++;
+        continue;
+      }
+
+      // Parse address - prefer ship address (site address), fall back to bill address
+      const shipAddr = shipAddrCol >= 0 ? String(row[shipAddrCol] || '') : '';
+      const billAddr = billAddrCol >= 0 ? String(row[billAddrCol] || '') : '';
+      const addr = parseAddress(shipAddr || billAddr);
+
+      const phone = phoneCol >= 0 ? parsePhone(String(row[phoneCol] || '')) : '';
+      const epaId = epaCol >= 0 ? String(row[epaCol] || '').trim() : '';
 
       const gen = {
         id: Date.now().toString() + '_' + imported,
         name: name,
-        epaId: row['EPA ID'] || row['EPA Id'] || row['EPAID'] || '',
-        siteAddress: row['Street'] || row['Billing Street'] || row['Ship Street'] || row['Address'] || '',
-        city: row['City'] || row['Billing City'] || row['Ship City'] || '',
-        state: row['State'] || row['Billing State'] || row['Ship State'] || '',
-        zip: row['Zip'] || row['Billing Zip'] || row['Ship Zip'] || row['Postal Code'] || '',
-        phone: row['Phone'] || row['Main Phone'] || row['Work Phone'] || '',
-        contactName: row['Contact'] || row['First Name'] || row['Primary Contact'] || '',
-        emergencyPhone: row['Emergency Phone'] || row['Mobile'] || row['Phone'] || '',
+        epaId: epaId,
+        siteAddress: addr.street,
+        city: addr.city,
+        state: addr.state,
+        zip: addr.zip,
+        phone: phone,
+        contactName: '',
+        emergencyPhone: '',
+        fullShipAddress: shipAddr.trim(),
+        fullBillAddress: billAddr.trim(),
         createdAt: new Date().toISOString(),
         source: 'quickbooks'
       };
@@ -269,8 +380,8 @@ app.post('/api/import/quickbooks', upload.single('file'), (req, res) => {
 
     saveData(data);
     // Clean up uploaded file
-    fs.unlinkSync(req.file.path);
-    res.json({ imported, total: rows.length });
+    try { fs.unlinkSync(req.file.path); } catch(e) {}
+    res.json({ imported, skipped, total: allRows.length - headerIdx - 1 });
   } catch (e) {
     console.error('Import error:', e);
     res.status(500).json({ error: 'Failed to import file: ' + e.message });
@@ -312,8 +423,6 @@ const FORM_8700_MAP = {
   facilityPhone:        { row: 19, col: 55, maxLen: 20 },
   facilityEpaId:        { row: 21, col: 55, maxLen: 12 },
   // Box 9 - Waste line items (up to 4)
-  // Each line: DOT description, containers, qty, unit, waste codes
-  // Line 1
   waste1HM:             { row: 25, col: 3,  maxLen: 1 },
   waste1Description:    { row: 25, col: 8,  maxLen: 32 },
   waste1ContainerNum:   { row: 25, col: 42, maxLen: 4 },
@@ -321,7 +430,6 @@ const FORM_8700_MAP = {
   waste1Qty:            { row: 25, col: 51, maxLen: 6 },
   waste1Unit:           { row: 25, col: 58, maxLen: 1 },
   waste1WasteCodes:     { row: 25, col: 62, maxLen: 16 },
-  // Line 2
   waste2HM:             { row: 27, col: 3,  maxLen: 1 },
   waste2Description:    { row: 27, col: 8,  maxLen: 32 },
   waste2ContainerNum:   { row: 27, col: 42, maxLen: 4 },
@@ -329,7 +437,6 @@ const FORM_8700_MAP = {
   waste2Qty:            { row: 27, col: 51, maxLen: 6 },
   waste2Unit:           { row: 27, col: 58, maxLen: 1 },
   waste2WasteCodes:     { row: 27, col: 62, maxLen: 16 },
-  // Line 3
   waste3HM:             { row: 29, col: 3,  maxLen: 1 },
   waste3Description:    { row: 29, col: 8,  maxLen: 32 },
   waste3ContainerNum:   { row: 29, col: 42, maxLen: 4 },
@@ -337,7 +444,6 @@ const FORM_8700_MAP = {
   waste3Qty:            { row: 29, col: 51, maxLen: 6 },
   waste3Unit:           { row: 29, col: 58, maxLen: 1 },
   waste3WasteCodes:     { row: 29, col: 62, maxLen: 16 },
-  // Line 4
   waste4HM:             { row: 31, col: 3,  maxLen: 1 },
   waste4Description:    { row: 31, col: 8,  maxLen: 32 },
   waste4ContainerNum:   { row: 31, col: 42, maxLen: 4 },
@@ -355,19 +461,17 @@ const FORM_8700_MAP = {
 
 // Build raw text for dot matrix printer
 function buildPrintData(manifest) {
-  // Create a 66-line x 80-col grid of spaces
   const lines = [];
   for (let i = 0; i < 66; i++) {
     lines.push(' '.repeat(80));
   }
 
-  // Place each field
   for (const [field, pos] of Object.entries(FORM_8700_MAP)) {
     let value = manifest[field] || '';
     if (typeof value !== 'string') value = String(value);
     value = value.substring(0, pos.maxLen);
     if (value) {
-      const row = pos.row - 1; // 0-indexed
+      const row = pos.row - 1;
       const col = pos.col - 1;
       const line = lines[row];
       lines[row] = line.substring(0, col) + value + line.substring(col + value.length);
