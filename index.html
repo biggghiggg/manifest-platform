@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manifest Platform - Independence Environmental Services</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+    /* Top Nav */
+    .top-nav { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; padding: 0 24px; display: flex; align-items: center; height: 60px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); position: sticky; top: 0; z-index: 100; }
+    .top-nav h1 { font-size: 18px; font-weight: 600; margin-right: 32px; }
+    .top-nav h1 span { color: #e94560; }
+    .nav-tabs { display: flex; gap: 4px; }
+    .nav-tab { background: transparent; border: none; color: rgba(255,255,255,0.6); padding: 8px 16px; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+    .nav-tab:hover { color: #fff; background: rgba(255,255,255,0.1); }
+    .nav-tab.active { color: #fff; background: rgba(255,255,255,0.15); border-bottom: 2px solid #e94560; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 12px; }
+    .status-dot.connected { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+    .status-dot.disconnected { background: #f87171; }
+
+    /* Layout */
+    .main-content { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+    /* Cards */
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 20px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .card-header h2 { font-size: 18px; font-weight: 600; color: #1a1a2e; }
+
+    /* Buttons */
+    .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: #e94560; color: #fff; }
+    .btn-primary:hover { background: #d63851; }
+    .btn-secondary { background: #e8e8e8; color: #333; }
+    .btn-secondary:hover { background: #ddd; }
+    .btn-success { background: #22c55e; color: #fff; }
+    .btn-success:hover { background: #16a34a; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-print { background: #3b82f6; color: #fff; }
+    .btn-print:hover { background: #2563eb; }
+
+    /* Forms */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-group input, .form-group select, .form-group textarea { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; transition: border-color 0.15s; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #e94560; box-shadow: 0 0 0 3px rgba(233,69,96,0.1); }
+    .form-group.full-width { grid-column: 1 / -1; }
+
+    /* Tables */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th { text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; border-bottom: 2px solid #eee; }
+    .data-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+    .data-table tr:hover td { background: #f9f9fb; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; }
+    .modal { background: #fff; border-radius: 16px; padding: 28px; width: 90%; max-width: 700px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .modal h3 { font-size: 20px; margin-bottom: 20px; color: #1a1a2e; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+    /* Waste line item table in manifest form */
+    .waste-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    .waste-table th { font-size: 11px; padding: 6px 4px; background: #f5f5f5; text-transform: uppercase; font-weight: 600; color: #666; }
+    .waste-table td { padding: 4px; }
+    .waste-table input { width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+    .waste-table input:focus { outline: none; border-color: #e94560; }
+
+    /* Search */
+    .search-bar { padding: 8px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; width: 300px; }
+    .search-bar:focus { outline: none; border-color: #e94560; }
+
+    /* Status badges */
+    .badge { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .badge-draft { background: #fef3c7; color: #92400e; }
+    .badge-printed { background: #d1fae5; color: #065f46; }
+    .badge-signed { background: #dbeafe; color: #1e40af; }
+
+    /* Section header */
+    .section-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+
+    /* Profile selector */
+    .profile-select { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .profile-select select { flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; }
+
+    /* Upload area */
+    .upload-area { border: 2px dashed #ddd; border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .upload-area:hover { border-color: #e94560; background: #fef2f4; }
+    .upload-area p { color: #888; margin-top: 8px; }
+
+    /* Print preview */
+    .print-preview { background: #1a1a2e; color: #4ade80; font-family: 'Courier New', monospace; padding: 16px; border-radius: 8px; font-size: 11px; line-height: 1.4; overflow-x: auto; white-space: pre; max-height: 500px; overflow-y: auto; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .search-bar { width: 100%; }
+      .top-nav h1 { font-size: 14px; margin-right: 12px; }
+      .nav-tab { padding: 6px 10px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useRef } = React;
+
+    // ==================== API HELPERS ====================
+    const api = {
+      get: async (url) => { const r = await fetch(url); return r.json(); },
+      post: async (url, body) => { const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); return r.json(); },
+      put: async (url, body) => { const r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); return r.json(); },
+      del: async (url) => { const r = await fetch(url, { method: 'DELETE' }); return r.json(); },
+    };
+
+    // Container types for EPA form
+    const CONTAINER_TYPES = [
+      { code: 'DM', label: 'Metal Drums' },
+      { code: 'DP', label: 'Plastic Drums' },
+      { code: 'DW', label: 'Wooden Drums' },
+      { code: 'CF', label: 'Fiber Drums' },
+      { code: 'TT', label: 'Dump Truck/Trailer' },
+      { code: 'TC', label: 'Tank Car' },
+      { code: 'TP', label: 'Portable Tanks' },
+      { code: 'CY', label: 'Cylinders' },
+      { code: 'CM', label: 'Metal Boxes' },
+      { code: 'BA', label: 'Burlap Bags' },
+    ];
+
+    const UNIT_TYPES = [
+      { code: 'G', label: 'Gallons' },
+      { code: 'L', label: 'Liters' },
+      { code: 'P', label: 'Pounds' },
+      { code: 'K', label: 'Kilograms' },
+      { code: 'T', label: 'Tons' },
+      { code: 'N', label: 'Cubic Yards' },
+    ];
+
+    // ==================== MAIN APP ====================
+    function App() {
+      const [tab, setTab] = useState('manifests');
+      const [data, setData] = useState({ generators: [], transporters: [], facilities: [], wasteStreams: [], manifests: [] });
+      const [connected, setConnected] = useState(false);
+      const [loading, setLoading] = useState(true);
+
+      // Load data
+      const loadAllData = useCallback(async () => {
+        try {
+          const d = await api.get('/api/data');
+          setData(d);
+          setLoading(false);
+        } catch (e) { console.error(e); setLoading(false); }
+      }, []);
+
+      // SSE
+      useEffect(() => {
+        loadAllData();
+        const es = new EventSource('/api/events');
+        es.onmessage = (e) => {
+          const event = JSON.parse(e.data);
+          if (event.type === 'connected') setConnected(true);
+          if (event.type === 'data-updated') loadAllData();
+        };
+        es.onerror = () => setConnected(false);
+        return () => es.close();
+      }, [loadAllData]);
+
+      if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontSize:18,color:'#888'}}>Loading...</div>;
+
+      return (
+        <div>
+          <nav className="top-nav">
+            <h1><span>IES</span> Manifest Platform</h1>
+            <div className="nav-tabs">
+              <button className={`nav-tab ${tab === 'manifests' ? 'active' : ''}`} onClick={() => setTab('manifests')}>Manifests</button>
+              <button className={`nav-tab ${tab === 'generators' ? 'active' : ''}`} onClick={() => setTab('generators')}>Generators</button>
+              <button className={`nav-tab ${tab === 'transporters' ? 'active' : ''}`} onClick={() => setTab('transporters')}>Transporters</button>
+              <button className={`nav-tab ${tab === 'facilities' ? 'active' : ''}`} onClick={() => setTab('facilities')}>Facilities</button>
+              <button className={`nav-tab ${tab === 'waste' ? 'active' : ''}`} onClick={() => setTab('waste')}>Waste Streams</button>
+              <button className={`nav-tab ${tab === 'import' ? 'active' : ''}`} onClick={() => setTab('import')}>Import</button>
+            </div>
+            <span className={`status-dot ${connected ? 'connected' : 'disconnected'}`} title={connected ? 'Connected' : 'Disconnected'}></span>
+          </nav>
+          <div className="main-content">
+            {tab === 'manifests' && <ManifestsTab data={data} reload={loadAllData} />}
+            {tab === 'generators' && <ProfileTab type="generators" data={data} reload={loadAllData} />}
+            {tab === 'transporters' && <ProfileTab type="transporters" data={data} reload={loadAllData} />}
+            {tab === 'facilities' && <ProfileTab type="facilities" data={data} reload={loadAllData} />}
+            {tab === 'waste' && <WasteStreamsTab data={data} reload={loadAllData} />}
+            {tab === 'import' && <ImportTab reload={loadAllData} />}
+          </div>
+        </div>
+      );
+    }
+
+    // ==================== MANIFESTS TAB ====================
+    function ManifestsTab({ data, reload }) {
+      const [showForm, setShowForm] = useState(false);
+      const [editing, setEditing] = useState(null);
+      const [search, setSearch] = useState('');
+      const [showPreview, setShowPreview] = useState(null);
+
+      const filtered = data.manifests.filter(m => {
+        const s = search.toLowerCase();
+        return !s || (m.generatorName || '').toLowerCase().includes(s) ||
+          (m.manifestTrackingNum || '').toLowerCase().includes(s) ||
+          String(m.manifestNum).includes(s);
+      }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      const handleEdit = (m) => { setEditing(m); setShowForm(true); };
+      const handleNew = () => { setEditing(null); setShowForm(true); };
+      const handleClose = () => { setShowForm(false); setEditing(null); };
+
+      const handleDelete = async (id) => {
+        if (confirm('Delete this manifest?')) {
+          await api.del(`/api/manifests/${id}`);
+          reload();
+        }
+      };
+
+      const handlePrint = async (m) => {
+        // Open print data in new window for the browser to send to printer
+        window.open(`/api/print/manifest/${m.id}`, '_blank');
+      };
+
+      const handlePreview = async (m) => {
+        const res = await fetch(`/api/print/manifest/${m.id}`);
+        const text = await res.text();
+        setShowPreview({ manifest: m, text });
+      };
+
+      return (
+        <div>
+          <div className="section-header">
+            <h2 style={{fontSize:22,fontWeight:700}}>Hazardous Waste Manifests (8700-22)</h2>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              <input className="search-bar" placeholder="Search manifests..." value={search} onChange={e => setSearch(e.target.value)} />
+              <button className="btn btn-primary" onClick={handleNew}>+ New Manifest</button>
+            </div>
+          </div>
+
+          <div className="card">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Tracking #</th>
+                  <th>Generator</th>
+                  <th>Facility</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && <tr><td colSpan="7" style={{textAlign:'center',color:'#999',padding:24}}>No manifests yet. Click "+ New Manifest" to create one.</td></tr>}
+                {filtered.map(m => (
+                  <tr key={m.id}>
+                    <td>{m.manifestNum}</td>
+                    <td>{m.manifestTrackingNum || '—'}</td>
+                    <td>{m.generatorName || '—'}</td>
+                    <td>{m.facilityName || '—'}</td>
+                    <td>{m.generatorDate || new Date(m.createdAt).toLocaleDateString()}</td>
+                    <td><span className={`badge badge-${m.status || 'draft'}`}>{m.status || 'draft'}</span></td>
+                    <td style={{display:'flex',gap:4}}>
+                      <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(m)}>Edit</button>
+                      <button className="btn btn-sm btn-print" onClick={() => handlePreview(m)}>Preview</button>
+                      <button className="btn btn-sm btn-success" onClick={() => handlePrint(m)}>Print</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(m.id)}>×</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {showForm && <ManifestFormModal manifest={editing} data={data} onClose={handleClose} reload={reload} />}
+
+          {showPreview && (
+            <div className="modal-overlay" onClick={() => setShowPreview(null)}>
+              <div className="modal" style={{maxWidth:900}} onClick={e => e.stopPropagation()}>
+                <h3>Print Preview — Manifest #{showPreview.manifest.manifestNum}</h3>
+                <p style={{color:'#888',fontSize:13,marginBottom:12}}>This shows how data will be positioned on the pre-printed form. Characters align to the 8700-22 field locations.</p>
+                <div className="print-preview">{showPreview.text}</div>
+                <div className="modal-actions">
+                  <button className="btn btn-secondary" onClick={() => setShowPreview(null)}>Close</button>
+                  <button className="btn btn-print" onClick={() => { window.open(`/api/print/manifest/${showPreview.manifest.id}`, '_blank'); }}>Send to Printer</button>
+                  <a className="btn btn-success" href={`/api/print/raw/${showPreview.manifest.id}`} download>Download .prn</a>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ==================== MANIFEST FORM MODAL ====================
+    function ManifestFormModal({ manifest, data, onClose, reload }) {
+      const isEdit = !!manifest;
+      const emptyWaste = { hm: '', description: '', containerNum: '', containerType: '', qty: '', unit: '', wasteCodes: '' };
+
+      const [form, setForm] = useState(() => {
+        if (manifest) return { ...manifest };
+        return {
+          manifestTrackingNum: '', emergencyPhone: '',
+          generatorEpaId: '', generatorName: '', generatorAddress: '', generatorCityStZip: '', generatorPhone: '',
+          genSiteAddress: '', genSiteCityStZip: '',
+          transporter1Name: '', transporter1EpaId: '',
+          transporter2Name: '', transporter2EpaId: '',
+          facilityName: '', facilityAddress: '', facilityCityStZip: '', facilityPhone: '', facilityEpaId: '',
+          wasteLines: [{ ...emptyWaste }, { ...emptyWaste }, { ...emptyWaste }, { ...emptyWaste }],
+          specialHandling: '', specialHandling2: '',
+          generatorPrintName: '', generatorDate: new Date().toLocaleDateString('en-US'),
+          pageNum: '1', pageTotal: '1',
+          status: 'draft'
+        };
+      });
+
+      const set = (field, val) => setForm(f => ({ ...f, [field]: val }));
+
+      const setWaste = (idx, field, val) => {
+        setForm(f => {
+          const lines = [...(f.wasteLines || [])];
+          while (lines.length <= idx) lines.push({ ...emptyWaste });
+          lines[idx] = { ...lines[idx], [field]: val };
+          return { ...f, wasteLines: lines };
+        });
+      };
+
+      // Load from generator profile
+      const loadGenerator = (id) => {
+        const gen = data.generators.find(g => g.id === id);
+        if (!gen) return;
+        set('generatorName', gen.name || '');
+        set('generatorEpaId', gen.epaId || '');
+        set('generatorAddress', gen.siteAddress || '');
+        set('generatorCityStZip', [gen.city, gen.state, gen.zip].filter(Boolean).join(', '));
+        set('generatorPhone', gen.phone || '');
+        set('emergencyPhone', gen.emergencyPhone || '');
+        setForm(f => ({
+          ...f,
+          generatorName: gen.name || '',
+          generatorEpaId: gen.epaId || '',
+          generatorAddress: gen.siteAddress || '',
+          generatorCityStZip: [gen.city, gen.state, gen.zip].filter(Boolean).join(', '),
+          generatorPhone: gen.phone || '',
+          emergencyPhone: gen.emergencyPhone || gen.phone || '',
+        }));
+      };
+
+      const loadTransporter = (id, num) => {
+        const t = data.transporters.find(x => x.id === id);
+        if (!t) return;
+        const prefix = `transporter${num}`;
+        setForm(f => ({ ...f, [`${prefix}Name`]: t.name || '', [`${prefix}EpaId`]: t.epaId || '' }));
+      };
+
+      const loadFacility = (id) => {
+        const f = data.facilities.find(x => x.id === id);
+        if (!f) return;
+        setForm(prev => ({
+          ...prev,
+          facilityName: f.name || '',
+          facilityAddress: f.siteAddress || '',
+          facilityCityStZip: [f.city, f.state, f.zip].filter(Boolean).join(', '),
+          facilityPhone: f.phone || '',
+          facilityEpaId: f.epaId || '',
+        }));
+      };
+
+      const loadWasteStream = (id, lineIdx) => {
+        const w = data.wasteStreams.find(x => x.id === id);
+        if (!w) return;
+        const lines = [...(form.wasteLines || [])];
+        while (lines.length <= lineIdx) lines.push({ ...emptyWaste });
+        lines[lineIdx] = {
+          hm: w.hm || '',
+          description: w.dotDescription || '',
+          containerNum: '',
+          containerType: w.containerType || '',
+          qty: '',
+          unit: w.unit || '',
+          wasteCodes: w.wasteCodes || '',
+        };
+        setForm(f => ({ ...f, wasteLines: lines }));
+      };
+
+      const handleSave = async () => {
+        // Flatten waste lines into the print fields
+        const payload = { ...form };
+        const lines = payload.wasteLines || [];
+        for (let i = 0; i < 4; i++) {
+          const n = i + 1;
+          const line = lines[i] || emptyWaste;
+          payload[`waste${n}HM`] = line.hm || '';
+          payload[`waste${n}Description`] = line.description || '';
+          payload[`waste${n}ContainerNum`] = line.containerNum || '';
+          payload[`waste${n}ContainerType`] = line.containerType || '';
+          payload[`waste${n}Qty`] = line.qty || '';
+          payload[`waste${n}Unit`] = line.unit || '';
+          payload[`waste${n}WasteCodes`] = line.wasteCodes || '';
+        }
+
+        if (isEdit) {
+          await api.put(`/api/manifests/${manifest.id}`, payload);
+        } else {
+          await api.post('/api/manifests', payload);
+        }
+        reload();
+        onClose();
+      };
+
+      return (
+        <div className="modal-overlay" onClick={onClose}>
+          <div className="modal" style={{maxWidth:850}} onClick={e => e.stopPropagation()}>
+            <h3>{isEdit ? 'Edit' : 'New'} Manifest (EPA 8700-22)</h3>
+
+            {/* Manifest tracking & page */}
+            <div className="form-grid" style={{marginBottom:20}}>
+              <div className="form-group">
+                <label>Manifest Tracking # (Box 4)</label>
+                <input value={form.manifestTrackingNum || ''} onChange={e => set('manifestTrackingNum', e.target.value)} placeholder="Pre-printed on form" />
+              </div>
+              <div className="form-group">
+                <label>Page ___ of ___</label>
+                <div style={{display:'flex',gap:8}}>
+                  <input value={form.pageNum || '1'} onChange={e => set('pageNum', e.target.value)} style={{width:50}} />
+                  <span style={{alignSelf:'center'}}>of</span>
+                  <input value={form.pageTotal || '1'} onChange={e => set('pageTotal', e.target.value)} style={{width:50}} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Emergency Response Phone (Box 3)</label>
+                <input value={form.emergencyPhone || ''} onChange={e => set('emergencyPhone', e.target.value)} />
+              </div>
+            </div>
+
+            {/* Generator - Box 5 */}
+            <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
+              <h4 style={{marginBottom:8}}>Box 5 — Generator</h4>
+              <div className="profile-select">
+                <select onChange={e => loadGenerator(e.target.value)} defaultValue="">
+                  <option value="">— Load from saved generator —</option>
+                  {data.generators.map(g => <option key={g.id} value={g.id}>{g.name} {g.epaId ? `(${g.epaId})` : ''}</option>)}
+                </select>
+              </div>
+              <div className="form-grid">
+                <div className="form-group"><label>EPA ID (Box 1)</label><input value={form.generatorEpaId || ''} onChange={e => set('generatorEpaId', e.target.value)} /></div>
+                <div className="form-group"><label>Generator Name</label><input value={form.generatorName || ''} onChange={e => set('generatorName', e.target.value)} /></div>
+                <div className="form-group"><label>Mailing Address</label><input value={form.generatorAddress || ''} onChange={e => set('generatorAddress', e.target.value)} /></div>
+                <div className="form-group"><label>City, State, Zip</label><input value={form.generatorCityStZip || ''} onChange={e => set('generatorCityStZip', e.target.value)} /></div>
+                <div className="form-group"><label>Phone</label><input value={form.generatorPhone || ''} onChange={e => set('generatorPhone', e.target.value)} /></div>
+                <div className="form-group"><label>Site Address (if different)</label><input value={form.genSiteAddress || ''} onChange={e => set('genSiteAddress', e.target.value)} /></div>
+                <div className="form-group"><label>Site City, State, Zip</label><input value={form.genSiteCityStZip || ''} onChange={e => set('genSiteCityStZip', e.target.value)} /></div>
+              </div>
+            </div>
+
+            {/* Transporters - Box 6 & 7 */}
+            <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
+              <h4 style={{marginBottom:8}}>Box 6 — Transporter 1</h4>
+              <div className="profile-select">
+                <select onChange={e => loadTransporter(e.target.value, 1)} defaultValue="">
+                  <option value="">— Load from saved transporter —</option>
+                  {data.transporters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div className="form-grid">
+                <div className="form-group"><label>Company Name</label><input value={form.transporter1Name || ''} onChange={e => set('transporter1Name', e.target.value)} /></div>
+                <div className="form-group"><label>EPA ID</label><input value={form.transporter1EpaId || ''} onChange={e => set('transporter1EpaId', e.target.value)} /></div>
+              </div>
+
+              <h4 style={{marginBottom:8,marginTop:16}}>Box 7 — Transporter 2</h4>
+              <div className="profile-select">
+                <select onChange={e => loadTransporter(e.target.value, 2)} defaultValue="">
+                  <option value="">— Load from saved transporter —</option>
+                  {data.transporters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div className="form-grid">
+                <div className="form-group"><label>Company Name</label><input value={form.transporter2Name || ''} onChange={e => set('transporter2Name', e.target.value)} /></div>
+                <div className="form-group"><label>EPA ID</label><input value={form.transporter2EpaId || ''} onChange={e => set('transporter2EpaId', e.target.value)} /></div>
+              </div>
+            </div>
+
+            {/* Facility - Box 8 */}
+            <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
+              <h4 style={{marginBottom:8}}>Box 8 — Designated Facility (TSDF)</h4>
+              <div className="profile-select">
+                <select onChange={e => loadFacility(e.target.value)} defaultValue="">
+                  <option value="">— Load from saved facility —</option>
+                  {data.facilities.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+              </div>
+              <div className="form-grid">
+                <div className="form-group"><label>Facility Name</label><input value={form.facilityName || ''} onChange={e => set('facilityName', e.target.value)} /></div>
+                <div className="form-group"><label>EPA ID</label><input value={form.facilityEpaId || ''} onChange={e => set('facilityEpaId', e.target.value)} /></div>
+                <div className="form-group"><label>Address</label><input value={form.facilityAddress || ''} onChange={e => set('facilityAddress', e.target.value)} /></div>
+                <div className="form-group"><label>City, State, Zip</label><input value={form.facilityCityStZip || ''} onChange={e => set('facilityCityStZip', e.target.value)} /></div>
+                <div className="form-group"><label>Phone</label><input value={form.facilityPhone || ''} onChange={e => set('facilityPhone', e.target.value)} /></div>
+              </div>
+            </div>
+
+            {/* Waste Items - Box 9 */}
+            <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
+              <h4 style={{marginBottom:8}}>Box 9 — Waste Description (up to 4 lines)</h4>
+              <table className="waste-table">
+                <thead>
+                  <tr>
+                    <th style={{width:20}}>#</th>
+                    <th style={{width:30}}>HM</th>
+                    <th>US DOT Description</th>
+                    <th style={{width:50}}>Containers</th>
+                    <th style={{width:80}}>Type</th>
+                    <th style={{width:60}}>Qty</th>
+                    <th style={{width:70}}>Unit</th>
+                    <th style={{width:120}}>Waste Codes</th>
+                    <th style={{width:100}}>Template</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[0,1,2,3].map(i => {
+                    const line = (form.wasteLines || [])[i] || emptyWaste;
+                    return (
+                      <tr key={i}>
+                        <td style={{fontWeight:600,color:'#888'}}>{i+1}</td>
+                        <td><input value={line.hm} onChange={e => setWaste(i, 'hm', e.target.value)} maxLength={1} /></td>
+                        <td><input value={line.description} onChange={e => setWaste(i, 'description', e.target.value)} /></td>
+                        <td><input value={line.containerNum} onChange={e => setWaste(i, 'containerNum', e.target.value)} /></td>
+                        <td>
+                          <select value={line.containerType} onChange={e => setWaste(i, 'containerType', e.target.value)}>
+                            <option value="">—</option>
+                            {CONTAINER_TYPES.map(ct => <option key={ct.code} value={ct.code}>{ct.code}</option>)}
+                          </select>
+                        </td>
+                        <td><input value={line.qty} onChange={e => setWaste(i, 'qty', e.target.value)} /></td>
+                        <td>
+                          <select value={line.unit} onChange={e => setWaste(i, 'unit', e.target.value)}>
+                            <option value="">—</option>
+                            {UNIT_TYPES.map(u => <option key={u.code} value={u.code}>{u.code}</option>)}
+                          </select>
+                        </td>
+                        <td><input value={line.wasteCodes} onChange={e => setWaste(i, 'wasteCodes', e.target.value)} placeholder="D001 D002" /></td>
+                        <td>
+                          <select onChange={e => loadWasteStream(e.target.value, i)} defaultValue="" style={{fontSize:11,padding:'4px 2px'}}>
+                            <option value="">Load...</option>
+                            {data.wasteStreams.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Special Handling & Signatures */}
+            <div className="form-grid" style={{marginBottom:16}}>
+              <div className="form-group full-width">
+                <label>Special Handling Instructions (Box 14)</label>
+                <input value={form.specialHandling || ''} onChange={e => set('specialHandling', e.target.value)} />
+              </div>
+              <div className="form-group full-width">
+                <label>Special Handling Line 2</label>
+                <input value={form.specialHandling2 || ''} onChange={e => set('specialHandling2', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Generator Print Name (Box 15)</label>
+                <input value={form.generatorPrintName || ''} onChange={e => set('generatorPrintName', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Date</label>
+                <input value={form.generatorDate || ''} onChange={e => set('generatorDate', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Status</label>
+                <select value={form.status || 'draft'} onChange={e => set('status', e.target.value)}>
+                  <option value="draft">Draft</option>
+                  <option value="printed">Printed</option>
+                  <option value="signed">Signed</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSave}>{isEdit ? 'Update' : 'Create'} Manifest</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==================== PROFILE TAB (Generators, Transporters, Facilities) ====================
+    function ProfileTab({ type, data, reload }) {
+      const [showModal, setShowModal] = useState(false);
+      const [editing, setEditing] = useState(null);
+      const [search, setSearch] = useState('');
+
+      const labels = {
+        generators: { singular: 'Generator', plural: 'Generators' },
+        transporters: { singular: 'Transporter', plural: 'Transporters' },
+        facilities: { singular: 'Facility', plural: 'Facilities' },
+      };
+      const label = labels[type];
+      const items = (data[type] || []).filter(item => {
+        const s = search.toLowerCase();
+        return !s || (item.name || '').toLowerCase().includes(s) || (item.epaId || '').toLowerCase().includes(s);
+      });
+
+      const handleSave = async (formData) => {
+        if (editing) {
+          await api.put(`/api/${type}/${editing.id}`, formData);
+        } else {
+          await api.post(`/api/${type}`, formData);
+        }
+        reload();
+        setShowModal(false);
+        setEditing(null);
+      };
+
+      const handleDelete = async (id) => {
+        if (confirm(`Delete this ${label.singular.toLowerCase()}?`)) {
+          await api.del(`/api/${type}/${id}`);
+          reload();
+        }
+      };
+
+      return (
+        <div>
+          <div className="section-header">
+            <h2 style={{fontSize:22,fontWeight:700}}>{label.plural}</h2>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              <input className="search-bar" placeholder={`Search ${label.plural.toLowerCase()}...`} value={search} onChange={e => setSearch(e.target.value)} />
+              <button className="btn btn-primary" onClick={() => { setEditing(null); setShowModal(true); }}>+ New {label.singular}</button>
+            </div>
+          </div>
+          <div className="card">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>EPA ID</th>
+                  <th>Address</th>
+                  <th>Phone</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.length === 0 && <tr><td colSpan="5" style={{textAlign:'center',color:'#999',padding:24}}>No {label.plural.toLowerCase()} yet.</td></tr>}
+                {items.map(item => (
+                  <tr key={item.id}>
+                    <td style={{fontWeight:600}}>{item.name}</td>
+                    <td>{item.epaId || '—'}</td>
+                    <td>{[item.siteAddress, item.city, item.state].filter(Boolean).join(', ') || '—'}</td>
+                    <td>{item.phone || '—'}</td>
+                    <td style={{display:'flex',gap:4}}>
+                      <button className="btn btn-sm btn-secondary" onClick={() => { setEditing(item); setShowModal(true); }}>Edit</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(item.id)}>×</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {showModal && <ProfileFormModal type={type} item={editing} label={label} onSave={handleSave} onClose={() => { setShowModal(false); setEditing(null); }} />}
+        </div>
+      );
+    }
+
+    function ProfileFormModal({ type, item, label, onSave, onClose }) {
+      const [form, setForm] = useState(item || { name: '', epaId: '', siteAddress: '', city: '', state: '', zip: '', phone: '', contactName: '', emergencyPhone: '' });
+      const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+      return (
+        <div className="modal-overlay" onClick={onClose}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>{item ? 'Edit' : 'New'} {label.singular}</h3>
+            <div className="form-grid">
+              <div className="form-group"><label>Name</label><input value={form.name} onChange={e => set('name', e.target.value)} /></div>
+              <div className="form-group"><label>EPA ID</label><input value={form.epaId || ''} onChange={e => set('epaId', e.target.value)} placeholder="e.g. NJD000000000" /></div>
+              <div className="form-group"><label>Site Address</label><input value={form.siteAddress || ''} onChange={e => set('siteAddress', e.target.value)} /></div>
+              <div className="form-group"><label>City</label><input value={form.city || ''} onChange={e => set('city', e.target.value)} /></div>
+              <div className="form-group"><label>State</label><input value={form.state || ''} onChange={e => set('state', e.target.value)} /></div>
+              <div className="form-group"><label>Zip</label><input value={form.zip || ''} onChange={e => set('zip', e.target.value)} /></div>
+              <div className="form-group"><label>Phone</label><input value={form.phone || ''} onChange={e => set('phone', e.target.value)} /></div>
+              <div className="form-group"><label>Contact Name</label><input value={form.contactName || ''} onChange={e => set('contactName', e.target.value)} /></div>
+              {type === 'generators' && <div className="form-group"><label>Emergency Phone</label><input value={form.emergencyPhone || ''} onChange={e => set('emergencyPhone', e.target.value)} /></div>}
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" onClick={() => onSave(form)}>Save {label.singular}</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==================== WASTE STREAMS TAB ====================
+    function WasteStreamsTab({ data, reload }) {
+      const [showModal, setShowModal] = useState(false);
+      const [editing, setEditing] = useState(null);
+
+      const handleSave = async (formData) => {
+        if (editing) {
+          await api.put(`/api/waste-streams/${editing.id}`, formData);
+        } else {
+          await api.post('/api/waste-streams', formData);
+        }
+        reload();
+        setShowModal(false);
+        setEditing(null);
+      };
+
+      const handleDelete = async (id) => {
+        if (confirm('Delete this waste stream?')) {
+          await api.del(`/api/waste-streams/${id}`);
+          reload();
+        }
+      };
+
+      return (
+        <div>
+          <div className="section-header">
+            <h2 style={{fontSize:22,fontWeight:700}}>Waste Stream Templates</h2>
+            <button className="btn btn-primary" onClick={() => { setEditing(null); setShowModal(true); }}>+ New Waste Stream</button>
+          </div>
+          <div className="card">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>DOT Description</th>
+                  <th>Container</th>
+                  <th>Unit</th>
+                  <th>Waste Codes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.wasteStreams || []).length === 0 && <tr><td colSpan="6" style={{textAlign:'center',color:'#999',padding:24}}>No waste streams yet.</td></tr>}
+                {(data.wasteStreams || []).map(w => (
+                  <tr key={w.id}>
+                    <td style={{fontWeight:600}}>{w.name}</td>
+                    <td>{w.dotDescription || '—'}</td>
+                    <td>{w.containerType || '—'}</td>
+                    <td>{w.unit || '—'}</td>
+                    <td>{w.wasteCodes || '—'}</td>
+                    <td style={{display:'flex',gap:4}}>
+                      <button className="btn btn-sm btn-secondary" onClick={() => { setEditing(w); setShowModal(true); }}>Edit</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(w.id)}>×</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {showModal && (
+            <div className="modal-overlay" onClick={() => { setShowModal(false); setEditing(null); }}>
+              <div className="modal" onClick={e => e.stopPropagation()}>
+                <h3>{editing ? 'Edit' : 'New'} Waste Stream Template</h3>
+                <WasteStreamForm item={editing} onSave={handleSave} onClose={() => { setShowModal(false); setEditing(null); }} />
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function WasteStreamForm({ item, onSave, onClose }) {
+      const [form, setForm] = useState(item || { name: '', dotDescription: '', hm: '', containerType: '', unit: '', wasteCodes: '' });
+      const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+      return (
+        <div>
+          <div className="form-grid">
+            <div className="form-group"><label>Template Name</label><input value={form.name || ''} onChange={e => set('name', e.target.value)} placeholder="e.g. Used Oil" /></div>
+            <div className="form-group"><label>HM (X if hazmat)</label><input value={form.hm || ''} onChange={e => set('hm', e.target.value)} maxLength={1} /></div>
+            <div className="form-group full-width"><label>US DOT Description</label><input value={form.dotDescription || ''} onChange={e => set('dotDescription', e.target.value)} placeholder="e.g. RQ, Hazardous Waste, Liquid, NOS" /></div>
+            <div className="form-group">
+              <label>Container Type</label>
+              <select value={form.containerType || ''} onChange={e => set('containerType', e.target.value)}>
+                <option value="">—</option>
+                {CONTAINER_TYPES.map(ct => <option key={ct.code} value={ct.code}>{ct.code} - {ct.label}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Unit of Measure</label>
+              <select value={form.unit || ''} onChange={e => set('unit', e.target.value)}>
+                <option value="">—</option>
+                {UNIT_TYPES.map(u => <option key={u.code} value={u.code}>{u.code} - {u.label}</option>)}
+              </select>
+            </div>
+            <div className="form-group"><label>Waste Codes</label><input value={form.wasteCodes || ''} onChange={e => set('wasteCodes', e.target.value)} placeholder="D001 D002 D003" /></div>
+          </div>
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" onClick={() => onSave(form)}>Save Waste Stream</button>
+          </div>
+        </div>
+      );
+    }
+
+    // ==================== IMPORT TAB ====================
+    function ImportTab({ reload }) {
+      const [result, setResult] = useState(null);
+      const [uploading, setUploading] = useState(false);
+      const fileRef = useRef();
+
+      const handleUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setUploading(true);
+        setResult(null);
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          const res = await fetch('/api/import/quickbooks', { method: 'POST', body: formData });
+          const data = await res.json();
+          if (data.error) {
+            setResult({ error: data.error });
+          } else {
+            setResult({ success: true, imported: data.imported, total: data.total });
+            reload();
+          }
+        } catch (err) {
+          setResult({ error: 'Upload failed: ' + err.message });
+        }
+        setUploading(false);
+        if (fileRef.current) fileRef.current.value = '';
+      };
+
+      return (
+        <div>
+          <h2 style={{fontSize:22,fontWeight:700,marginBottom:16}}>Import from QuickBooks</h2>
+          <div className="card">
+            <h4 style={{marginBottom:12}}>Upload Customer List (Excel or CSV)</h4>
+            <p style={{color:'#666',marginBottom:16}}>Export your customer list from QuickBooks as an Excel (.xlsx) or CSV file and upload it here. The system will map common QuickBooks columns (Customer, Company Name, Street, City, State, Zip, Phone) to generator profiles.</p>
+            <div className="upload-area" onClick={() => fileRef.current && fileRef.current.click()}>
+              <div style={{fontSize:32}}>📄</div>
+              <p><strong>Click to upload</strong> or drag and drop</p>
+              <p style={{fontSize:12}}>Excel (.xlsx, .xls) or CSV files</p>
+              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:'none'}} onChange={handleUpload} />
+            </div>
+            {uploading && <p style={{marginTop:12,color:'#888'}}>Importing...</p>}
+            {result && result.success && (
+              <div style={{marginTop:16,padding:12,background:'#d1fae5',borderRadius:8,color:'#065f46'}}>
+                Successfully imported <strong>{result.imported}</strong> new generators out of {result.total} rows.
+              </div>
+            )}
+            {result && result.error && (
+              <div style={{marginTop:16,padding:12,background:'#fee2e2',borderRadius:8,color:'#991b1b'}}>
+                Error: {result.error}
+              </div>
+            )}
+          </div>
+
+          <div className="card" style={{marginTop:20}}>
+            <h4 style={{marginBottom:12}}>Column Mapping</h4>
+            <p style={{color:'#666',marginBottom:12}}>The importer automatically maps these QuickBooks columns:</p>
+            <table className="data-table">
+              <thead><tr><th>QuickBooks Column</th><th>Maps To</th></tr></thead>
+              <tbody>
+                <tr><td>Customer / Company Name / Display Name</td><td>Generator Name</td></tr>
+                <tr><td>Street / Billing Street / Ship Street</td><td>Site Address</td></tr>
+                <tr><td>City / Billing City</td><td>City</td></tr>
+                <tr><td>State / Billing State</td><td>State</td></tr>
+                <tr><td>Zip / Postal Code</td><td>Zip</td></tr>
+                <tr><td>Phone / Main Phone</td><td>Phone</td></tr>
+                <tr><td>EPA ID (custom field)</td><td>EPA ID</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    // ==================== RENDER ====================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
