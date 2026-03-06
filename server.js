@@ -552,13 +552,42 @@ var FORM_8700_MAP = {
 
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)
-var BUILD_VERSION = 'v18-2026-03-06';
+var BUILD_VERSION = 'v19-2026-03-06';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment editor endpoints
 var customAlignment = data.customAlignment || null;
 var previousAlignment = data.previousAlignment || null;
 var colOffset = (typeof data.colOffset === 'number') ? data.colOffset : 10;
+
+// V18 migration: if custom alignment exists from before the +10 offset change, migrate it
+if (customAlignment && !data.migratedToV18) {
+  var cKeys = Object.keys(customAlignment);
+  for (var mi = 0; mi < cKeys.length; mi++) {
+    if (customAlignment[cKeys[mi]] && typeof customAlignment[cKeys[mi]].col === 'number') {
+      customAlignment[cKeys[mi]].col = customAlignment[cKeys[mi]].col + 10;
+    }
+  }
+  data.customAlignment = customAlignment;
+  // Also migrate previous alignment if it exists
+  if (previousAlignment) {
+    var pKeys = Object.keys(previousAlignment);
+    for (var pi = 0; pi < pKeys.length; pi++) {
+      if (previousAlignment[pKeys[pi]] && typeof previousAlignment[pKeys[pi]].col === 'number') {
+        previousAlignment[pKeys[pi]].col = previousAlignment[pKeys[pi]].col + 10;
+      }
+    }
+    data.previousAlignment = previousAlignment;
+  }
+  // Set colOffset to 10 if it was 0
+  if (colOffset === 0) {
+    colOffset = 10;
+    data.colOffset = 10;
+  }
+  data.migratedToV18 = true;
+  saveData(data);
+  console.log('V18 migration: added +10 to all custom alignment column values');
+}
 
 function getActiveMap() {
   if (!customAlignment) return FORM_8700_MAP;
