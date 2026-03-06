@@ -553,7 +553,7 @@ var FORM_8700_MAP = {
 
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)
-var BUILD_VERSION = 'v23-2026-03-06';
+var BUILD_VERSION = 'v24-2026-03-06';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment editor endpoints
@@ -628,6 +628,21 @@ if (!data.migratedToV23) {
   data.migratedToV23 = true;
   saveData(data);
   console.log('V23 migration: recalibrated for 12 CPI pin-left');
+}
+
+// V24 migration: shift everything 8 columns left to fix "too far right" at 12 CPI pin-left
+if (!data.migratedToV24) {
+  customAlignment = null;
+  delete data.customAlignment;
+  previousAlignment = null;
+  delete data.previousAlignment;
+  colOffset = 8;
+  data.colOffset = 8;
+  leftMargin = 0;
+  data.leftMargin = 0;
+  data.migratedToV24 = true;
+  saveData(data);
+  console.log('V24 migration: Global Shift set to 8 to fix rightward offset');
 }
 
 function getActiveMap() {
