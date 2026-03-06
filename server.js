@@ -489,26 +489,26 @@ var FORM_8700_MAP = {
   facilityState:      { row: 16, col: 36 },
   facilityZip:        { row: 16, col: 40 },
   // Box 9-13 - Waste lines (3 rows apart per waste line)
-  waste1hm:           { row: 21, col: 5 },
-  waste1desc:         { row: 21, col: 10 },
+  waste1hm:           { row: 21, col: 3 },
+  waste1desc:         { row: 21, col: 7 },
   waste1code:         { row: 21, col: 48 },
   waste1container:    { row: 21, col: 52 },
   waste1qty:          { row: 21, col: 57 },
   waste1uom:          { row: 21, col: 59 },
-  waste2hm:           { row: 24, col: 5 },
-  waste2desc:         { row: 24, col: 10 },
+  waste2hm:           { row: 24, col: 3 },
+  waste2desc:         { row: 24, col: 7 },
   waste2code:         { row: 24, col: 48 },
   waste2container:    { row: 24, col: 52 },
   waste2qty:          { row: 24, col: 57 },
   waste2uom:          { row: 24, col: 59 },
-  waste3hm:           { row: 27, col: 5 },
-  waste3desc:         { row: 27, col: 10 },
+  waste3hm:           { row: 27, col: 3 },
+  waste3desc:         { row: 27, col: 7 },
   waste3code:         { row: 27, col: 48 },
   waste3container:    { row: 27, col: 52 },
   waste3qty:          { row: 27, col: 57 },
   waste3uom:          { row: 27, col: 59 },
-  waste4hm:           { row: 30, col: 5 },
-  waste4desc:         { row: 30, col: 10 },
+  waste4hm:           { row: 30, col: 3 },
+  waste4desc:         { row: 30, col: 7 },
   waste4code:         { row: 30, col: 48 },
   waste4container:    { row: 30, col: 52 },
   waste4qty:          { row: 30, col: 57 },
@@ -607,9 +607,9 @@ app.get('/api/print/manifest/:id', function(req, res) {
   // Box 13 waste code box positions: 6 boxes per waste line
   // 3 codes on the main row, 3 codes on the next row
   // Each code box is 5 chars wide (4 char code + 1 space)
-  var WASTE_CODE_COL1 = 62;
-  var WASTE_CODE_COL2 = 67;
-  var WASTE_CODE_COL3 = 72;
+  var WASTE_CODE_COL1 = 65;
+  var WASTE_CODE_COL2 = 70;
+  var WASTE_CODE_COL3 = 75;
   for (var w = 1; w <= 4; w++) {
     var wasteDesc = manifest['waste' + w + 'Description'] || '';
     var descLines = wrapDescLines(wasteDesc, descRow1Width, descContWidth);
