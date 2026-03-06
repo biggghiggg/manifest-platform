@@ -552,12 +552,13 @@ var FORM_8700_MAP = {
 
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)
-var BUILD_VERSION = 'v16-2026-03-06';
+var BUILD_VERSION = 'v17-2026-03-06';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment editor endpoints
 var customAlignment = data.customAlignment || null;
 var previousAlignment = data.previousAlignment || null;
+var colOffset = data.colOffset || 0;
 
 function getActiveMap() {
   if (!customAlignment) return FORM_8700_MAP;
@@ -577,7 +578,8 @@ app.get('/api/alignment', function(req, res) {
   res.json({
     map: getActiveMap(),
     defaults: FORM_8700_MAP,
-    hasPrevious: previousAlignment !== null
+    hasPrevious: previousAlignment !== null,
+    colOffset: colOffset
   });
 });
 
@@ -587,6 +589,10 @@ app.put('/api/alignment', function(req, res) {
   data.previousAlignment = previousAlignment;
   customAlignment = req.body.map || null;
   data.customAlignment = customAlignment;
+  if (typeof req.body.colOffset === 'number') {
+    colOffset = req.body.colOffset;
+    data.colOffset = colOffset;
+  }
   saveData();
   res.json({ ok: true });
 });
@@ -630,13 +636,16 @@ app.get('/api/print/manifest/:id', function(req, res) {
     lines.push(row);
   }
 
+  var activeOffset = colOffset || 0;
   function placeText(row, col, text) {
     if (!text) return;
     text = String(text);
     if (row < 1 || row > 66) return;
+    var actualCol = col - activeOffset;
+    if (actualCol < 1) return;
     var line = lines[row - 1];
-    var before = line.substring(0, col - 1);
-    var after = line.substring(col - 1 + text.length);
+    var before = line.substring(0, actualCol - 1);
+    var after = line.substring(actualCol - 1 + text.length);
     lines[row - 1] = before + text + after;
   }
 

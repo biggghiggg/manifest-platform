@@ -279,6 +279,7 @@
       var s2=useState(null);var selected=s2[0];var setSelected=s2[1];
       var s3=useState('');var status=s3[0];var setStatus=s3[1];
       var s4=useState(false);var hasPrevious=s4[0];var setHasPrevious=s4[1];
+      var s5=useState(0);var colOffset=s5[0];var setColOffset=s5[1];
 
       var FIELD_LABELS = {
         generatorEpaId:'Box 1 - EPA ID', page:'Box 2 - Page', totalPages:'Box 2 - Total Pages',
@@ -328,6 +329,7 @@
         fetch('/api/alignment').then(function(r){return r.json()}).then(function(d){
           setAlignData(d.map);
           setHasPrevious(d.hasPrevious || false);
+          setColOffset(d.colOffset || 0);
         });
       },[]);
 
@@ -371,7 +373,7 @@
         fetch('/api/alignment', {
           method: 'PUT',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({map: alignData})
+          body: JSON.stringify({map: alignData, colOffset: colOffset})
         }).then(function(r){return r.json()}).then(function(){
           setHasPrevious(true);
           setStatus('Saved! Changes will apply to next print.');
@@ -439,6 +441,16 @@
       return React.createElement('div',null,
         React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:8}},'Print Alignment Editor'),
         React.createElement('p',{style:{color:'#666',marginBottom:16}},'Click a field to select it, then use arrow keys to move it. Up/Down arrows move text up and down on the page. Left/Right arrows move text left and right. Save when done, then print a test.'),
+        React.createElement('div',{className:'card',style:{marginBottom:16,padding:16,background:'#fffbeb',border:'1px solid #f59e0b'}},
+          React.createElement('h4',{style:{marginBottom:8}},'Global Shift (Left Margin Offset)'),
+          React.createElement('p',{style:{color:'#666',fontSize:13,marginBottom:12}},'Shifts ALL text to the left. Increase this number to make room on the right side for waste codes. Example: offset 10 means column 90 prints at physical position 80.'),
+          React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
+            React.createElement('button',{onClick:function(){setColOffset(Math.max(0,colOffset-1))},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9664)),
+            React.createElement('input',{type:'number',value:colOffset,onChange:function(e){var v=parseInt(e.target.value);if(!isNaN(v)&&v>=0&&v<=40)setColOffset(v)},style:{width:60,textAlign:'center',padding:'4px 8px',fontSize:16,border:'1px solid #ccc',borderRadius:4}}),
+            React.createElement('button',{onClick:function(){setColOffset(Math.min(40,colOffset+1))},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9654)),
+            React.createElement('span',{style:{marginLeft:12,color:'#666',fontSize:13}},'Current: everything shifts '+colOffset+' columns left')
+          )
+        ),
         React.createElement('div',{style:{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap'}},
           React.createElement('button',{className:'btn btn-primary',onClick:handleSave,style:{padding:'10px 24px',fontSize:16}},'Save Alignment'),
           React.createElement('button',{className:'btn',onClick:handleUndo,style:{padding:'10px 24px',background:hasPrevious?'#f59e0b':'#999',cursor:hasPrevious?'pointer':'not-allowed',color:'#fff'},disabled:!hasPrevious},'Undo (Previous Settings)'),
