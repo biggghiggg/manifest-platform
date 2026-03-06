@@ -272,9 +272,10 @@
         setForm(function(f) {
           var lines = (f.wasteLines || []).slice();
           while (lines.length <= lineIdx) lines.push(Object.assign({}, emptyWaste));
+          var allCodes = [w.wasteCodes || '', w.stateWasteCodes || ''].filter(Boolean).join(' ').trim();
           lines[lineIdx] = {
             hm: w.hm || '', description: w.dotDescription || '', containerNum: '',
-            containerType: w.containerType || '', qty: '', unit: w.unit || '', wasteCodes: w.wasteCodes || ''
+            containerType: w.containerType || '', qty: '', unit: w.unit || '', wasteCodes: allCodes
           };
           return Object.assign({}, f, { wasteLines: lines });
         });
