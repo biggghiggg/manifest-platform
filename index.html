@@ -117,6 +117,7 @@
       var s1=useState(false);var showModal=s1[0];var setShowModal=s1[1];
       var s2=useState(null);var editing=s2[0];var setEditing=s2[1];
       var s3=useState('');var search=s3[0];var setSearch=s3[1];
+      useEffect(function(){if(preselectedGen){setEditing({_preselectedGen:preselectedGen});setShowModal(true)}},[preselectedGen]);
       function handleSave(f){var p=editing?api.put('/api/manifests/'+editing.id,f):api.post('/api/manifests',f);p.then(function(){reload();setShowModal(false);setEditing(null)})}
       function handleDelete(id){if(confirm('Delete this manifest?')){api.del('/api/manifests/'+id).then(reload)}}
       var items=(data.manifests||[]).filter(function(m){var s=search.toLowerCase();return !s||(m.manifestNum||'').toLowerCase().indexOf(s)>=0||(m.generatorName||'').toLowerCase().indexOf(s)>=0});
@@ -125,8 +126,7 @@
           React.createElement('h2',{style:{fontSize:22,fontWeight:700}},'Hazardous Waste Manifests'),
           React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center'}},
             React.createElement('input',{className:'search-bar',placeholder:'Search manifests...',value:search,onChange:function(e){setSearch(e.target.value)}}),
-            React.createElement('button',{className:'btn btn-primary',onClick:function(){setEditing(preselectedGen||null);setShowModal(true)}},preselectedGen?'+ New Manifest for '+preselectedGen.name:'+ New Manifest'),
-            preselectedGen?React.createElement('button',{className:'btn btn-secondary',onClick:clearPreselected},'Clear Selection'):null
+            React.createElement('button',{className:'btn btn-primary',onClick:function(){setEditing(null);setShowModal(true)}},'+ New Manifest')
           )
         ),
         React.createElement('div',{className:'card'},
@@ -166,10 +166,29 @@
       var data = props.data;
       var onClose = props.onClose;
       var reload = props.reload;
-      var isEdit = !!manifest;
+      var preGen = manifest && manifest._preselectedGen ? manifest._preselectedGen : null;
+      var isEdit = !!manifest && !preGen;
       var emptyWaste = { hm: '', description: '', containerNum: '', containerType: '', qty: '', unit: '', wasteCodes: '' };
 
       var formState = useState(function() {
+        if (preGen) {
+          return {
+            manifestTrackingNum: '', emergencyPhone: preGen.emergencyPhone || preGen.phone || '',
+            generatorEpaId: preGen.epaId || '', generatorName: preGen.name || '',
+            generatorAddress: preGen.siteAddress || '',
+            generatorCityStZip: [preGen.city, preGen.state, preGen.zip].filter(Boolean).join(', '),
+            generatorPhone: preGen.phone || '',
+            genSiteAddress: '', genSiteCityStZip: '',
+            transporter1Name: '', transporter1EpaId: '',
+            transporter2Name: '', transporter2EpaId: '',
+            facilityName: '', facilityAddress: '', facilityCityStZip: '', facilityPhone: '', facilityEpaId: '',
+            wasteLines: [Object.assign({},emptyWaste), Object.assign({},emptyWaste), Object.assign({},emptyWaste), Object.assign({},emptyWaste)],
+            specialHandling: '', specialHandling2: '',
+            generatorPrintName: '', generatorDate: new Date().toLocaleDateString('en-US'),
+            pageNum: '1', pageTotal: '1',
+            status: 'draft'
+          };
+        }
         if (manifest) return Object.assign({}, manifest);
         return {
           manifestTrackingNum: '', emergencyPhone: '',
@@ -269,7 +288,7 @@
           payload['waste' + n + 'WasteCodes'] = line.wasteCodes || '';
         }
         var promise;
-        if (isEdit) {
+        if (isEdit && manifest && manifest.id) {
           promise = api.put('/api/manifests/' + manifest.id, payload);
         } else {
           promise = api.post('/api/manifests', payload);
@@ -404,7 +423,19 @@
                         <td>
                           <select onChange={function(e){loadWasteStream(e.target.value,i)}} defaultValue="" style={{fontSize:11,padding:'4px 2px'}}>
                             <option value="">Load...</option>
-                            {data.wasteStreams.map(function(w) { return <option key={w.id} value={w.id}>{w.name}</option>; })}
+                            {(function() {
+                              var genPIds = preGen ? (preGen.profileIds || []) : [];
+                              var linked = genPIds.length > 0 ? data.wasteStreams.filter(function(w) { return genPIds.indexOf(w.id) >= 0; }) : [];
+                              var others = genPIds.length > 0 ? data.wasteStreams.filter(function(w) { return genPIds.indexOf(w.id) < 0; }) : data.wasteStreams;
+                              var opts = [];
+                              if (linked.length > 0) {
+                                opts.push(<optgroup key="linked" label={"--- " + (preGen.name || 'Generator') + " Profiles ---"}>{linked.map(function(w) { return <option key={w.id} value={w.id}>{w.name}</option>; })}</optgroup>);
+                                opts.push(<optgroup key="other" label="--- All Profiles ---">{others.map(function(w) { return <option key={w.id} value={w.id}>{w.name}</option>; })}</optgroup>);
+                              } else {
+                                for (var wi = 0; wi < data.wasteStreams.length; wi++) { var w = data.wasteStreams[wi]; opts.push(<option key={w.id} value={w.id}>{w.name}</option>); }
+                              }
+                              return opts;
+                            })()}
                           </select>
                         </td>
                       </tr>
@@ -496,13 +527,12 @@
                     var linkedWastes=type==='generators'?ws.filter(function(w){return pIds.indexOf(w.id)>=0}):[];
                     var availableWastes=type==='generators'?ws.filter(function(w){return pIds.indexOf(w.id)<0}):[];
                     rows.push(React.createElement('tr',{key:item.id},
-                      React.createElement('td',{style:{fontWeight:600,cursor:type==='generators'?'pointer':'default',color:type==='generators'?'#e94560':'inherit'},onClick:type==='generators'?function(){setViewItem(item)}:undefined},item.name),
+                      React.createElement('td',{style:{fontWeight:600,cursor:type==='generators'?'pointer':'default',color:type==='generators'?'#e94560':'inherit'},onClick:type==='generators'?function(){setExpandedId(isExpanded?null:item.id)}:undefined},(type==='generators'?(isExpanded?'v ':'> '):'')+item.name),
                       React.createElement('td',null,item.epaId||'-'),
                       React.createElement('td',null,[item.mailAddress,item.mailCity,item.mailState].filter(Boolean).join(', ')||[item.siteAddress,item.city,item.state].filter(Boolean).join(', ')||'-'),
                       React.createElement('td',null,[item.siteAddress,item.city,item.state].filter(Boolean).join(', ')||'-'),
                       React.createElement('td',null,item.phone||'-'),
                       React.createElement('td',{style:{display:'flex',gap:4}},
-                        type==='generators'?React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){setExpandedId(isExpanded?null:item.id)}},isExpanded?'v':'>'):null,
                         React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){setEditing(item);setShowModal(true)}},'Edit'),
                         React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){handleDelete(item.id)}},'X')
                       )
