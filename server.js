@@ -377,6 +377,11 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
         stateWasteCodes = stMatch[1].trim().split('\n')[0].trim();
       }
 
+      // If DOT description contains N.O.S., append common name in parentheses
+      if (dotDescription && dotDescription.match(/N\.O\.S\.?\s*$/i) && commonName) {
+        dotDescription = dotDescription + ' (' + commonName + ')';
+      }
+
       // Build the waste stream template
       var profileId = '';
       var pidMatch = fullText.match(/Profile\s*ID[:\s]+(\d+)/i);
