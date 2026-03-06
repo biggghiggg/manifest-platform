@@ -476,13 +476,13 @@ var FORM_8700_MAP = {
   generatorSiteCity:  { row: 8, col: 58 },
   // Box 6 - Transporter 1
   transporter1Name:   { row: 10, col: 18 },
-  transporter1EpaId:  { row: 10, col: 72 },
+  transporter1EpaId:  { row: 10, col: 76 },
   // Box 7 - Transporter 2
   transporter2Name:   { row: 12, col: 18 },
-  transporter2EpaId:  { row: 12, col: 72 },
+  transporter2EpaId:  { row: 12, col: 76 },
   // Box 8 - Designated Facility
   facilityName:       { row: 14, col: 18 },
-  facilityEpaId:      { row: 14, col: 72 },
+  facilityEpaId:      { row: 14, col: 76 },
   facilityAddress:    { row: 15, col: 18 },
   facilityPhone:      { row: 16, col: 18 },
   facilityCity:       { row: 16, col: 34 },
@@ -500,48 +500,48 @@ var FORM_8700_MAP = {
   waste4desc:         { row: 30, col: 19 },
   // Box 10 - Containers (number + type)
   waste1containerNum: { row: 21, col: 70 },
-  waste1container:    { row: 21, col: 75 },
+  waste1container:    { row: 21, col: 78 },
   waste2containerNum: { row: 24, col: 70 },
-  waste2container:    { row: 24, col: 75 },
+  waste2container:    { row: 24, col: 78 },
   waste3containerNum: { row: 27, col: 70 },
-  waste3container:    { row: 27, col: 75 },
+  waste3container:    { row: 27, col: 78 },
   waste4containerNum: { row: 30, col: 70 },
-  waste4container:    { row: 30, col: 75 },
+  waste4container:    { row: 30, col: 78 },
   // Box 11 - Quantity
-  waste1qty:          { row: 21, col: 82 },
-  waste2qty:          { row: 24, col: 82 },
-  waste3qty:          { row: 27, col: 82 },
-  waste4qty:          { row: 30, col: 82 },
+  waste1qty:          { row: 21, col: 85 },
+  waste2qty:          { row: 24, col: 85 },
+  waste3qty:          { row: 27, col: 85 },
+  waste4qty:          { row: 30, col: 85 },
   // Box 12 - Unit
-  waste1uom:          { row: 21, col: 89 },
-  waste2uom:          { row: 24, col: 89 },
-  waste3uom:          { row: 27, col: 89 },
-  waste4uom:          { row: 30, col: 89 },
+  waste1uom:          { row: 21, col: 93 },
+  waste2uom:          { row: 24, col: 93 },
+  waste3uom:          { row: 27, col: 93 },
+  waste4uom:          { row: 30, col: 93 },
   // Box 13 - Waste Codes (6 per line: 3 on row 1, 3 on row 2)
-  waste1wc1:          { row: 21, col: 93 },
-  waste1wc2:          { row: 21, col: 98 },
-  waste1wc3:          { row: 21, col: 103 },
-  waste1wc4:          { row: 22, col: 93 },
-  waste1wc5:          { row: 22, col: 98 },
-  waste1wc6:          { row: 22, col: 103 },
-  waste2wc1:          { row: 24, col: 93 },
-  waste2wc2:          { row: 24, col: 98 },
-  waste2wc3:          { row: 24, col: 103 },
-  waste2wc4:          { row: 25, col: 93 },
-  waste2wc5:          { row: 25, col: 98 },
-  waste2wc6:          { row: 25, col: 103 },
-  waste3wc1:          { row: 27, col: 93 },
-  waste3wc2:          { row: 27, col: 98 },
-  waste3wc3:          { row: 27, col: 103 },
-  waste3wc4:          { row: 28, col: 93 },
-  waste3wc5:          { row: 28, col: 98 },
-  waste3wc6:          { row: 28, col: 103 },
-  waste4wc1:          { row: 30, col: 93 },
-  waste4wc2:          { row: 30, col: 98 },
-  waste4wc3:          { row: 30, col: 103 },
-  waste4wc4:          { row: 31, col: 93 },
-  waste4wc5:          { row: 31, col: 98 },
-  waste4wc6:          { row: 31, col: 103 },
+  waste1wc1:          { row: 21, col: 97 },
+  waste1wc2:          { row: 21, col: 102 },
+  waste1wc3:          { row: 21, col: 107 },
+  waste1wc4:          { row: 22, col: 97 },
+  waste1wc5:          { row: 22, col: 102 },
+  waste1wc6:          { row: 22, col: 107 },
+  waste2wc1:          { row: 24, col: 97 },
+  waste2wc2:          { row: 24, col: 102 },
+  waste2wc3:          { row: 24, col: 107 },
+  waste2wc4:          { row: 25, col: 97 },
+  waste2wc5:          { row: 25, col: 102 },
+  waste2wc6:          { row: 25, col: 107 },
+  waste3wc1:          { row: 27, col: 97 },
+  waste3wc2:          { row: 27, col: 102 },
+  waste3wc3:          { row: 27, col: 107 },
+  waste3wc4:          { row: 28, col: 97 },
+  waste3wc5:          { row: 28, col: 102 },
+  waste3wc6:          { row: 28, col: 107 },
+  waste4wc1:          { row: 30, col: 97 },
+  waste4wc2:          { row: 30, col: 102 },
+  waste4wc3:          { row: 30, col: 107 },
+  waste4wc4:          { row: 31, col: 97 },
+  waste4wc5:          { row: 31, col: 102 },
+  waste4wc6:          { row: 31, col: 107 },
   // Box 14 - Special Handling (3 lines, MIS permanent on line 3)
   specialHandling:    { row: 33, col: 18 },
   specialHandling2:   { row: 34, col: 18 },
@@ -552,7 +552,7 @@ var FORM_8700_MAP = {
 
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)
-var BUILD_VERSION = 'v19-2026-03-06';
+var BUILD_VERSION = 'v20-2026-03-06';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment editor endpoints
@@ -587,6 +587,17 @@ if (customAlignment && !data.migratedToV18) {
   data.migratedToV18 = true;
   saveData(data);
   console.log('V18 migration: added +10 to all custom alignment column values');
+}
+
+// V20 migration: clear custom alignment so new Box 10-13 defaults take effect
+if (!data.migratedToV20) {
+  customAlignment = null;
+  delete data.customAlignment;
+  previousAlignment = null;
+  delete data.previousAlignment;
+  data.migratedToV20 = true;
+  saveData(data);
+  console.log('V20 migration: cleared custom alignment for new Box 10-13 positions');
 }
 
 function getActiveMap() {
