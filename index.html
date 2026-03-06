@@ -180,7 +180,7 @@
       var formState = useState(function() {
         if (preGen) {
           return {
-            manifestTrackingNum: '', emergencyPhone: '',
+            manifestTrackingNum: '', emergencyPhone: '800-255-3924',
             generatorEpaId: preGen.epaId || '', generatorName: preGen.name || '',
             generatorAddress: preGen.siteAddress || '',
             generatorCityStZip: [preGen.city, preGen.state, preGen.zip].filter(Boolean).join(', '),
@@ -198,7 +198,7 @@
         }
         if (manifest) return Object.assign({}, manifest);
         return {
-          manifestTrackingNum: '', emergencyPhone: '',
+          manifestTrackingNum: '', emergencyPhone: '800-255-3924',
           generatorEpaId: '', generatorName: '', generatorAddress: '', generatorCityStZip: '', generatorPhone: '',
           genSiteAddress: '', genSiteCityStZip: '',
           transporter1Name: '', transporter1EpaId: '',
@@ -272,11 +272,13 @@
         setForm(function(f) {
           var lines = (f.wasteLines || []).slice();
           while (lines.length <= lineIdx) lines.push(Object.assign({}, emptyWaste));
-          var fedCodes = (w.wasteCodes || '').replace(/\bnone\b/gi, '').trim();
+          var rawFed = (w.wasteCodes || '').replace(/\bnone\b/gi, '').trim();
+          var fedCodes = rawFed.replace(/([A-Za-z]\d{3})/g, ' $1').replace(/\s+/g, ' ').trim();
           var stateCodes = (w.stateWasteCodes || '').replace(/\bnone\b/gi, '').replace(/[A-Za-z]+-?/g, '').replace(/\s+/g, ' ').trim();
           var allCodes = [fedCodes, stateCodes].filter(Boolean).join(' ').trim();
+          var hasRcra = fedCodes.length > 0;
           lines[lineIdx] = {
-            hm: w.hm || '', description: w.dotDescription || '', containerNum: '',
+            hm: hasRcra ? (w.hm || '') : '', description: w.dotDescription || '', containerNum: '',
             containerType: w.containerType || '', qty: '', unit: w.unit || '', wasteCodes: allCodes
           };
           return Object.assign({}, f, { wasteLines: lines });
