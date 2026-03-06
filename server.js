@@ -552,11 +552,12 @@ var FORM_8700_MAP = {
 
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)
-var BUILD_VERSION = 'v10-2026-03-06';
+var BUILD_VERSION = 'v12-2026-03-06';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment editor endpoints
 var customAlignment = data.customAlignment || null;
+var previousAlignment = data.previousAlignment || null;
 
 function getActiveMap() {
   if (!customAlignment) return FORM_8700_MAP;
@@ -575,11 +576,15 @@ function getActiveMap() {
 app.get('/api/alignment', function(req, res) {
   res.json({
     map: getActiveMap(),
-    defaults: FORM_8700_MAP
+    defaults: FORM_8700_MAP,
+    hasPrevious: previousAlignment !== null
   });
 });
 
 app.put('/api/alignment', function(req, res) {
+  // Save current as previous before overwriting
+  previousAlignment = customAlignment ? JSON.parse(JSON.stringify(customAlignment)) : null;
+  data.previousAlignment = previousAlignment;
   customAlignment = req.body.map || null;
   data.customAlignment = customAlignment;
   saveData();
@@ -587,10 +592,27 @@ app.put('/api/alignment', function(req, res) {
 });
 
 app.post('/api/alignment/reset', function(req, res) {
+  // Save current as previous before resetting
+  previousAlignment = customAlignment ? JSON.parse(JSON.stringify(customAlignment)) : null;
+  data.previousAlignment = previousAlignment;
   customAlignment = null;
   delete data.customAlignment;
   saveData();
   res.json({ ok: true });
+});
+
+app.post('/api/alignment/undo', function(req, res) {
+  if (previousAlignment === null) {
+    return res.json({ ok: false, message: 'No previous settings to restore' });
+  }
+  // Swap current and previous
+  var temp = customAlignment ? JSON.parse(JSON.stringify(customAlignment)) : null;
+  customAlignment = JSON.parse(JSON.stringify(previousAlignment));
+  previousAlignment = temp;
+  data.customAlignment = customAlignment;
+  data.previousAlignment = previousAlignment;
+  saveData();
+  res.json({ ok: true, map: getActiveMap() });
 });
 
 app.get('/api/print/manifest/:id', function(req, res) {
@@ -604,7 +626,7 @@ app.get('/api/print/manifest/:id', function(req, res) {
   var lines = [];
   for (var l = 0; l < 66; l++) {
     var row = '';
-    for (var c = 0; c < 80; c++) { row += ' '; }
+    for (var c = 0; c < 132; c++) { row += ' '; }
     lines.push(row);
   }
 

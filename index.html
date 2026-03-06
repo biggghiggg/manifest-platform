@@ -278,6 +278,7 @@
       var s1=useState(null);var alignData=s1[0];var setAlignData=s1[1];
       var s2=useState(null);var selected=s2[0];var setSelected=s2[1];
       var s3=useState('');var status=s3[0];var setStatus=s3[1];
+      var s4=useState(false);var hasPrevious=s4[0];var setHasPrevious=s4[1];
 
       var FIELD_LABELS = {
         generatorEpaId:'Box 1 - EPA ID', page:'Box 2 - Page', totalPages:'Box 2 - Total Pages',
@@ -326,6 +327,7 @@
       useEffect(function(){
         fetch('/api/alignment').then(function(r){return r.json()}).then(function(d){
           setAlignData(d.map);
+          setHasPrevious(d.hasPrevious || false);
         });
       },[]);
 
@@ -333,7 +335,7 @@
         var num = parseInt(val);
         if (isNaN(num) || num < 1) return;
         if (prop === 'row' && num > 66) return;
-        if (prop === 'col' && num > 80) return;
+        if (prop === 'col' && num > 132) return;
         setAlignData(function(prev){
           var next = Object.assign({}, prev);
           next[key] = Object.assign({}, prev[key]);
@@ -349,6 +351,7 @@
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify({map: alignData})
         }).then(function(r){return r.json()}).then(function(){
+          setHasPrevious(true);
           setStatus('Saved! Changes will apply to next print.');
           setTimeout(function(){setStatus('')}, 3000);
         });
@@ -360,9 +363,25 @@
         fetch('/api/alignment/reset', {method:'POST'}).then(function(r){return r.json()}).then(function(){
           return fetch('/api/alignment').then(function(r){return r.json()}).then(function(d){
             setAlignData(d.map);
+            setHasPrevious(d.hasPrevious || false);
             setStatus('Reset to defaults.');
             setTimeout(function(){setStatus('')}, 3000);
           });
+        });
+      }
+
+      function handleUndo() {
+        setStatus('Restoring previous settings...');
+        fetch('/api/alignment/undo', {method:'POST'}).then(function(r){return r.json()}).then(function(d){
+          if (d.ok && d.map) {
+            setAlignData(d.map);
+            setHasPrevious(true);
+            setStatus('Restored previous settings.');
+            setTimeout(function(){setStatus('')}, 3000);
+          } else {
+            setStatus('No previous settings to restore.');
+            setTimeout(function(){setStatus('')}, 3000);
+          }
         });
       }
 
@@ -396,9 +415,10 @@
 
       return React.createElement('div',null,
         React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:8}},'Print Alignment Editor'),
-        React.createElement('p',{style:{color:'#666',marginBottom:16}},'Adjust row and column positions for each field. Row = line on page (1-66). Col = character position (1-80). Click arrows or type values. Save when done, then print a test.'),
+        React.createElement('p',{style:{color:'#666',marginBottom:16}},'Adjust row and column positions for each field. Row = line on page (1-66). Col = character position (1-132). Click arrows or type values. Save when done, then print a test.'),
         React.createElement('div',{style:{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap'}},
           React.createElement('button',{className:'btn btn-primary',onClick:handleSave,style:{padding:'10px 24px',fontSize:16}},'Save Alignment'),
+          React.createElement('button',{className:'btn',onClick:handleUndo,style:{padding:'10px 24px',background:hasPrevious?'#f59e0b':'#999',cursor:hasPrevious?'pointer':'not-allowed',color:'#fff'},disabled:!hasPrevious},'Undo (Previous Settings)'),
           React.createElement('button',{className:'btn',onClick:handleReset,style:{padding:'10px 24px',background:'#666'}},'Reset to Defaults'),
           status ? React.createElement('span',{style:{color:'#4ade80',fontWeight:600,alignSelf:'center'}},status) : null
         ),
