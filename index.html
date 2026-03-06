@@ -173,7 +173,7 @@
       var formState = useState(function() {
         if (preGen) {
           return {
-            manifestTrackingNum: '', emergencyPhone: preGen.emergencyPhone || preGen.phone || '',
+            manifestTrackingNum: '', emergencyPhone: '',
             generatorEpaId: preGen.epaId || '', generatorName: preGen.name || '',
             generatorAddress: preGen.siteAddress || '',
             generatorCityStZip: [preGen.city, preGen.state, preGen.zip].filter(Boolean).join(', '),
@@ -229,7 +229,7 @@
             generatorAddress: gen.siteAddress || '',
             generatorCityStZip: [gen.city, gen.state, gen.zip].filter(Boolean).join(', '),
             generatorPhone: gen.phone || '',
-            emergencyPhone: gen.emergencyPhone || gen.phone || ''
+            emergencyPhone: f.emergencyPhone || ''
           });
         });
       }
