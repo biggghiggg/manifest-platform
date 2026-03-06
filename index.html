@@ -128,7 +128,7 @@
     function ManifestFormModal(props){
       var manifest=props.manifest;var data=props.data;var onClose=props.onClose;var reload=props.reload;var isEdit=!!manifest;
       var emptyWaste={hm:'',description:'',containerNum:'',containerType:'',qty:'',unit:'',wasteCodes:''};
-      var f1=useState(function(){if(manifest)return Object.assign({},manifest);return{manifestTrackingNum:'',emergencyPhone:'',generatorEpaId:'',generatorName:'',generatorMailAddress:'',generatorMailCityStZip:'',generatorPhone:'',genSiteAddress:'',genSiteCityStZip:'',transporter1Name:'',transporter1EpaId:'',transporter2Name:'',transporter2EpaId:'',facilityName:'',facilityAddress:'',facilityCityStZip:'',facilityPhone:'',facilityEpaId:'',wasteLines:[Object.assign({},emptyWaste),Object.assign({},emptyWaste),Object.assign({},emptyWaste),Object.assign({},emptyWaste)],specialHandling:'',specialHandling2:'',specialHandling3:'',specialHandling4:'',generatorPrintName:'',generatorDate:new Date().toLocaleDateString('en-US'),pageNum:'1',pageTotal:'1',status:'draft'}});
+      var f1=useState(function(){if(manifest)return Object.assign({},manifest);return{manifestTrackingNum:'',emergencyPhone:'',generatorEpaId:'',generatorName:'',generatorMailAddress:'',generatorMailCityStZip:'',generatorPhone:'',genSiteAddress:'',genSiteCityStZip:'',transporter1Name:'',transporter1EpaId:'',transporter2Name:'',transporter2EpaId:'',facilityName:'',facilityAddress:'',facilityCityStZip:'',facilityPhone:'',facilityEpaId:'',wasteLines:[Object.assign({},emptyWaste),Object.assign({},emptyWaste),Object.assign({},emptyWaste),Object.assign({},emptyWaste)],specialHandling:'',specialHandling2:'',specialHandling3:'',specialHandling4:'ER Contract # MIS9933011',generatorPrintName:'',generatorDate:new Date().toLocaleDateString('en-US'),pageNum:'1',pageTotal:'1',status:'draft'}});
       var form=f1[0];var setForm=f1[1];
       function set(field,val){setForm(function(f){var n=Object.assign({},f);n[field]=val;return n})}
       function setWaste(idx,field,val){setForm(function(f){var lines=(f.wasteLines||[]).slice();while(lines.length<=idx)lines.push(Object.assign({},emptyWaste));lines[idx]=Object.assign({},lines[idx]);lines[idx][field]=val;return Object.assign({},f,{wasteLines:lines})})}
@@ -173,7 +173,7 @@
           </tbody></table>
         </div>
         <div className="form-grid" style={{marginBottom:16}}>
-          <div className="form-group full-width"><label>Special Handling Instructions Line 1 (Box 14)</label><input value={form.specialHandling||''} onChange={function(e){set('specialHandling',e.target.value)}}/></div>
+          <div className="form-group full-width"><label>Special Handling Instructions (Box 14)</label><input value={form.specialHandling||''} onChange={function(e){set('specialHandling',e.target.value)}}/></div>
           <div className="form-group full-width"><label>Special Handling Line 2</label><input value={form.specialHandling2||''} onChange={function(e){set('specialHandling2',e.target.value)}}/></div>
           <div className="form-group full-width"><label>Special Handling Line 3</label><input value={form.specialHandling3||''} onChange={function(e){set('specialHandling3',e.target.value)}}/></div>
           <div className="form-group full-width"><label>Special Handling Line 4</label><input value={form.specialHandling4||''} onChange={function(e){set('specialHandling4',e.target.value)}}/></div>
