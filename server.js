@@ -342,8 +342,11 @@ var FORM_8700_MAP = {
   waste4qty:          { row: 31, col: 51 },
   waste4uom:          { row: 31, col: 57 },
   waste4wCodes:       { row: 31, col: 62 },
-  // Box 14 - Special Handling
+  // Box 14 - Special Handling (4 lines)
   specialHandling:    { row: 34, col: 7 },
+  specialHandling2:   { row: 35, col: 7 },
+  specialHandling3:   { row: 36, col: 7 },
+  specialHandling4:   { row: 37, col: 7 },
   // Box 15 - Generator Certification
   generatorCertName:  { row: 39, col: 7 },
   certDate:           { row: 39, col: 52 }
@@ -417,8 +420,11 @@ app.get('/api/print/manifest/:id', function(req, res) {
     placeText(FORM_8700_MAP['waste' + w + 'code'].row, FORM_8700_MAP['waste' + w + 'code'].col, manifest['waste' + w + 'ContainerNum']);
   }
 
-  // Box 14 - Special Handling
+  // Box 14 - Special Handling (4 lines)
   placeText(FORM_8700_MAP.specialHandling.row, FORM_8700_MAP.specialHandling.col, manifest.specialHandling);
+  placeText(FORM_8700_MAP.specialHandling2.row, FORM_8700_MAP.specialHandling2.col, manifest.specialHandling2);
+  placeText(FORM_8700_MAP.specialHandling3.row, FORM_8700_MAP.specialHandling3.col, manifest.specialHandling3);
+  placeText(FORM_8700_MAP.specialHandling4.row, FORM_8700_MAP.specialHandling4.col, manifest.specialHandling4);
 
   // Box 15 - Generator Certification
   placeText(FORM_8700_MAP.generatorCertName.row, FORM_8700_MAP.generatorCertName.col, manifest.generatorPrintName);
