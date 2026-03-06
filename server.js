@@ -488,31 +488,60 @@ var FORM_8700_MAP = {
   facilityCity:       { row: 16, col: 20 },
   facilityState:      { row: 16, col: 34 },
   facilityZip:        { row: 16, col: 38 },
-  // Box 9-13 - Waste lines (3 rows apart per waste line)
+  // Box 9a - HM
   waste1hm:           { row: 21, col: 4 },
-  waste1desc:         { row: 21, col: 8 },
-  waste1code:         { row: 21, col: 48 },
-  waste1container:    { row: 21, col: 52 },
-  waste1qty:          { row: 21, col: 57 },
-  waste1uom:          { row: 21, col: 60 },
   waste2hm:           { row: 24, col: 4 },
-  waste2desc:         { row: 24, col: 8 },
-  waste2code:         { row: 24, col: 48 },
-  waste2container:    { row: 24, col: 52 },
-  waste2qty:          { row: 24, col: 57 },
-  waste2uom:          { row: 24, col: 60 },
   waste3hm:           { row: 27, col: 4 },
-  waste3desc:         { row: 27, col: 8 },
-  waste3code:         { row: 27, col: 48 },
-  waste3container:    { row: 27, col: 52 },
-  waste3qty:          { row: 27, col: 57 },
-  waste3uom:          { row: 27, col: 60 },
   waste4hm:           { row: 30, col: 4 },
+  // Box 9b - Description
+  waste1desc:         { row: 21, col: 8 },
+  waste2desc:         { row: 24, col: 8 },
+  waste3desc:         { row: 27, col: 8 },
   waste4desc:         { row: 30, col: 8 },
-  waste4code:         { row: 30, col: 48 },
+  // Box 10 - Containers (number + type)
+  waste1containerNum: { row: 21, col: 48 },
+  waste1container:    { row: 21, col: 52 },
+  waste2containerNum: { row: 24, col: 48 },
+  waste2container:    { row: 24, col: 52 },
+  waste3containerNum: { row: 27, col: 48 },
+  waste3container:    { row: 27, col: 52 },
+  waste4containerNum: { row: 30, col: 48 },
   waste4container:    { row: 30, col: 52 },
+  // Box 11 - Quantity
+  waste1qty:          { row: 21, col: 57 },
+  waste2qty:          { row: 24, col: 57 },
+  waste3qty:          { row: 27, col: 57 },
   waste4qty:          { row: 30, col: 57 },
+  // Box 12 - Unit
+  waste1uom:          { row: 21, col: 60 },
+  waste2uom:          { row: 24, col: 60 },
+  waste3uom:          { row: 27, col: 60 },
   waste4uom:          { row: 30, col: 60 },
+  // Box 13 - Waste Codes (6 per line: 3 on row 1, 3 on row 2)
+  waste1wc1:          { row: 21, col: 66 },
+  waste1wc2:          { row: 21, col: 71 },
+  waste1wc3:          { row: 21, col: 76 },
+  waste1wc4:          { row: 22, col: 66 },
+  waste1wc5:          { row: 22, col: 71 },
+  waste1wc6:          { row: 22, col: 76 },
+  waste2wc1:          { row: 24, col: 66 },
+  waste2wc2:          { row: 24, col: 71 },
+  waste2wc3:          { row: 24, col: 76 },
+  waste2wc4:          { row: 25, col: 66 },
+  waste2wc5:          { row: 25, col: 71 },
+  waste2wc6:          { row: 25, col: 76 },
+  waste3wc1:          { row: 27, col: 66 },
+  waste3wc2:          { row: 27, col: 71 },
+  waste3wc3:          { row: 27, col: 76 },
+  waste3wc4:          { row: 28, col: 66 },
+  waste3wc5:          { row: 28, col: 71 },
+  waste3wc6:          { row: 28, col: 76 },
+  waste4wc1:          { row: 30, col: 66 },
+  waste4wc2:          { row: 30, col: 71 },
+  waste4wc3:          { row: 30, col: 76 },
+  waste4wc4:          { row: 31, col: 66 },
+  waste4wc5:          { row: 31, col: 71 },
+  waste4wc6:          { row: 31, col: 76 },
   // Box 14 - Special Handling (3 lines, MIS permanent on line 3)
   specialHandling:    { row: 33, col: 5 },
   specialHandling2:   { row: 34, col: 5 },
@@ -523,13 +552,11 @@ var FORM_8700_MAP = {
 
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)
-var BUILD_VERSION = 'v9-2026-03-06';
+var BUILD_VERSION = 'v10-2026-03-06';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment editor endpoints
-var WASTE_CODE_COLS_DEFAULT = { col1: 66, col2: 71, col3: 76 };
 var customAlignment = data.customAlignment || null;
-var customWasteCodeCols = data.customWasteCodeCols || null;
 
 function getActiveMap() {
   if (!customAlignment) return FORM_8700_MAP;
@@ -545,32 +572,23 @@ function getActiveMap() {
   return merged;
 }
 
-function getActiveWasteCodeCols() {
-  return customWasteCodeCols || WASTE_CODE_COLS_DEFAULT;
-}
-
 app.get('/api/alignment', function(req, res) {
   res.json({
     map: getActiveMap(),
-    wasteCodeCols: getActiveWasteCodeCols(),
-    defaults: { map: FORM_8700_MAP, wasteCodeCols: WASTE_CODE_COLS_DEFAULT }
+    defaults: FORM_8700_MAP
   });
 });
 
 app.put('/api/alignment', function(req, res) {
   customAlignment = req.body.map || null;
-  customWasteCodeCols = req.body.wasteCodeCols || null;
   data.customAlignment = customAlignment;
-  data.customWasteCodeCols = customWasteCodeCols;
   saveData();
   res.json({ ok: true });
 });
 
 app.post('/api/alignment/reset', function(req, res) {
   customAlignment = null;
-  customWasteCodeCols = null;
   delete data.customAlignment;
-  delete data.customWasteCodeCols;
   saveData();
   res.json({ ok: true });
 });
@@ -583,7 +601,6 @@ app.get('/api/print/manifest/:id', function(req, res) {
   if (!manifest) return res.status(404).send('Manifest not found');
 
   var MAP = getActiveMap();
-  var WCC = getActiveWasteCodeCols();
   var lines = [];
   for (var l = 0; l < 66; l++) {
     var row = '';
@@ -631,8 +648,8 @@ app.get('/api/print/manifest/:id', function(req, res) {
   placeText(MAP.facilityCity.row, MAP.facilityCity.col, manifest.facilityCityStZip);
   placeText(MAP.facilityEpaId.row, MAP.facilityEpaId.col, manifest.facilityEpaId);
 
-  // Box 9 - Waste lines
-  var descRow1Width = MAP.waste1code.col - MAP.waste1desc.col - 1;
+  // Box 9-13 - Waste lines (all positions independent)
+  var descRow1Width = MAP.waste1containerNum.col - MAP.waste1desc.col - 1;
   var descContWidth = 55;
   function wrapDescLines(text, firstMax, contMax) {
     if (!text) return [];
@@ -655,16 +672,20 @@ app.get('/api/print/manifest/:id', function(req, res) {
   for (var w = 1; w <= 4; w++) {
     var wasteDesc = manifest['waste' + w + 'Description'] || '';
     var descLines = wrapDescLines(wasteDesc, descRow1Width, descContWidth);
-    var baseRow = MAP['waste' + w + 'desc'].row;
+    var descRow = MAP['waste' + w + 'desc'].row;
     for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
-      placeText(baseRow + dl, MAP['waste' + w + 'desc'].col, descLines[dl]);
+      placeText(descRow + dl, MAP['waste' + w + 'desc'].col, descLines[dl]);
     }
+    // 9a - HM
     placeText(MAP['waste' + w + 'hm'].row, MAP['waste' + w + 'hm'].col, manifest['waste' + w + 'HM']);
+    // 10 - Containers
+    placeText(MAP['waste' + w + 'containerNum'].row, MAP['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
     placeText(MAP['waste' + w + 'container'].row, MAP['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
+    // 11 - Qty
     placeText(MAP['waste' + w + 'qty'].row, MAP['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
+    // 12 - Unit
     placeText(MAP['waste' + w + 'uom'].row, MAP['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
-    placeText(MAP['waste' + w + 'code'].row, MAP['waste' + w + 'code'].col, manifest['waste' + w + 'ContainerNum']);
-    // Box 13 - Split waste codes into 6 individual boxes (3 per row, 2 rows)
+    // 13 - Waste codes (6 per line, each with independent row/col)
     var allCodes = (manifest['waste' + w + 'WasteCodes'] || '').trim();
     if (allCodes) {
       var codeArr = allCodes.split(/[\s,]+/).filter(function(c) { return c.length > 0; });
@@ -698,13 +719,15 @@ app.get('/api/print/manifest/:id', function(req, res) {
         }
         if (smartCodes.length > 1) codeArr = smartCodes;
       }
-      var codeCols = [WCC.col1, WCC.col2, WCC.col3];
-      if (codeArr[0]) placeText(baseRow, codeCols[0], codeArr[0]);
-      if (codeArr[1]) placeText(baseRow, codeCols[1], codeArr[1]);
-      if (codeArr[2]) placeText(baseRow, codeCols[2], codeArr[2]);
-      if (codeArr[3]) placeText(baseRow + 1, codeCols[0], codeArr[3]);
-      if (codeArr[4]) placeText(baseRow + 1, codeCols[1], codeArr[4]);
-      if (codeArr[5]) placeText(baseRow + 1, codeCols[2], codeArr[5]);
+      // Place each code at its own independent row/col from the map
+      for (var ci = 0; ci < 6; ci++) {
+        if (codeArr[ci]) {
+          var wcKey = 'waste' + w + 'wc' + (ci + 1);
+          if (MAP[wcKey]) {
+            placeText(MAP[wcKey].row, MAP[wcKey].col, codeArr[ci]);
+          }
+        }
+      }
     }
   }
 

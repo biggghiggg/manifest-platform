@@ -278,7 +278,6 @@
       var s1=useState(null);var alignData=s1[0];var setAlignData=s1[1];
       var s2=useState(null);var selected=s2[0];var setSelected=s2[1];
       var s3=useState('');var status=s3[0];var setStatus=s3[1];
-      var s4=useState(null);var wcc=s4[0];var setWcc=s4[1];
 
       var FIELD_LABELS = {
         generatorEpaId:'Box 1 - EPA ID', page:'Box 2 - Page', totalPages:'Box 2 - Total Pages',
@@ -291,14 +290,26 @@
         facilityName:'Box 8 - Facility Name', facilityEpaId:'Box 8 - Facility EPA ID',
         facilityAddress:'Box 8 - Facility Addr', facilityPhone:'Box 8 - Facility Phone',
         facilityCity:'Box 8 - Facility City', facilityState:'Box 8 - Facility State', facilityZip:'Box 8 - Facility Zip',
-        waste1hm:'Line 1 - HM', waste1desc:'Line 1 - Description', waste1code:'Line 1 - Container #',
-        waste1container:'Line 1 - Container Type', waste1qty:'Line 1 - Qty', waste1uom:'Line 1 - Unit',
-        waste2hm:'Line 2 - HM', waste2desc:'Line 2 - Description', waste2code:'Line 2 - Container #',
-        waste2container:'Line 2 - Container Type', waste2qty:'Line 2 - Qty', waste2uom:'Line 2 - Unit',
-        waste3hm:'Line 3 - HM', waste3desc:'Line 3 - Description', waste3code:'Line 3 - Container #',
-        waste3container:'Line 3 - Container Type', waste3qty:'Line 3 - Qty', waste3uom:'Line 3 - Unit',
-        waste4hm:'Line 4 - HM', waste4desc:'Line 4 - Description', waste4code:'Line 4 - Container #',
-        waste4container:'Line 4 - Container Type', waste4qty:'Line 4 - Qty', waste4uom:'Line 4 - Unit',
+        waste1hm:'9a HM', waste1desc:'9b Description',
+        waste1containerNum:'10 Container #', waste1container:'10 Container Type',
+        waste1qty:'11 Quantity', waste1uom:'12 Unit',
+        waste1wc1:'13 Code 1', waste1wc2:'13 Code 2', waste1wc3:'13 Code 3',
+        waste1wc4:'13 Code 4', waste1wc5:'13 Code 5', waste1wc6:'13 Code 6',
+        waste2hm:'9a HM', waste2desc:'9b Description',
+        waste2containerNum:'10 Container #', waste2container:'10 Container Type',
+        waste2qty:'11 Quantity', waste2uom:'12 Unit',
+        waste2wc1:'13 Code 1', waste2wc2:'13 Code 2', waste2wc3:'13 Code 3',
+        waste2wc4:'13 Code 4', waste2wc5:'13 Code 5', waste2wc6:'13 Code 6',
+        waste3hm:'9a HM', waste3desc:'9b Description',
+        waste3containerNum:'10 Container #', waste3container:'10 Container Type',
+        waste3qty:'11 Quantity', waste3uom:'12 Unit',
+        waste3wc1:'13 Code 1', waste3wc2:'13 Code 2', waste3wc3:'13 Code 3',
+        waste3wc4:'13 Code 4', waste3wc5:'13 Code 5', waste3wc6:'13 Code 6',
+        waste4hm:'9a HM', waste4desc:'9b Description',
+        waste4containerNum:'10 Container #', waste4container:'10 Container Type',
+        waste4qty:'11 Quantity', waste4uom:'12 Unit',
+        waste4wc1:'13 Code 1', waste4wc2:'13 Code 2', waste4wc3:'13 Code 3',
+        waste4wc4:'13 Code 4', waste4wc5:'13 Code 5', waste4wc6:'13 Code 6',
         specialHandling:'Box 14 - Special Line 1', specialHandling2:'Box 14 - Special Line 2',
         specialHandling3:'Box 14 - Special Line 3', generatorCertName:'Box 15 - Cert Name'
       };
@@ -315,7 +326,6 @@
       useEffect(function(){
         fetch('/api/alignment').then(function(r){return r.json()}).then(function(d){
           setAlignData(d.map);
-          setWcc(d.wasteCodeCols);
         });
       },[]);
 
@@ -332,22 +342,12 @@
         });
       }
 
-      function updateWcc(key, val) {
-        var num = parseInt(val);
-        if (isNaN(num) || num < 1 || num > 80) return;
-        setWcc(function(prev){
-          var next = Object.assign({}, prev);
-          next[key] = num;
-          return next;
-        });
-      }
-
       function handleSave() {
         setStatus('Saving...');
         fetch('/api/alignment', {
           method: 'PUT',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({map: alignData, wasteCodeCols: wcc})
+          body: JSON.stringify({map: alignData})
         }).then(function(r){return r.json()}).then(function(){
           setStatus('Saved! Changes will apply to next print.');
           setTimeout(function(){setStatus('')}, 3000);
@@ -360,7 +360,6 @@
         fetch('/api/alignment/reset', {method:'POST'}).then(function(r){return r.json()}).then(function(){
           return fetch('/api/alignment').then(function(r){return r.json()}).then(function(d){
             setAlignData(d.map);
-            setWcc(d.wasteCodeCols);
             setStatus('Reset to defaults.');
             setTimeout(function(){setStatus('')}, 3000);
           });
@@ -383,10 +382,14 @@
         {title:'Box 5 (Generator)', fields:['generatorName','generatorMailAddr','generatorMailCity','generatorPhone','generatorSiteAddr','generatorSiteCity']},
         {title:'Box 6-7 (Transporters)', fields:['transporter1Name','transporter1EpaId','transporter2Name','transporter2EpaId']},
         {title:'Box 8 (Facility)', fields:['facilityName','facilityEpaId','facilityAddress','facilityPhone','facilityCity','facilityState','facilityZip']},
-        {title:'Waste Line 1', fields:['waste1hm','waste1desc','waste1code','waste1container','waste1qty','waste1uom']},
-        {title:'Waste Line 2', fields:['waste2hm','waste2desc','waste2code','waste2container','waste2qty','waste2uom']},
-        {title:'Waste Line 3', fields:['waste3hm','waste3desc','waste3code','waste3container','waste3qty','waste3uom']},
-        {title:'Waste Line 4', fields:['waste4hm','waste4desc','waste4code','waste4container','waste4qty','waste4uom']},
+        {title:'Waste Line 1 - Boxes 9-12', fields:['waste1hm','waste1desc','waste1containerNum','waste1container','waste1qty','waste1uom']},
+        {title:'Waste Line 1 - Box 13 (Codes)', fields:['waste1wc1','waste1wc2','waste1wc3','waste1wc4','waste1wc5','waste1wc6']},
+        {title:'Waste Line 2 - Boxes 9-12', fields:['waste2hm','waste2desc','waste2containerNum','waste2container','waste2qty','waste2uom']},
+        {title:'Waste Line 2 - Box 13 (Codes)', fields:['waste2wc1','waste2wc2','waste2wc3','waste2wc4','waste2wc5','waste2wc6']},
+        {title:'Waste Line 3 - Boxes 9-12', fields:['waste3hm','waste3desc','waste3containerNum','waste3container','waste3qty','waste3uom']},
+        {title:'Waste Line 3 - Box 13 (Codes)', fields:['waste3wc1','waste3wc2','waste3wc3','waste3wc4','waste3wc5','waste3wc6']},
+        {title:'Waste Line 4 - Boxes 9-12', fields:['waste4hm','waste4desc','waste4containerNum','waste4container','waste4qty','waste4uom']},
+        {title:'Waste Line 4 - Box 13 (Codes)', fields:['waste4wc1','waste4wc2','waste4wc3','waste4wc4','waste4wc5','waste4wc6']},
         {title:'Box 14 (Special Handling)', fields:['specialHandling','specialHandling2','specialHandling3']},
         {title:'Box 15 (Certification)', fields:['generatorCertName']}
       ];
@@ -398,27 +401,6 @@
           React.createElement('button',{className:'btn btn-primary',onClick:handleSave,style:{padding:'10px 24px',fontSize:16}},'Save Alignment'),
           React.createElement('button',{className:'btn',onClick:handleReset,style:{padding:'10px 24px',background:'#666'}},'Reset to Defaults'),
           status ? React.createElement('span',{style:{color:'#4ade80',fontWeight:600,alignSelf:'center'}},status) : null
-        ),
-        React.createElement('div',{className:'card',style:{marginBottom:16,padding:16}},
-          React.createElement('h4',{style:{marginBottom:12}},'Waste Code Columns (Box 13)'),
-          React.createElement('p',{style:{color:'#666',fontSize:13,marginBottom:12}},'These control where the 6 waste code boxes print. 3 codes per row, 2 rows per waste line.'),
-          React.createElement('div',{style:{display:'flex',gap:20,flexWrap:'wrap'}},
-            (function(){
-              var colKeys=['col1','col2','col3'];
-              var elems=[];
-              for(var ci=0;ci<colKeys.length;ci++){
-                (function(ck,idx){
-                  elems.push(React.createElement('div',{key:ck,style:{display:'flex',alignItems:'center',gap:8}},
-                    React.createElement('label',{style:{fontWeight:600,minWidth:80}},'Code '+(idx+1)+':'),
-                    React.createElement('button',{onClick:function(){updateWcc(ck,(wcc[ck]||66)-1)},style:{width:28,height:28,cursor:'pointer',fontSize:16}},'<'),
-                    React.createElement('input',{type:'number',value:wcc[ck]||'',onChange:function(e){updateWcc(ck,e.target.value)},style:{width:50,textAlign:'center',padding:4}}),
-                    React.createElement('button',{onClick:function(){updateWcc(ck,(wcc[ck]||66)+1)},style:{width:28,height:28,cursor:'pointer',fontSize:16}},'>')
-                  ));
-                })(colKeys[ci],ci);
-              }
-              return elems;
-            })()
-          )
         ),
         groups.map(function(group){
           return React.createElement('div',{key:group.title,className:'card',style:{marginBottom:12,padding:16}},
