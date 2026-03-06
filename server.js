@@ -552,7 +552,7 @@ var FORM_8700_MAP = {
 
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)
-var BUILD_VERSION = 'v12-2026-03-06';
+var BUILD_VERSION = 'v13-2026-03-06';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment editor endpoints

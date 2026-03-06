@@ -390,7 +390,7 @@
         var cur = alignData[key][prop];
         var next = cur + delta;
         if (prop === 'row' && (next < 1 || next > 66)) return;
-        if (prop === 'col' && (next < 1 || next > 80)) return;
+        if (prop === 'col' && (next < 1 || next > 132)) return;
         updateField(key, prop, next);
       }
 
