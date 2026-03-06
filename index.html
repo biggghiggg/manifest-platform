@@ -163,29 +163,310 @@
 
     function ManifestFormModal(props){
       var item=props.item;var data=props.data;var onSave=props.onSave;var onClose=props.onClose;
-      var f1=useState(item||{manifestNum:'',generatorName:'',transporters:[],facilityName:'',wastes:[],status:'draft'});
+      var isEditingExisting=item&&item.manifestNum;
+      var isPreselectGen=item&&item.epaId&&!item.manifestNum;
+      var f1=useState(item&&isEditingExisting?item:{
+        manifestNum:'',generatorEpaId:'',generatorName:'',generatorPhone:'',emergencyPhone:'',generatorMailAddress:'',generatorMailCityStZip:'',genSiteAddress:'',genSiteCityStZip:'',
+        transporter1Name:'',transporter1EpaId:'',transporter2Name:'',transporter2EpaId:'',
+        facilityName:'',facilityEpaId:'',facilityPhone:'',facilityAddress:'',facilityCityStZip:'',
+        waste1HM:'',waste1Description:'',waste1ContainerNum:'',waste1ContainerType:'',waste1Qty:'',waste1Unit:'',waste1WasteCodes:'',
+        waste2HM:'',waste2Description:'',waste2ContainerNum:'',waste2ContainerType:'',waste2Qty:'',waste2Unit:'',waste2WasteCodes:'',
+        waste3HM:'',waste3Description:'',waste3ContainerNum:'',waste3ContainerType:'',waste3Qty:'',waste3Unit:'',waste3WasteCodes:'',
+        waste4HM:'',waste4Description:'',waste4ContainerNum:'',waste4ContainerType:'',waste4Qty:'',waste4Unit:'',waste4WasteCodes:'',
+        specialHandling:'',specialHandling2:'',specialHandling3:'',generatorPrintName:'',pageNum:'1',pageTotal:'1',status:'draft'
+      });
       var form=f1[0];var setForm=f1[1];
       function set(k,v){setForm(function(f){var n=Object.assign({},f);n[k]=v;return n})}
-      return React.createElement('div',{className:'modal-overlay',onClick:onClose},
-        React.createElement('div',{className:'modal',onClick:function(e){e.stopPropagation()}},
-          React.createElement('h3',null,(item?'Edit':'New')+' Manifest'),
-          React.createElement('div',{className:'form-grid'},
+      function setNested(prefix,k,v){setForm(function(f){var n=Object.assign({},f);var key=prefix+k;n[key]=v;return n})}
+      function handleGeneratorSelect(e){
+        var genId=e.target.value;
+        if(!genId){set('generatorEpaId','');set('generatorName','');set('generatorPhone','');set('emergencyPhone','');set('generatorMailAddress','');set('generatorMailCityStZip','');set('genSiteAddress','');set('genSiteCityStZip','');return}
+        var gen=(data.generators||[]).find(function(g){return g.id===genId});
+        if(gen){
+          set('generatorEpaId',gen.epaId||'');
+          set('generatorName',gen.name||'');
+          set('generatorPhone',gen.phone||'');
+          set('emergencyPhone',gen.emergencyPhone||'');
+          set('generatorMailAddress',gen.mailAddress||'');
+          var mailCityStZip=[gen.mailCity,gen.mailState,gen.mailZip].filter(Boolean).join(' ');set('generatorMailCityStZip',mailCityStZip);
+          set('genSiteAddress',gen.siteAddress||'');
+          var siteCityStZip=[gen.city,gen.state,gen.zip].filter(Boolean).join(' ');set('genSiteCityStZip',siteCityStZip);
+        }
+      }
+      function handleTransporterSelect(e,num){
+        var tId=e.target.value;
+        if(!tId){set('transporter'+num+'Name','');set('transporter'+num+'EpaId','');return}
+        var t=(data.transporters||[]).find(function(tr){return tr.id===tId});
+        if(t){set('transporter'+num+'Name',t.name||'');set('transporter'+num+'EpaId',t.epaId||'')}
+      }
+      function handleFacilitySelect(e){
+        var fId=e.target.value;
+        if(!fId){set('facilityName','');set('facilityEpaId','');set('facilityPhone','');set('facilityAddress','');set('facilityCityStZip','');return}
+        var fac=(data.facilities||[]).find(function(f){return f.id===fId});
+        if(fac){
+          set('facilityName',fac.name||'');
+          set('facilityEpaId',fac.epaId||'');
+          set('facilityPhone',fac.phone||'');
+          set('facilityAddress',fac.siteAddress||fac.address||'');
+          var facCityStZip=[fac.city,fac.state,fac.zip].filter(Boolean).join(' ');set('facilityCityStZip',facCityStZip);
+        }
+      }
+      function handleWasteStreamSelect(e,lineNum){
+        var wsId=e.target.value;
+        if(!wsId){
+          set('waste'+lineNum+'HM','');set('waste'+lineNum+'Description','');set('waste'+lineNum+'ContainerType','');set('waste'+lineNum+'Unit','');set('waste'+lineNum+'WasteCodes','');
+          return;
+        }
+        var ws=(data.wasteStreams||[]).find(function(w){return w.id===wsId});
+        if(ws){
+          set('waste'+lineNum+'HM',ws.isHazardous?'Y':'N');
+          set('waste'+lineNum+'Description',ws.dotDescription||ws.description||'');
+          set('waste'+lineNum+'ContainerType',ws.containerType||'');
+          set('waste'+lineNum+'Unit',ws.unit||'');
+          set('waste'+lineNum+'WasteCodes',ws.wasteCodes||'');
+        }
+      }
+      function renderWasteLine(lineNum){
+        var genId=null;var ws=data.wasteStreams||[];var linkedIds=[];
+        if(form.generatorName){
+          var gen=(data.generators||[]).find(function(g){return g.name===form.generatorName});
+          if(gen){genId=gen.id;linkedIds=gen.profileIds||[]}
+        }
+        var linkedWs=linkedIds.length>0?ws.filter(function(w){return linkedIds.indexOf(w.id)>=0}):[]; var allWs=ws;
+        return React.createElement('div',{style:{marginBottom:16,padding:12,border:'1px solid #eee',borderRadius:6}},
+          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'150px 1fr',gap:12,marginBottom:12}},
             React.createElement('div',{className:'form-group'},
-              React.createElement('label',null,'Manifest Number'),
-              React.createElement('input',{value:form.manifestNum||'',onChange:function(e){set('manifestNum',e.target.value)}})
+              React.createElement('label',null,'Waste Stream '+lineNum),
+              React.createElement('select',{value:'',onChange:function(e){handleWasteStreamSelect(e,lineNum);e.target.value=''}},
+                React.createElement('option',{value:''},'-- Select --'),
+                linkedWs.length>0?React.createElement('optgroup',{label:'Linked Profiles'},
+                  linkedWs.map(function(w){return React.createElement('option',{key:w.id,value:w.id},w.name+' #'+w.profileId)})
+                ):null,
+                React.createElement('optgroup',{label:'All Profiles'},
+                  allWs.map(function(w){return React.createElement('option',{key:w.id,value:w.id},w.name+' #'+w.profileId)})
+                )
+              )
+            )
+          ),
+          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8}},
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'HM'),
+              React.createElement('input',{value:form['waste'+lineNum+'HM']||'',onChange:function(e){set('waste'+lineNum+'HM',e.target.value)},style:{fontSize:12}})
             ),
             React.createElement('div',{className:'form-group'},
-              React.createElement('label',null,'Generator'),
-              React.createElement('select',{value:form.generatorName||'',onChange:function(e){set('generatorName',e.target.value)}},
-                React.createElement('option',{value:''},'-- Select --'),
-                (data.generators||[]).map(function(g){return React.createElement('option',{key:g.id,value:g.name},g.name)})
+              React.createElement('label',null,'Container #'),
+              React.createElement('input',{value:form['waste'+lineNum+'ContainerNum']||'',onChange:function(e){set('waste'+lineNum+'ContainerNum',e.target.value)},style:{fontSize:12}})
+            ),
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Qty'),
+              React.createElement('input',{value:form['waste'+lineNum+'Qty']||'',onChange:function(e){set('waste'+lineNum+'Qty',e.target.value)},style:{fontSize:12}})
+            ),
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Unit'),
+              React.createElement('select',{value:form['waste'+lineNum+'Unit']||'',onChange:function(e){set('waste'+lineNum+'Unit',e.target.value)}},
+                React.createElement('option',{value:''},'--'),
+                UNIT_TYPES.map(function(u){return React.createElement('option',{key:u.code,value:u.code},u.label)})
+              )
+            )
+          ),
+          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}},
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Container Type'),
+              React.createElement('select',{value:form['waste'+lineNum+'ContainerType']||'',onChange:function(e){set('waste'+lineNum+'ContainerType',e.target.value)}},
+                React.createElement('option',{value:''},'--'),
+                CONTAINER_TYPES.map(function(c){return React.createElement('option',{key:c.code,value:c.code},c.label)})
               )
             ),
-            React.createElement('div',{className:'form-group'},
-              React.createElement('label',null,'Facility'),
-              React.createElement('select',{value:form.facilityName||'',onChange:function(e){set('facilityName',e.target.value)}},
-                React.createElement('option',{value:''},'-- Select --'),
-                (data.facilities||[]).map(function(f){return React.createElement('option',{key:f.id,value:f.name},f.name)})
+            React.createElement('div',{className:'form-group full-width'},
+              React.createElement('label',null,'Waste Codes'),
+              React.createElement('input',{value:form['waste'+lineNum+'WasteCodes']||'',onChange:function(e){set('waste'+lineNum+'WasteCodes',e.target.value)},style:{fontSize:12}})
+            )
+          ),
+          React.createElement('div',{className:'form-group full-width'},
+            React.createElement('label',null,'Description'),
+            React.createElement('textarea',{value:form['waste'+lineNum+'Description']||'',onChange:function(e){set('waste'+lineNum+'Description',e.target.value)},rows:2,style:{fontSize:12}})
+          )
+        );
+      }
+      var currentGenId=null;
+      if(form.generatorEpaId){currentGenId=(data.generators||[]).find(function(g){return g.epaId===form.generatorEpaId});if(currentGenId)currentGenId=currentGenId.id}
+      var currentTransporter1Id=null;
+      if(form.transporter1EpaId){currentTransporter1Id=(data.transporters||[]).find(function(t){return t.epaId===form.transporter1EpaId});if(currentTransporter1Id)currentTransporter1Id=currentTransporter1Id.id}
+      var currentTransporter2Id=null;
+      if(form.transporter2EpaId){currentTransporter2Id=(data.transporters||[]).find(function(t){return t.epaId===form.transporter2EpaId});if(currentTransporter2Id)currentTransporter2Id=currentTransporter2Id.id}
+      var currentFacilityId=null;
+      if(form.facilityEpaId){currentFacilityId=(data.facilities||[]).find(function(f){return f.epaId===form.facilityEpaId});if(currentFacilityId)currentFacilityId=currentFacilityId.id}
+      return React.createElement('div',{className:'modal-overlay',onClick:onClose},
+        React.createElement('div',{className:'modal',onClick:function(e){e.stopPropagation()}},
+          React.createElement('h3',null,(isEditingExisting?'Edit':'New')+' Manifest'),
+          React.createElement('div',{style:{fontSize:13}},
+            React.createElement('div',{style:{marginBottom:16,paddingBottom:12,borderBottom:'1px solid #eee'}},
+              React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:8,color:'#333'}},'Manifest Info'),
+              React.createElement('div',{className:'form-grid'},
+                React.createElement('div',{className:'form-group'},
+                  React.createElement('label',null,'Manifest Number'),
+                  React.createElement('input',{value:form.manifestNum||'',onChange:function(e){set('manifestNum',e.target.value)}})
+                ),
+                React.createElement('div',{className:'form-group'},
+                  React.createElement('label',null,'Page Number'),
+                  React.createElement('input',{type:'number',value:form.pageNum||'1',onChange:function(e){set('pageNum',e.target.value)}})
+                ),
+                React.createElement('div',{className:'form-group'},
+                  React.createElement('label',null,'Page Total'),
+                  React.createElement('input',{type:'number',value:form.pageTotal||'1',onChange:function(e){set('pageTotal',e.target.value)}})
+                )
+              )
+            ),
+            React.createElement('div',{style:{marginBottom:16,paddingBottom:12,borderBottom:'1px solid #eee'}},
+              React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:8,color:'#333'}},'Generator'),
+              React.createElement('div',{className:'form-grid'},
+                React.createElement('div',{className:'form-group'},
+                  React.createElement('label',null,'Select Generator'),
+                  React.createElement('select',{value:currentGenId||'',onChange:handleGeneratorSelect},
+                    React.createElement('option',{value:''},'-- Select --'),
+                    (data.generators||[]).map(function(g){return React.createElement('option',{key:g.id,value:g.id},g.name+' ('+g.epaId+')')})
+                  )
+                )
+              ),
+              React.createElement('div',{className:'form-grid'},
+                React.createElement('div',{className:'form-group'},
+                  React.createElement('label',null,'EPA ID'),
+                  React.createElement('input',{value:form.generatorEpaId||'',onChange:function(e){set('generatorEpaId',e.target.value)}})
+                ),
+                React.createElement('div',{className:'form-group'},
+                  React.createElement('label',null,'Name'),
+                  React.createElement('input',{value:form.generatorName||'',onChange:function(e){set('generatorName',e.target.value)}})
+                ),
+                React.createElement('div',{className:'form-group'},
+                  React.createElement('label',null,'Phone'),
+                  React.createElement('input',{value:form.generatorPhone||'',onChange:function(e){set('generatorPhone',e.target.value)}})
+                ),
+                React.createElement('div',{className:'form-group'},
+                  React.createElement('label',null,'Emergency Phone'),
+                  React.createElement('input',{value:form.emergencyPhone||'',onChange:function(e){set('emergencyPhone',e.target.value)}})
+                ),
+                React.createElement('div',{className:'form-group full-width'},
+                  React.createElement('label',null,'Mailing Address'),
+                  React.createElement('input',{value:form.generatorMailAddress||'',onChange:function(e){set('generatorMailAddress',e.target.value)}})
+                ),
+                React.createElement('div',{className:'form-group full-width'},
+                  React.createElement('label',null,'Mail City/State/Zip'),
+                  React.createElement('input',{value:form.generatorMailCityStZip||'',onChange:function(e){set('generatorMailCityStZip',e.target.value)}})
+                ),
+                React.createElement('div',{className:'form-group full-width'},
+                  React.createElement('label',null,'Site Address'),
+                  React.createElement('input',{value:form.genSiteAddress||'',onChange:function(e){set('genSiteAddress',e.target.value)}})
+                ),
+                React.createElement('div',{className:'form-group full-width'},
+                  React.createElement('label',null,'Site City/State/Zip'),
+                  React.createElement('input',{value:form.genSiteCityStZip||'',onChange:function(e){set('genSiteCityStZip',e.target.value)}})
+                )
+              )
+            ),
+            React.createElement('div',{style:{marginBottom:16,paddingBottom:12,borderBottom:'1px solid #eee'}},
+              React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:8,color:'#333'}},'Transporters'),
+              React.createElement('div',{style:{marginBottom:12}},
+                React.createElement('div',{style:{fontSize:12,fontWeight:600,marginBottom:4,color:'#555'}},'Transporter 1'),
+                React.createElement('div',{className:'form-grid'},
+                  React.createElement('div',{className:'form-group'},
+                    React.createElement('label',null,'Select'),
+                    React.createElement('select',{value:currentTransporter1Id||'',onChange:function(e){handleTransporterSelect(e,1)}},
+                      React.createElement('option',{value:''},'-- Select --'),
+                      (data.transporters||[]).map(function(t){return React.createElement('option',{key:t.id,value:t.id},t.name+' ('+t.epaId+')')})
+                    )
+                  ),
+                  React.createElement('div',{className:'form-group'},
+                    React.createElement('label',null,'EPA ID'),
+                    React.createElement('input',{value:form.transporter1EpaId||'',onChange:function(e){set('transporter1EpaId',e.target.value)}})
+                  ),
+                  React.createElement('div',{className:'form-group'},
+                    React.createElement('label',null,'Name'),
+                    React.createElement('input',{value:form.transporter1Name||'',onChange:function(e){set('transporter1Name',e.target.value)}})
+                  )
+                )
+              ),
+              React.createElement('div',{style:{marginBottom:0}},
+                React.createElement('div',{style:{fontSize:12,fontWeight:600,marginBottom:4,color:'#555'}},'Transporter 2 (Optional)'),
+                React.createElement('div',{className:'form-grid'},
+                  React.createElement('div',{className:'form-group'},
+                    React.createElement('label',null,'Select'),
+                    React.createElement('select',{value:currentTransporter2Id||'',onChange:function(e){handleTransporterSelect(e,2)}},
+                      React.createElement('option',{value:''},'-- Select --'),
+                      (data.transporters||[]).map(function(t){return React.createElement('option',{key:t.id,value:t.id},t.name+' ('+t.epaId+')')})
+                    )
+                  ),
+                  React.createElement('div',{className:'form-group'},
+                    React.createElement('label',null,'EPA ID'),
+                    React.createElement('input',{value:form.transporter2EpaId||'',onChange:function(e){set('transporter2EpaId',e.target.value)}})
+                  ),
+                  React.createElement('div',{className:'form-group'},
+                    React.createElement('label',null,'Name'),
+                    React.createElement('input',{value:form.transporter2Name||'',onChange:function(e){set('transporter2Name',e.target.value)}})
+                  )
+                )
+              )
+            ),
+            React.createElement('div',{style:{marginBottom:16,paddingBottom:12,borderBottom:'1px solid #eee'}},
+              React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:8,color:'#333'}},'Destination Facility'),
+              React.createElement('div',{className:'form-grid'},
+                React.createElement('div',{className:'form-group'},
+                  React.createElement('label',null,'Select Facility'),
+                  React.createElement('select',{value:currentFacilityId||'',onChange:handleFacilitySelect},
+                    React.createElement('option',{value:''},'-- Select --'),
+                    (data.facilities||[]).map(function(f){return React.createElement('option',{key:f.id,value:f.id},f.name+' ('+f.epaId+')')})
+                  )
+                )
+              ),
+              React.createElement('div',{className:'form-grid'},
+                React.createElement('div',{className:'form-group'},
+                  React.createElement('label',null,'EPA ID'),
+                  React.createElement('input',{value:form.facilityEpaId||'',onChange:function(e){set('facilityEpaId',e.target.value)}})
+                ),
+                React.createElement('div',{className:'form-group'},
+                  React.createElement('label',null,'Name'),
+                  React.createElement('input',{value:form.facilityName||'',onChange:function(e){set('facilityName',e.target.value)}})
+                ),
+                React.createElement('div',{className:'form-group'},
+                  React.createElement('label',null,'Phone'),
+                  React.createElement('input',{value:form.facilityPhone||'',onChange:function(e){set('facilityPhone',e.target.value)}})
+                ),
+                React.createElement('div',{className:'form-group full-width'},
+                  React.createElement('label',null,'Address'),
+                  React.createElement('input',{value:form.facilityAddress||'',onChange:function(e){set('facilityAddress',e.target.value)}})
+                ),
+                React.createElement('div',{className:'form-group full-width'},
+                  React.createElement('label',null,'City/State/Zip'),
+                  React.createElement('input',{value:form.facilityCityStZip||'',onChange:function(e){set('facilityCityStZip',e.target.value)}})
+                )
+              )
+            ),
+            React.createElement('div',{style:{marginBottom:16,paddingBottom:12,borderBottom:'1px solid #eee'}},
+              React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:8,color:'#333'}},'Waste Lines'),
+              renderWasteLine(1),
+              renderWasteLine(2),
+              renderWasteLine(3),
+              renderWasteLine(4)
+            ),
+            React.createElement('div',{style:{marginBottom:16,paddingBottom:12,borderBottom:'1px solid #eee'}},
+              React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:8,color:'#333'}},'Special Handling'),
+              React.createElement('div',{className:'form-group full-width'},
+                React.createElement('label',null,'Line 1'),
+                React.createElement('input',{value:form.specialHandling||'',onChange:function(e){set('specialHandling',e.target.value)}})
+              ),
+              React.createElement('div',{className:'form-group full-width'},
+                React.createElement('label',null,'Line 2'),
+                React.createElement('input',{value:form.specialHandling2||'',onChange:function(e){set('specialHandling2',e.target.value)}})
+              ),
+              React.createElement('div',{className:'form-group full-width'},
+                React.createElement('label',null,'Line 3'),
+                React.createElement('input',{value:form.specialHandling3||'',onChange:function(e){set('specialHandling3',e.target.value)}})
+              )
+            ),
+            React.createElement('div',{style:{marginBottom:16}},
+              React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:8,color:'#333'}},'Certification'),
+              React.createElement('div',{className:'form-group full-width'},
+                React.createElement('label',null,'Generator Print Name'),
+                React.createElement('input',{value:form.generatorPrintName||'',onChange:function(e){set('generatorPrintName',e.target.value)}})
               )
             )
           ),
