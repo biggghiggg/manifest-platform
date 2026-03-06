@@ -459,71 +459,66 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
 // ============================================================
 var FORM_8700_MAP = {
   // Box 1 - Generator's US EPA ID Number
-  generatorEpaId:     { row: 4, col: 27 },
-  // Box 2 - Page 1 of __
-  page:               { row: 4, col: 66 },
-  totalPages:         { row: 4, col: 71 },
-  // Box 3 - Emergency Response Phone (same row as Box 1, further right)
-  emergencyPhone:     { row: 4, col: 42 },
+  generatorEpaId:     { row: 4, col: 15 },
+  // Box 2 - Page __ of __
+  page:               { row: 4, col: 28 },
+  totalPages:         { row: 4, col: 32 },
+  // Box 3 - Emergency Response Phone
+  emergencyPhone:     { row: 4, col: 35 },
   // Box 5 - Generator
-  generatorName:      { row: 7, col: 7 },
-  generatorPhone:     { row: 7, col: 52 },
+  generatorName:      { row: 8, col: 20 },
   // Mailing Address (LEFT side of Box 5)
-  generatorMailAddr:  { row: 8, col: 7 },
-  generatorMailCity:  { row: 9, col: 7 },
-  generatorMailState: { row: 9, col: 28 },
-  generatorMailZip:   { row: 9, col: 33 },
-  // Site Address (RIGHT side of Box 5 - same rows as mailing)
-  generatorSiteAddr:  { row: 8, col: 45 },
-  generatorSiteCity:  { row: 9, col: 45 },
-  generatorSiteState: { row: 9, col: 64 },
-  generatorSiteZip:   { row: 9, col: 68 },
+  generatorMailAddr:  { row: 9, col: 20 },
+  generatorMailCity:  { row: 10, col: 7 },
+  generatorPhone:     { row: 10, col: 30 },
+  // Site Address (RIGHT side of Box 5)
+  generatorSiteAddr:  { row: 8, col: 42 },
+  generatorSiteCity:  { row: 9, col: 42 },
   // Box 6 - Transporter 1
-  transporter1Name:   { row: 11, col: 7 },
-  transporter1EpaId:  { row: 11, col: 52 },
+  transporter1Name:   { row: 13, col: 15 },
+  transporter1EpaId:  { row: 13, col: 55 },
   // Box 7 - Transporter 2
-  transporter2Name:   { row: 13, col: 7 },
-  transporter2EpaId:  { row: 13, col: 52 },
+  transporter2Name:   { row: 15, col: 15 },
+  transporter2EpaId:  { row: 15, col: 55 },
   // Box 8 - Designated Facility
-  facilityName:       { row: 15, col: 7 },
-  facilityPhone:      { row: 15, col: 52 },
-  facilityAddress:    { row: 16, col: 7 },
-  facilityCity:       { row: 17, col: 7 },
-  facilityState:      { row: 17, col: 38 },
-  facilityZip:        { row: 17, col: 44 },
-  facilityEpaId:      { row: 17, col: 52 },
-  // Box 9a-9d - Waste lines (4 lines, 2 rows each for description wrap)
-  waste1hm:           { row: 21, col: 3 },
-  waste1desc:         { row: 21, col: 7 },
-  waste1code:         { row: 21, col: 42 },
-  waste1container:    { row: 21, col: 47 },
-  waste1qty:          { row: 21, col: 51 },
-  waste1uom:          { row: 21, col: 57 },
-  waste2hm:           { row: 23, col: 3 },
-  waste2desc:         { row: 23, col: 7 },
-  waste2code:         { row: 23, col: 42 },
-  waste2container:    { row: 23, col: 47 },
-  waste2qty:          { row: 23, col: 51 },
-  waste2uom:          { row: 23, col: 57 },
-  waste3hm:           { row: 25, col: 3 },
-  waste3desc:         { row: 25, col: 7 },
-  waste3code:         { row: 25, col: 42 },
-  waste3container:    { row: 25, col: 47 },
-  waste3qty:          { row: 25, col: 51 },
-  waste3uom:          { row: 25, col: 57 },
-  waste4hm:           { row: 27, col: 3 },
-  waste4desc:         { row: 27, col: 7 },
-  waste4code:         { row: 27, col: 42 },
-  waste4container:    { row: 27, col: 47 },
-  waste4qty:          { row: 27, col: 51 },
-  waste4uom:          { row: 27, col: 57 },
-  // Box 14 - Special Handling (4 lines)
-  specialHandling:    { row: 29, col: 7 },
-  specialHandling2:   { row: 30, col: 7 },
-  specialHandling3:   { row: 31, col: 7 },
-  specialHandling4:   { row: 32, col: 7 },
+  facilityName:       { row: 17, col: 20 },
+  facilityEpaId:      { row: 17, col: 55 },
+  facilityAddress:    { row: 18, col: 20 },
+  facilityPhone:      { row: 19, col: 7 },
+  facilityCity:       { row: 19, col: 20 },
+  facilityState:      { row: 19, col: 36 },
+  facilityZip:        { row: 19, col: 40 },
+  // Box 9-13 - Waste lines (3 rows apart per waste line)
+  waste1hm:           { row: 21, col: 5 },
+  waste1desc:         { row: 21, col: 10 },
+  waste1code:         { row: 21, col: 48 },
+  waste1container:    { row: 21, col: 52 },
+  waste1qty:          { row: 21, col: 57 },
+  waste1uom:          { row: 21, col: 59 },
+  waste2hm:           { row: 24, col: 5 },
+  waste2desc:         { row: 24, col: 10 },
+  waste2code:         { row: 24, col: 48 },
+  waste2container:    { row: 24, col: 52 },
+  waste2qty:          { row: 24, col: 57 },
+  waste2uom:          { row: 24, col: 59 },
+  waste3hm:           { row: 27, col: 5 },
+  waste3desc:         { row: 27, col: 10 },
+  waste3code:         { row: 27, col: 48 },
+  waste3container:    { row: 27, col: 52 },
+  waste3qty:          { row: 27, col: 57 },
+  waste3uom:          { row: 27, col: 59 },
+  waste4hm:           { row: 30, col: 5 },
+  waste4desc:         { row: 30, col: 10 },
+  waste4code:         { row: 30, col: 48 },
+  waste4container:    { row: 30, col: 52 },
+  waste4qty:          { row: 30, col: 57 },
+  waste4uom:          { row: 30, col: 59 },
+  // Box 14 - Special Handling (3 lines, MIS permanent on line 3)
+  specialHandling:    { row: 33, col: 7 },
+  specialHandling2:   { row: 34, col: 7 },
+  specialHandling3:   { row: 35, col: 7 },
   // Box 15 - Generator Certification
-  generatorCertName:  { row: 35, col: 7 }
+  generatorCertName:  { row: 38, col: 7 }
 };
 
 // Print manifest - plain text for dot matrix
@@ -585,10 +580,10 @@ app.get('/api/print/manifest/:id', function(req, res) {
   placeText(FORM_8700_MAP.facilityEpaId.row, FORM_8700_MAP.facilityEpaId.col, manifest.facilityEpaId);
 
   // Box 9 - Waste lines (uses flattened fields: waste1Description, waste1ContainerType, etc.)
-  // Row 1 description: col 7 to col 41 (35 chars) - other fields start at col 42
-  // Rows 2-3 continuation: col 7 to col 73 (67 chars) - full width, no other fields
+  // Row 1 description: col 10 to col 47 (38 chars) - container fields start at col 48
+  // Rows 2-3 continuation: col 10 to col 73 (64 chars) - full width, no other fields
   var descRow1Width = FORM_8700_MAP.waste1code.col - FORM_8700_MAP.waste1desc.col - 1;
-  var descContWidth = 67;
+  var descContWidth = 55;
   function wrapDescLines(text, firstMax, contMax) {
     if (!text) return [];
     var result = [];
@@ -612,9 +607,9 @@ app.get('/api/print/manifest/:id', function(req, res) {
   // Box 13 waste code box positions: 6 boxes per waste line
   // 3 codes on the main row, 3 codes on the next row
   // Each code box is 5 chars wide (4 char code + 1 space)
-  var WASTE_CODE_COL1 = 61;
+  var WASTE_CODE_COL1 = 62;
   var WASTE_CODE_COL2 = 67;
-  var WASTE_CODE_COL3 = 73;
+  var WASTE_CODE_COL3 = 72;
   for (var w = 1; w <= 4; w++) {
     var wasteDesc = manifest['waste' + w + 'Description'] || '';
     var descLines = wrapDescLines(wasteDesc, descRow1Width, descContWidth);
@@ -680,7 +675,6 @@ app.get('/api/print/manifest/:id', function(req, res) {
   placeText(FORM_8700_MAP.specialHandling.row, FORM_8700_MAP.specialHandling.col, manifest.specialHandling);
   placeText(FORM_8700_MAP.specialHandling2.row, FORM_8700_MAP.specialHandling2.col, manifest.specialHandling2);
   placeText(FORM_8700_MAP.specialHandling3.row, FORM_8700_MAP.specialHandling3.col, manifest.specialHandling3);
-  placeText(FORM_8700_MAP.specialHandling4.row, FORM_8700_MAP.specialHandling4.col, manifest.specialHandling4);
 
   // Box 15 - Generator Certification (date NOT printed - handwritten on form)
   placeText(FORM_8700_MAP.generatorCertName.row, FORM_8700_MAP.generatorCertName.col, manifest.generatorPrintName);
