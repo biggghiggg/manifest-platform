@@ -630,7 +630,40 @@ app.get('/api/print/manifest/:id', function(req, res) {
     // Box 13 - Split waste codes into 6 individual boxes (3 per row, 2 rows)
     var allCodes = (manifest['waste' + w + 'WasteCodes'] || '').trim();
     if (allCodes) {
+      // First try splitting by spaces/commas
       var codeArr = allCodes.split(/[\s,]+/).filter(function(c) { return c.length > 0; });
+      // If any single chunk is longer than 4 chars, codes may be concatenated
+      var needsSmart = false;
+      for (var sc = 0; sc < codeArr.length; sc++) {
+        if (codeArr[sc].length > 4) { needsSmart = true; break; }
+      }
+      if (needsSmart) {
+        // Smart split: find letter+3digit codes first, then 3-digit state codes in gaps
+        var smartCodes = [];
+        var joined = allCodes.replace(/[\s,]+/g, '');
+        var letterRe = /[A-Za-z]\d{3}/g;
+        var lm;
+        var positions = [];
+        while ((lm = letterRe.exec(joined)) !== null) {
+          positions.push({start: lm.index, end: lm.index + lm[0].length, code: lm[0]});
+        }
+        var lastEnd = 0;
+        for (var pi = 0; pi < positions.length; pi++) {
+          var gap = joined.substring(lastEnd, positions[pi].start);
+          if (gap.length > 0) {
+            var gapNums = gap.match(/\d{3}/g);
+            if (gapNums) { for (var gi = 0; gi < gapNums.length; gi++) smartCodes.push(gapNums[gi]); }
+          }
+          smartCodes.push(positions[pi].code);
+          lastEnd = positions[pi].end;
+        }
+        var trail = joined.substring(lastEnd);
+        if (trail.length > 0) {
+          var trailNums = trail.match(/\d{3}/g);
+          if (trailNums) { for (var ti = 0; ti < trailNums.length; ti++) smartCodes.push(trailNums[ti]); }
+        }
+        if (smartCodes.length > 1) codeArr = smartCodes;
+      }
       var codeCols = [WASTE_CODE_COL1, WASTE_CODE_COL2, WASTE_CODE_COL3];
       // First row: codes 1-3
       if (codeArr[0]) placeText(baseRow, codeCols[0], codeArr[0]);
