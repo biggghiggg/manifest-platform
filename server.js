@@ -482,24 +482,28 @@ var FORM_8700_MAP = {
   facilityZip:        { row: 21, col: 44 },
   facilityEpaId:      { row: 21, col: 52 },
   // Box 9a-9d - Waste lines (4 lines)
+  waste1hm:           { row: 25, col: 3 },
   waste1desc:         { row: 25, col: 7 },
   waste1code:         { row: 25, col: 42 },
   waste1container:    { row: 25, col: 47 },
   waste1qty:          { row: 25, col: 51 },
   waste1uom:          { row: 25, col: 57 },
   waste1wCodes:       { row: 25, col: 62 },
+  waste2hm:           { row: 27, col: 3 },
   waste2desc:         { row: 27, col: 7 },
   waste2code:         { row: 27, col: 42 },
   waste2container:    { row: 27, col: 47 },
   waste2qty:          { row: 27, col: 51 },
   waste2uom:          { row: 27, col: 57 },
   waste2wCodes:       { row: 27, col: 62 },
+  waste3hm:           { row: 29, col: 3 },
   waste3desc:         { row: 29, col: 7 },
   waste3code:         { row: 29, col: 42 },
   waste3container:    { row: 29, col: 47 },
   waste3qty:          { row: 29, col: 51 },
   waste3uom:          { row: 29, col: 57 },
   waste3wCodes:       { row: 29, col: 62 },
+  waste4hm:           { row: 31, col: 3 },
   waste4desc:         { row: 31, col: 7 },
   waste4code:         { row: 31, col: 42 },
   waste4container:    { row: 31, col: 47 },
@@ -576,6 +580,7 @@ app.get('/api/print/manifest/:id', function(req, res) {
 
   // Box 9 - Waste lines (uses flattened fields: waste1Description, waste1ContainerType, etc.)
   for (var w = 1; w <= 4; w++) {
+    placeText(FORM_8700_MAP['waste' + w + 'hm'].row, FORM_8700_MAP['waste' + w + 'hm'].col, manifest['waste' + w + 'HM']);
     placeText(FORM_8700_MAP['waste' + w + 'desc'].row, FORM_8700_MAP['waste' + w + 'desc'].col, manifest['waste' + w + 'Description']);
     placeText(FORM_8700_MAP['waste' + w + 'container'].row, FORM_8700_MAP['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
     placeText(FORM_8700_MAP['waste' + w + 'qty'].row, FORM_8700_MAP['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
