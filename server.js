@@ -1,6 +1,7 @@
 var express = require('express');
 var multer = require('multer');
 var XLSX = require('xlsx');
+var pdfParse = require('pdf-parse');
 var fs = require('fs');
 var path = require('path');
 
@@ -273,6 +274,164 @@ app.post('/api/import/quickbooks', upload.single('file'), function(req, res) {
     });
   } catch (err) {
     console.error('Import error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Waste Profile PDF Import
+app.post('/api/import/waste-profile', upload.single('file'), function(req, res) {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    var buffer = fs.readFileSync(req.file.path);
+    pdfParse(buffer).then(function(pdfData) {
+      var text = pdfData.text;
+      var lines = text.split('\n').map(function(l) { return l.trim(); });
+      var fullText = text;
+
+      // Helper: find text after a label
+      function findAfter(label) {
+        var idx = fullText.indexOf(label);
+        if (idx === -1) return '';
+        var after = fullText.substring(idx + label.length);
+        // Get text until next newline or next label-like pattern
+        var match = after.match(/^\s*:?\s*([^\n]*)/);
+        return match ? match[1].trim() : '';
+      }
+
+      // Helper: find text between two labels
+      function findBetween(startLabel, endLabel) {
+        var startIdx = fullText.indexOf(startLabel);
+        if (startIdx === -1) return '';
+        var after = fullText.substring(startIdx + startLabel.length);
+        var endIdx = endLabel ? after.indexOf(endLabel) : after.indexOf('\n');
+        if (endIdx === -1) endIdx = Math.min(after.length, 200);
+        return after.substring(0, endIdx).trim().replace(/^\s*:?\s*/, '');
+      }
+
+      // Extract fields
+      var commonName = '';
+      var dotDescription = '';
+      var isHazMat = false;
+      //var containerType = ''; // excluded - varies per shipment
+      //var unitOfMeasure = ''; // excluded - varies per shipment
+      var wasteCodes = '';
+      var unNum = '';
+      var hazardClass = '';
+      var packingGroup = '';
+      var stateWasteCodes = '';
+      var ergNum = '';
+
+      // B.1 Common Name
+      for (var i = 0; i < lines.length; i++) {
+        if (lines[i].indexOf('Common Name') !== -1 && lines[i].indexOf(':') !== -1) {
+          commonName = lines[i].split(':').slice(1).join(':').trim();
+          if (!commonName && i + 1 < lines.length) commonName = lines[i + 1].trim();
+          break;
+        }
+      }
+      // Also try after the label in full text
+      if (!commonName) {
+        var cnMatch = fullText.match(/Common Name[:\s]+([A-Z][A-Z\s,.-]+)/i);
+        if (cnMatch) commonName = cnMatch[1].trim();
+      }
+
+      // C.1 Proper Shipping Name (DOT description)
+      var psnMatch = fullText.match(/Proper Shipping Name[:\s]+([^\n]+)/i);
+      if (psnMatch) dotDescription = psnMatch[1].trim();
+      // Clean up - remove trailing field labels
+      dotDescription = dotDescription.replace(/\s*(2\.\s*Additional|RQ Threshold|UN\/NA).*$/i, '').trim();
+
+      // DOT Hazardous Materials
+      var dotHazMatch = fullText.match(/DOT Hazardous Materials\?\s*(.*?)Proper/i);
+      if (dotHazMatch) {
+        isHazMat = dotHazMatch[1].indexOf('Yes') !== -1;
+      }
+
+      // UN/NA#
+      var unMatch = fullText.match(/UN\/NA#[:\s]+(\S+)/i);
+      if (unMatch) unNum = unMatch[1].trim();
+
+      // Hazard Class
+      var hcMatch = fullText.match(/Hazard Class[:\s]+(\S+)/i);
+      if (hcMatch) hazardClass = hcMatch[1].trim();
+
+      // Packing Group
+      var pgMatch = fullText.match(/Packing Group[:\s]+(\S+)/i);
+      if (pgMatch) packingGroup = pgMatch[1].trim();
+
+      // ERG#
+      var ergMatch = fullText.match(/ERG#[:\s]+(\S+)/i);
+      if (ergMatch) ergNum = ergMatch[1].trim();
+
+      // Container Type and Unit of Measure excluded - vary per shipment
+
+      // RCRA Waste Codes (E.3)
+      var rcraMatch = fullText.match(/RCRA Waste Codes[:\s]+([A-Z0-9\s,]+)/i);
+      if (rcraMatch) {
+        wasteCodes = rcraMatch[1].trim().replace(/\s+/g, ' ').replace(/If None.*$/i, '').trim();
+      }
+
+      // State Waste Codes (E.2) - grab just the code, stop at newline or next field
+      var stMatch = fullText.match(/State Waste Codes[:\s]+([A-Z0-9][A-Z0-9\s,.-]*)/i);
+      if (stMatch) {
+        stateWasteCodes = stMatch[1].trim().split('\n')[0].trim();
+      }
+
+      // Build the waste stream template
+      var profileId = '';
+      var pidMatch = fullText.match(/Profile\s*ID[:\s]+(\d+)/i);
+      if (pidMatch) profileId = pidMatch[1];
+
+      var wasteStream = {
+        id: Date.now().toString(),
+        name: commonName || 'Imported Profile ' + profileId,
+        dotDescription: dotDescription,
+        hm: isHazMat ? 'X' : '',
+        containerType: '',
+        unit: '',
+        wasteCodes: wasteCodes,
+        unNum: unNum,
+        hazardClass: hazardClass,
+        packingGroup: packingGroup,
+        stateWasteCodes: stateWasteCodes,
+        ergNum: ergNum,
+        profileId: profileId,
+        createdAt: new Date().toISOString()
+      };
+
+      // Check for duplicate by name
+      var exists = false;
+      for (var d = 0; d < (data.wasteStreams || []).length; d++) {
+        if (data.wasteStreams[d].name === wasteStream.name) { exists = true; break; }
+      }
+
+      if (exists) {
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+        return res.json({
+          success: false,
+          error: 'A waste stream named "' + wasteStream.name + '" already exists.',
+          extracted: wasteStream
+        });
+      }
+
+      if (!data.wasteStreams) data.wasteStreams = [];
+      data.wasteStreams.push(wasteStream);
+      saveData(data);
+      broadcast('update', { collection: 'wasteStreams', action: 'create', item: wasteStream });
+
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+
+      res.json({
+        success: true,
+        wasteStream: wasteStream
+      });
+    }).catch(function(err) {
+      console.error('PDF parse error:', err);
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+      res.status(500).json({ error: 'Failed to parse PDF: ' + err.message });
+    });
+  } catch (err) {
+    console.error('Waste profile import error:', err);
     res.status(500).json({ error: err.message });
   }
 });
