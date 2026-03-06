@@ -458,107 +458,109 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
 // Box 5: Mailing address LEFT side, Site address RIGHT side
 // ============================================================
 var FORM_8700_MAP = {
+  // 12 CPI positions (96 columns on 8" printable width, no Global Shift needed)
   // Box 1 - Generator's US EPA ID Number
-  generatorEpaId:     { row: 4, col: 28 },
+  generatorEpaId:     { row: 4, col: 22 },
   // Box 2 - Page __ of __
-  page:               { row: 4, col: 50 },
-  totalPages:         { row: 4, col: 53 },
+  page:               { row: 4, col: 48 },
+  totalPages:         { row: 4, col: 52 },
   // Box 3 - Emergency Response Phone
-  emergencyPhone:     { row: 4, col: 57 },
+  emergencyPhone:     { row: 4, col: 56 },
   // Box 5 - Generator
-  generatorName:      { row: 6, col: 26 },
+  generatorName:      { row: 6, col: 19 },
   // Mailing Address (LEFT side of Box 5)
-  generatorMailAddr:  { row: 7, col: 26 },
-  generatorMailCity:  { row: 8, col: 26 },
-  generatorPhone:     { row: 8, col: 44 },
+  generatorMailAddr:  { row: 7, col: 19 },
+  generatorMailCity:  { row: 8, col: 19 },
+  generatorPhone:     { row: 8, col: 41 },
   // Site Address (RIGHT side of Box 5)
   generatorSiteAddr:  { row: 7, col: 58 },
   generatorSiteCity:  { row: 8, col: 58 },
   // Box 6 - Transporter 1
-  transporter1Name:   { row: 10, col: 18 },
-  transporter1EpaId:  { row: 10, col: 76 },
+  transporter1Name:   { row: 10, col: 10 },
+  transporter1EpaId:  { row: 10, col: 75 },
   // Box 7 - Transporter 2
-  transporter2Name:   { row: 12, col: 18 },
-  transporter2EpaId:  { row: 12, col: 76 },
+  transporter2Name:   { row: 12, col: 10 },
+  transporter2EpaId:  { row: 12, col: 75 },
   // Box 8 - Designated Facility
-  facilityName:       { row: 14, col: 18 },
-  facilityEpaId:      { row: 14, col: 76 },
-  facilityAddress:    { row: 15, col: 18 },
-  facilityPhone:      { row: 16, col: 18 },
-  facilityCity:       { row: 16, col: 34 },
-  facilityState:      { row: 16, col: 48 },
-  facilityZip:        { row: 16, col: 52 },
+  facilityName:       { row: 14, col: 10 },
+  facilityEpaId:      { row: 14, col: 75 },
+  facilityAddress:    { row: 15, col: 10 },
+  facilityPhone:      { row: 16, col: 10 },
+  facilityCity:       { row: 16, col: 29 },
+  facilityState:      { row: 16, col: 46 },
+  facilityZip:        { row: 16, col: 50 },
   // Box 9a - HM
-  waste1hm:           { row: 21, col: 14 },
-  waste2hm:           { row: 24, col: 14 },
-  waste3hm:           { row: 27, col: 14 },
-  waste4hm:           { row: 30, col: 14 },
+  waste1hm:           { row: 21, col: 5 },
+  waste2hm:           { row: 24, col: 5 },
+  waste3hm:           { row: 27, col: 5 },
+  waste4hm:           { row: 30, col: 5 },
   // Box 9b - Description
-  waste1desc:         { row: 21, col: 19 },
-  waste2desc:         { row: 24, col: 19 },
-  waste3desc:         { row: 27, col: 19 },
-  waste4desc:         { row: 30, col: 19 },
+  waste1desc:         { row: 21, col: 11 },
+  waste2desc:         { row: 24, col: 11 },
+  waste3desc:         { row: 27, col: 11 },
+  waste4desc:         { row: 30, col: 11 },
   // Box 10 - Containers (number + type)
-  waste1containerNum: { row: 21, col: 70 },
-  waste1container:    { row: 21, col: 78 },
-  waste2containerNum: { row: 24, col: 70 },
-  waste2container:    { row: 24, col: 78 },
-  waste3containerNum: { row: 27, col: 70 },
-  waste3container:    { row: 27, col: 78 },
-  waste4containerNum: { row: 30, col: 70 },
-  waste4container:    { row: 30, col: 78 },
+  waste1containerNum: { row: 21, col: 68 },
+  waste1container:    { row: 21, col: 73 },
+  waste2containerNum: { row: 24, col: 68 },
+  waste2container:    { row: 24, col: 73 },
+  waste3containerNum: { row: 27, col: 68 },
+  waste3container:    { row: 27, col: 73 },
+  waste4containerNum: { row: 30, col: 68 },
+  waste4container:    { row: 30, col: 73 },
   // Box 11 - Quantity
-  waste1qty:          { row: 21, col: 85 },
-  waste2qty:          { row: 24, col: 85 },
-  waste3qty:          { row: 27, col: 85 },
-  waste4qty:          { row: 30, col: 85 },
+  waste1qty:          { row: 21, col: 78 },
+  waste2qty:          { row: 24, col: 78 },
+  waste3qty:          { row: 27, col: 78 },
+  waste4qty:          { row: 30, col: 78 },
   // Box 12 - Unit
-  waste1uom:          { row: 21, col: 93 },
-  waste2uom:          { row: 24, col: 93 },
-  waste3uom:          { row: 27, col: 93 },
-  waste4uom:          { row: 30, col: 93 },
+  waste1uom:          { row: 21, col: 83 },
+  waste2uom:          { row: 24, col: 83 },
+  waste3uom:          { row: 27, col: 83 },
+  waste4uom:          { row: 30, col: 83 },
   // Box 13 - Waste Codes (6 per line: 3 on row 1, 3 on row 2)
-  waste1wc1:          { row: 21, col: 97 },
-  waste1wc2:          { row: 21, col: 102 },
-  waste1wc3:          { row: 21, col: 107 },
-  waste1wc4:          { row: 22, col: 97 },
-  waste1wc5:          { row: 22, col: 102 },
-  waste1wc6:          { row: 22, col: 107 },
-  waste2wc1:          { row: 24, col: 97 },
-  waste2wc2:          { row: 24, col: 102 },
-  waste2wc3:          { row: 24, col: 107 },
-  waste2wc4:          { row: 25, col: 97 },
-  waste2wc5:          { row: 25, col: 102 },
-  waste2wc6:          { row: 25, col: 107 },
-  waste3wc1:          { row: 27, col: 97 },
-  waste3wc2:          { row: 27, col: 102 },
-  waste3wc3:          { row: 27, col: 107 },
-  waste3wc4:          { row: 28, col: 97 },
-  waste3wc5:          { row: 28, col: 102 },
-  waste3wc6:          { row: 28, col: 107 },
-  waste4wc1:          { row: 30, col: 97 },
-  waste4wc2:          { row: 30, col: 102 },
-  waste4wc3:          { row: 30, col: 107 },
-  waste4wc4:          { row: 31, col: 97 },
-  waste4wc5:          { row: 31, col: 102 },
-  waste4wc6:          { row: 31, col: 107 },
+  waste1wc1:          { row: 21, col: 85 },
+  waste1wc2:          { row: 21, col: 89 },
+  waste1wc3:          { row: 21, col: 93 },
+  waste1wc4:          { row: 22, col: 85 },
+  waste1wc5:          { row: 22, col: 89 },
+  waste1wc6:          { row: 22, col: 93 },
+  waste2wc1:          { row: 24, col: 85 },
+  waste2wc2:          { row: 24, col: 89 },
+  waste2wc3:          { row: 24, col: 93 },
+  waste2wc4:          { row: 25, col: 85 },
+  waste2wc5:          { row: 25, col: 89 },
+  waste2wc6:          { row: 25, col: 93 },
+  waste3wc1:          { row: 27, col: 85 },
+  waste3wc2:          { row: 27, col: 89 },
+  waste3wc3:          { row: 27, col: 93 },
+  waste3wc4:          { row: 28, col: 85 },
+  waste3wc5:          { row: 28, col: 89 },
+  waste3wc6:          { row: 28, col: 93 },
+  waste4wc1:          { row: 30, col: 85 },
+  waste4wc2:          { row: 30, col: 89 },
+  waste4wc3:          { row: 30, col: 93 },
+  waste4wc4:          { row: 31, col: 85 },
+  waste4wc5:          { row: 31, col: 89 },
+  waste4wc6:          { row: 31, col: 93 },
   // Box 14 - Special Handling (3 lines, MIS permanent on line 3)
-  specialHandling:    { row: 33, col: 18 },
-  specialHandling2:   { row: 34, col: 18 },
-  specialHandling3:   { row: 35, col: 18 },
+  specialHandling:    { row: 33, col: 10 },
+  specialHandling2:   { row: 34, col: 10 },
+  specialHandling3:   { row: 35, col: 10 },
   // Box 15 - Generator Certification
-  generatorCertName:  { row: 38, col: 18 }
+  generatorCertName:  { row: 38, col: 10 }
 };
 
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)
-var BUILD_VERSION = 'v20-2026-03-06';
+var BUILD_VERSION = 'v22-2026-03-06';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment editor endpoints
 var customAlignment = data.customAlignment || null;
 var previousAlignment = data.previousAlignment || null;
-var colOffset = (typeof data.colOffset === 'number') ? data.colOffset : 10;
+var colOffset = (typeof data.colOffset === 'number') ? data.colOffset : 0;
+var leftMargin = (typeof data.leftMargin === 'number') ? data.leftMargin : 0;
 
 // V18 migration: if custom alignment exists from before the +10 offset change, migrate it
 if (customAlignment && !data.migratedToV18) {
@@ -600,6 +602,19 @@ if (!data.migratedToV20) {
   console.log('V20 migration: cleared custom alignment for new Box 10-13 positions');
 }
 
+// V21 migration: switch to 12 CPI positions, clear custom alignment, reset Global Shift to 0
+if (!data.migratedToV21) {
+  customAlignment = null;
+  delete data.customAlignment;
+  previousAlignment = null;
+  delete data.previousAlignment;
+  colOffset = 0;
+  data.colOffset = 0;
+  data.migratedToV21 = true;
+  saveData(data);
+  console.log('V21 migration: switched to 12 CPI positions, Global Shift reset to 0');
+}
+
 function getActiveMap() {
   if (!customAlignment) return FORM_8700_MAP;
   var merged = {};
@@ -619,7 +634,8 @@ app.get('/api/alignment', function(req, res) {
     map: getActiveMap(),
     defaults: FORM_8700_MAP,
     hasPrevious: previousAlignment !== null,
-    colOffset: colOffset
+    colOffset: colOffset,
+    leftMargin: leftMargin
   });
 });
 
@@ -633,6 +649,10 @@ app.put('/api/alignment', function(req, res) {
     colOffset = req.body.colOffset;
     data.colOffset = colOffset;
   }
+  if (typeof req.body.leftMargin === 'number') {
+    leftMargin = req.body.leftMargin;
+    data.leftMargin = leftMargin;
+  }
   saveData(data);
   res.json({ ok: true });
 });
@@ -643,8 +663,10 @@ app.post('/api/alignment/reset', function(req, res) {
   data.previousAlignment = previousAlignment;
   customAlignment = null;
   delete data.customAlignment;
-  colOffset = 10;
-  data.colOffset = 10;
+  colOffset = 0;
+  data.colOffset = 0;
+  leftMargin = 0;
+  data.leftMargin = 0;
   saveData(data);
   res.json({ ok: true });
 });
@@ -679,11 +701,12 @@ app.get('/api/print/manifest/:id', function(req, res) {
   }
 
   var activeOffset = colOffset || 0;
+  var activeLeftMargin = leftMargin || 0;
   function placeText(row, col, text) {
     if (!text) return;
     text = String(text);
     if (row < 1 || row > 66) return;
-    var actualCol = col - activeOffset;
+    var actualCol = col - activeOffset + activeLeftMargin;
     if (actualCol < 1) return;
     var line = lines[row - 1];
     var before = line.substring(0, actualCol - 1);
