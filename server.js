@@ -458,36 +458,36 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
 // Box 5: Mailing address LEFT side, Site address RIGHT side
 // ============================================================
 var FORM_8700_MAP = {
-  // Box 1 - Generator's US EPA ID Number
-  generatorEpaId:     { row: 4, col: 15 },
-  // Box 2 - Page __ of __
-  page:               { row: 4, col: 28 },
-  totalPages:         { row: 4, col: 32 },
+  // Box 1 - Generator's US EPA ID Number (centered in Box 1)
+  generatorEpaId:     { row: 4, col: 22 },
+  // Box 2 - Page __ of __ (between Box 1 and Box 3)
+  page:               { row: 4, col: 37 },
+  totalPages:         { row: 4, col: 41 },
   // Box 3 - Emergency Response Phone
-  emergencyPhone:     { row: 4, col: 35 },
-  // Box 5 - Generator
-  generatorName:      { row: 8, col: 20 },
+  emergencyPhone:     { row: 4, col: 45 },
+  // Box 5 - Generator (name gets full row, site addr on address row)
+  generatorName:      { row: 6, col: 7 },
   // Mailing Address (LEFT side of Box 5)
-  generatorMailAddr:  { row: 9, col: 20 },
-  generatorMailCity:  { row: 10, col: 7 },
-  generatorPhone:     { row: 10, col: 30 },
-  // Site Address (RIGHT side of Box 5)
-  generatorSiteAddr:  { row: 8, col: 42 },
-  generatorSiteCity:  { row: 9, col: 42 },
+  generatorMailAddr:  { row: 7, col: 7 },
+  generatorMailCity:  { row: 8, col: 7 },
+  generatorPhone:     { row: 8, col: 28 },
+  // Site Address (RIGHT side of Box 5 - starts on address row)
+  generatorSiteAddr:  { row: 7, col: 45 },
+  generatorSiteCity:  { row: 8, col: 45 },
   // Box 6 - Transporter 1
-  transporter1Name:   { row: 13, col: 15 },
-  transporter1EpaId:  { row: 13, col: 55 },
+  transporter1Name:   { row: 10, col: 7 },
+  transporter1EpaId:  { row: 10, col: 55 },
   // Box 7 - Transporter 2
-  transporter2Name:   { row: 15, col: 15 },
-  transporter2EpaId:  { row: 15, col: 55 },
+  transporter2Name:   { row: 12, col: 7 },
+  transporter2EpaId:  { row: 12, col: 55 },
   // Box 8 - Designated Facility
-  facilityName:       { row: 17, col: 20 },
-  facilityEpaId:      { row: 17, col: 55 },
-  facilityAddress:    { row: 18, col: 20 },
-  facilityPhone:      { row: 19, col: 7 },
-  facilityCity:       { row: 19, col: 20 },
-  facilityState:      { row: 19, col: 36 },
-  facilityZip:        { row: 19, col: 40 },
+  facilityName:       { row: 14, col: 7 },
+  facilityEpaId:      { row: 14, col: 55 },
+  facilityAddress:    { row: 15, col: 7 },
+  facilityPhone:      { row: 16, col: 7 },
+  facilityCity:       { row: 16, col: 22 },
+  facilityState:      { row: 16, col: 36 },
+  facilityZip:        { row: 16, col: 40 },
   // Box 9-13 - Waste lines (3 rows apart per waste line)
   waste1hm:           { row: 21, col: 5 },
   waste1desc:         { row: 21, col: 10 },
