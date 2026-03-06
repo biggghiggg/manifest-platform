@@ -336,7 +336,7 @@ function buildPrintData(manifest) {
   return lines.join('\r\n');
 }
 
-app.post('/api/print/manifest/:id', function(req, res) {
+app.get('/api/print/manifest/:id', function(req, res) {
   var data = loadData();
   var manifest = data.manifests.find(function(m) { return m.id === req.params.id; });
   if (!manifest) return res.status(404).json({ error: 'Manifest not found' });
