@@ -523,6 +523,9 @@ var FORM_8700_MAP = {
 
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)
+var BUILD_VERSION = 'v7-2026-03-06';
+app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
+
 app.get('/api/print/manifest/:id', function(req, res) {
   var manifest = null;
   for (var i = 0; i < data.manifests.length; i++) {
