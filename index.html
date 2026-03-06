@@ -61,33 +61,7 @@
     .upload-area:hover{border-color:#e94560;background:#fef2f4}
     .upload-area p{color:#888;margin-top:8px}
     .print-preview{background:#1a1a2e;color:#4ade80;font-family:'Courier New',monospace;padding:16px;border-radius:8px;font-size:11px;line-height:1.4;overflow-x:auto;white-space:pre;max-height:500px;overflow-y:auto}
-    .epa-form-modal{background:#fff;border-radius:16px;padding:28px;width:90%;max-width:950px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
-    .epa-form-container{background:#e8e8d8;padding:16px;border:2px solid #333}
-    .epa-form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-    .epa-form-row.full-width{grid-template-columns:1fr}
-    .epa-form-row.three-col{grid-template-columns:1fr 1fr 1fr}
-    .epa-form-box{position:relative;border:1px solid #333;padding:12px;background:#fff}
-    .epa-box-label{position:absolute;top:-2px;left:4px;background:#e8e8d8;padding:0 4px;font-size:10px;font-weight:700;color:#000}
-    .epa-box-number{position:absolute;top:0;left:0;background:#333;color:#fff;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
-    .epa-form-input{width:100%;padding:6px 8px;border:1px solid #ccc;background:#fff;font-size:13px;font-family:'Courier New',monospace}
-    .epa-form-input:focus{outline:none;border:1px solid #e94560;box-shadow:0 0 3px rgba(233,69,96,0.2)}
-    .epa-form-label{display:block;font-size:11px;font-weight:600;color:#333;margin-bottom:4px;text-transform:uppercase}
-    .epa-generator-section{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;background:#fff}
-    .epa-generator-left{padding:8px;background:#f9f9f9;border:1px solid #ddd;border-radius:4px}
-    .epa-generator-right{padding:8px;background:#f9f9f9;border:1px solid #ddd;border-radius:4px}
-    .epa-waste-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #333;margin:12px 0}
-    .epa-waste-table th{padding:8px 4px;background:#d9d9d9;border:1px solid #333;font-size:10px;font-weight:700;text-align:left}
-    .epa-waste-table td{padding:4px;border:1px solid #ccc}
-    .epa-waste-table input{width:100%;padding:4px 6px;border:none;background:#fff;font-size:12px;font-family:'Courier New',monospace}
-    .epa-waste-table select{width:100%;padding:4px 6px;border:none;background:#fff;font-size:12px}
-    .epa-special-handling{padding:12px;background:#fff;border:1px solid #333;margin-top:12px}
-    .epa-special-line{padding:8px;border-bottom:1px solid #ddd;font-size:13px}
-    .epa-special-line input{width:100%;border:none;background:transparent;font-family:'Courier New',monospace;padding:2px 0}
-    .epa-certification-box{padding:12px;background:#fff;border:1px solid #333;margin-top:12px}
-    .epa-form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:12px;border-top:1px solid #ddd}
-    .epa-sub-box{padding:8px;margin-bottom:8px;background:#f9f9f9;border:1px solid #ddd;border-radius:3px}
-    .epa-row-label{font-size:10px;font-weight:600;color:#333;margin-bottom:6px;text-transform:uppercase}
-    @media(max-width:768px){.form-grid{grid-template-columns:1fr}.search-bar{width:100%}.top-nav h1{font-size:14px;margin-right:12px}.nav-tab{padding:6px 10px;font-size:12px}.epa-form-modal{width:95%;padding:16px}.epa-form-row{grid-template-columns:1fr}.epa-generator-section{grid-template-columns:1fr}}
+    @media(max-width:768px){.form-grid{grid-template-columns:1fr}.search-bar{width:100%}.top-nav h1{font-size:14px;margin-right:12px}.nav-tab{padding:6px 10px;font-size:12px}}
   </style>
 </head>
 <body>
@@ -189,179 +163,33 @@
 
     function ManifestFormModal(props){
       var item=props.item;var data=props.data;var onSave=props.onSave;var onClose=props.onClose;
-      var initialForm={manifestNum:'',generatorEpaId:'',generatorName:'',generatorPhone:'',emergencyPhone:'',generatorMailAddress:'',generatorMailCityStZip:'',genSiteAddress:'',genSiteCityStZip:'',transporter1Name:'',transporter1EpaId:'',transporter2Name:'',transporter2EpaId:'',facilityName:'',facilityEpaId:'',facilityPhone:'',facilityAddress:'',facilityCityStZip:'',waste1HM:'',waste1Description:'',waste1ContainerNum:'',waste1ContainerType:'',waste1Qty:'',waste1Unit:'',waste1WasteCodes:'',waste2HM:'',waste2Description:'',waste2ContainerNum:'',waste2ContainerType:'',waste2Qty:'',waste2Unit:'',waste2WasteCodes:'',waste3HM:'',waste3Description:'',waste3ContainerNum:'',waste3ContainerType:'',waste3Qty:'',waste3Unit:'',waste3WasteCodes:'',waste4HM:'',waste4Description:'',waste4ContainerNum:'',waste4ContainerType:'',waste4Qty:'',waste4Unit:'',waste4WasteCodes:'',specialHandling:'',specialHandling2:'',specialHandling3:'',generatorPrintName:'',pageNum:'1',pageTotal:'1',status:'draft'};
-      var f1=useState(item||initialForm);var form=f1[0];var setForm=f1[1];
-      function set(k,v){setForm(function(f){var n=Object.assign({},f);n[k]=v;return n})};
-      function handleGeneratorSelect(e){var selectedId=e.target.value;if(!selectedId){setForm(initialForm);return};var gen=(data.generators||[]).find(function(g){return g.id===selectedId});if(gen){var n=Object.assign({},form);n.generatorEpaId=gen.epaId||'';n.generatorName=gen.name||'';n.generatorPhone=gen.phone||'';n.emergencyPhone=gen.phone||'';n.generatorMailAddress=gen.mailAddress||'';n.generatorMailCityStZip=(gen.mailCity||'')+' '+(gen.mailState||'')+' '+(gen.mailZip||'');n.genSiteAddress=gen.siteAddress||'';n.genSiteCityStZip=(gen.city||'')+' '+(gen.state||'')+' '+(gen.zip||'');setForm(n)}};
-      function handleTransporterSelect(num,e){var selectedId=e.target.value;if(!selectedId){set('transporter'+num+'Name','');set('transporter'+num+'EpaId','');return};var trans=(data.transporters||[]).find(function(t){return t.id===selectedId});if(trans){set('transporter'+num+'Name',trans.name||'');set('transporter'+num+'EpaId',trans.epaId||'')}};
-      function handleFacilitySelect(e){var selectedId=e.target.value;if(!selectedId){set('facilityName','');set('facilityEpaId','');set('facilityPhone','');set('facilityAddress','');set('facilityCityStZip','');return};var fac=(data.facilities||[]).find(function(f){return f.id===selectedId});if(fac){set('facilityName',fac.name||'');set('facilityEpaId',fac.epaId||'');set('facilityPhone',fac.phone||'');set('facilityAddress',fac.siteAddress||'');set('facilityCityStZip',(fac.city||'')+' '+(fac.state||'')+' '+(fac.zip||''))}};
-      function handleWasteSelect(num,e){var selectedId=e.target.value;if(!selectedId){set('waste'+num+'HM','');set('waste'+num+'Description','');set('waste'+num+'ContainerType','');set('waste'+num+'Unit','');set('waste'+num+'WasteCodes','');return};var ws=(data.wasteStreams||[]).find(function(w){return w.id===selectedId});if(ws){set('waste'+num+'HM',ws.hm||'');set('waste'+num+'Description',ws.dotDescription||'');set('waste'+num+'ContainerType',ws.containerType||'');set('waste'+num+'Unit',ws.unit||'');set('waste'+num+'WasteCodes',ws.wasteCodes||'')}};
+      var f1=useState(item||{manifestNum:'',generatorName:'',transporters:[],facilityName:'',wastes:[],status:'draft'});
+      var form=f1[0];var setForm=f1[1];
+      function set(k,v){setForm(function(f){var n=Object.assign({},f);n[k]=v;return n})}
       return React.createElement('div',{className:'modal-overlay',onClick:onClose},
-        React.createElement('div',{className:'epa-form-modal',onClick:function(e){e.stopPropagation()}},
-          React.createElement('h3',{style:{marginBottom:16,fontSize:18,fontWeight:700}},(item&&item.manifestNum?'Edit':'New')+' Manifest - EPA Form 8700-22'),
-          React.createElement('div',{className:'epa-form-container'},
-            React.createElement('div',{className:'epa-form-row'},
-              React.createElement('div',{className:'epa-form-box',style:{position:'relative'}},
-                React.createElement('div',{className:'epa-box-number'},'1'),
-                React.createElement('label',{className:'epa-form-label'},'Gen EPA ID'),
-                React.createElement('input',{className:'epa-form-input',value:form.generatorEpaId||'',onChange:function(e){set('generatorEpaId',e.target.value)}})
-              ),
-              React.createElement('div',{className:'epa-form-box',style:{position:'relative'}},
-                React.createElement('div',{className:'epa-box-number'},'2'),
-                React.createElement('label',{className:'epa-form-label'},'Page 1 of'),
-                React.createElement('input',{className:'epa-form-input',type:'number',value:form.pageTotal||'1',onChange:function(e){set('pageTotal',e.target.value)},style:{fontSize:12,width:60}})
-              ),
-              React.createElement('div',{className:'epa-form-box',style:{position:'relative',flex:1}},
-                React.createElement('label',{className:'epa-form-label'},'Emergency Phone'),
-                React.createElement('input',{className:'epa-form-input',value:form.emergencyPhone||'',onChange:function(e){set('emergencyPhone',e.target.value)}})
-              ),
-              React.createElement('div',{className:'epa-form-box',style:{position:'relative',textAlign:'right'}},
-                React.createElement('label',{className:'epa-form-label'},'Manifest Tracking'),
-                React.createElement('input',{className:'epa-form-input',value:form.manifestNum||'',onChange:function(e){set('manifestNum',e.target.value)},style:{fontWeight:'bold'}})
+        React.createElement('div',{className:'modal',onClick:function(e){e.stopPropagation()}},
+          React.createElement('h3',null,(item?'Edit':'New')+' Manifest'),
+          React.createElement('div',{className:'form-grid'},
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Manifest Number'),
+              React.createElement('input',{value:form.manifestNum||'',onChange:function(e){set('manifestNum',e.target.value)}})
+            ),
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Generator'),
+              React.createElement('select',{value:form.generatorName||'',onChange:function(e){set('generatorName',e.target.value)}},
+                React.createElement('option',{value:''},'-- Select --'),
+                (data.generators||[]).map(function(g){return React.createElement('option',{key:g.id,value:g.name},g.name)})
               )
             ),
-            React.createElement('div',{className:'epa-form-box',style:{position:'relative',marginTop:16,padding:12}},
-              React.createElement('div',{className:'epa-box-number'},'5'),
-              React.createElement('div',{style:{marginBottom:8}},
-                React.createElement('label',{className:'epa-form-label'},'Select Generator'),
-                React.createElement('select',{style:{width:'100%',padding:'6px 8px',border:'1px solid #ccc',borderRadius:4},onChange:handleGeneratorSelect},
-                  React.createElement('option',{value:''},'-- Choose Generator --'),
-                  (data.generators||[]).map(function(g){return React.createElement('option',{key:g.id,value:g.id},g.name)})
-                )
-              ),
-              React.createElement('label',{className:'epa-form-label'},'Generator Name'),
-              React.createElement('input',{className:'epa-form-input',value:form.generatorName||'',onChange:function(e){set('generatorName',e.target.value)}}),
-              React.createElement('div',{className:'epa-generator-section'},
-                React.createElement('div',{className:'epa-generator-left'},
-                  React.createElement('div',{className:'epa-row-label'},'Mailing Address'),
-                  React.createElement('input',{className:'epa-form-input',value:form.generatorMailAddress||'',onChange:function(e){set('generatorMailAddress',e.target.value)},style:{marginBottom:6}}),
-                  React.createElement('div',{className:'epa-row-label'},'City, State, Zip'),
-                  React.createElement('input',{className:'epa-form-input',value:form.generatorMailCityStZip||'',onChange:function(e){set('generatorMailCityStZip',e.target.value)}})
-                ),
-                React.createElement('div',{className:'epa-generator-right'},
-                  React.createElement('div',{className:'epa-row-label'},'Site Address'),
-                  React.createElement('input',{className:'epa-form-input',value:form.genSiteAddress||'',onChange:function(e){set('genSiteAddress',e.target.value)},style:{marginBottom:6}}),
-                  React.createElement('div',{className:'epa-row-label'},'City, State, Zip'),
-                  React.createElement('input',{className:'epa-form-input',value:form.genSiteCityStZip||'',onChange:function(e){set('genSiteCityStZip',e.target.value)}})
-                )
-              ),
-              React.createElement('label',{className:'epa-form-label',style:{marginTop:8}},'Generator Phone'),
-              React.createElement('input',{className:'epa-form-input',value:form.generatorPhone||'',onChange:function(e){set('generatorPhone',e.target.value)}})
-            ),
-            React.createElement('div',{className:'epa-form-row',style:{marginTop:16}},
-              React.createElement('div',{className:'epa-form-box',style:{position:'relative'}},
-                React.createElement('div',{className:'epa-box-number'},'6'),
-                React.createElement('label',{className:'epa-form-label'},'Transporter 1 Select'),
-                React.createElement('select',{style:{width:'100%',padding:'6px 8px',border:'1px solid #ccc',borderRadius:4,marginBottom:8},onChange:function(e){handleTransporterSelect('1',e)}},
-                  React.createElement('option',{value:''},'-- Choose --'),
-                  (data.transporters||[]).map(function(t){return React.createElement('option',{key:t.id,value:t.id},t.name)})
-                ),
-                React.createElement('label',{className:'epa-form-label'},'Name'),
-                React.createElement('input',{className:'epa-form-input',value:form.transporter1Name||'',onChange:function(e){set('transporter1Name',e.target.value)},style:{marginBottom:6}}),
-                React.createElement('label',{className:'epa-form-label'},'EPA ID'),
-                React.createElement('input',{className:'epa-form-input',value:form.transporter1EpaId||'',onChange:function(e){set('transporter1EpaId',e.target.value)}})
-              ),
-              React.createElement('div',{className:'epa-form-box',style:{position:'relative'}},
-                React.createElement('div',{className:'epa-box-number'},'7'),
-                React.createElement('label',{className:'epa-form-label'},'Transporter 2 Select'),
-                React.createElement('select',{style:{width:'100%',padding:'6px 8px',border:'1px solid #ccc',borderRadius:4,marginBottom:8},onChange:function(e){handleTransporterSelect('2',e)}},
-                  React.createElement('option',{value:''},'-- Choose --'),
-                  (data.transporters||[]).map(function(t){return React.createElement('option',{key:t.id,value:t.id},t.name)})
-                ),
-                React.createElement('label',{className:'epa-form-label'},'Name'),
-                React.createElement('input',{className:'epa-form-input',value:form.transporter2Name||'',onChange:function(e){set('transporter2Name',e.target.value)},style:{marginBottom:6}}),
-                React.createElement('label',{className:'epa-form-label'},'EPA ID'),
-                React.createElement('input',{className:'epa-form-input',value:form.transporter2EpaId||'',onChange:function(e){set('transporter2EpaId',e.target.value)}})
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Facility'),
+              React.createElement('select',{value:form.facilityName||'',onChange:function(e){set('facilityName',e.target.value)}},
+                React.createElement('option',{value:''},'-- Select --'),
+                (data.facilities||[]).map(function(f){return React.createElement('option',{key:f.id,value:f.name},f.name)})
               )
-            ),
-            React.createElement('div',{className:'epa-form-box',style:{position:'relative',marginTop:16,padding:12}},
-              React.createElement('div',{className:'epa-box-number'},'8'),
-              React.createElement('label',{className:'epa-form-label'},'Facility Select'),
-              React.createElement('select',{style:{width:'100%',padding:'6px 8px',border:'1px solid #ccc',borderRadius:4,marginBottom:8},onChange:handleFacilitySelect},
-                React.createElement('option',{value:''},'-- Choose Facility --'),
-                (data.facilities||[]).map(function(f){return React.createElement('option',{key:f.id,value:f.id},f.name)})
-              ),
-              React.createElement('div',{style:{display:'flex',gap:8,marginBottom:8}},
-                React.createElement('div',{style:{flex:1}},
-                  React.createElement('label',{className:'epa-form-label'},'Facility Name'),
-                  React.createElement('input',{className:'epa-form-input',value:form.facilityName||'',onChange:function(e){set('facilityName',e.target.value)}})
-                ),
-                React.createElement('div',{style:{flex:0.5}},
-                  React.createElement('label',{className:'epa-form-label'},'EPA ID'),
-                  React.createElement('input',{className:'epa-form-input',value:form.facilityEpaId||'',onChange:function(e){set('facilityEpaId',e.target.value)}})
-                )
-              ),
-              React.createElement('label',{className:'epa-form-label'},'Address'),
-              React.createElement('input',{className:'epa-form-input',value:form.facilityAddress||'',onChange:function(e){set('facilityAddress',e.target.value)},style:{marginBottom:6}}),
-              React.createElement('div',{style:{display:'flex',gap:8}},
-                React.createElement('div',{style:{flex:1}},
-                  React.createElement('label',{className:'epa-form-label'},'City, State, Zip'),
-                  React.createElement('input',{className:'epa-form-input',value:form.facilityCityStZip||'',onChange:function(e){set('facilityCityStZip',e.target.value)}})
-                ),
-                React.createElement('div',{style:{flex:0.6}},
-                  React.createElement('label',{className:'epa-form-label'},'Phone'),
-                  React.createElement('input',{className:'epa-form-input',value:form.facilityPhone||'',onChange:function(e){set('facilityPhone',e.target.value)}})
-                )
-              )
-            ),
-            React.createElement('div',{style:{marginTop:16}},
-              React.createElement('label',{className:'epa-form-label'},'Waste Streams (Lines 9-13)'),
-              React.createElement('table',{className:'epa-waste-table'},
-                React.createElement('thead',null,
-                  React.createElement('tr',null,
-                    React.createElement('th',{style:{width:'50px'}},'Line'),
-                    React.createElement('th',{style:{width:'60px'}},'9a. HM'),
-                    React.createElement('th',{style:{width:'140px'}},'9b. DOT Description'),
-                    React.createElement('th',{style:{width:'100px'}},'Cont/Type'),
-                    React.createElement('th',{style:{width:'80px'}},'10. Qty'),
-                    React.createElement('th',{style:{width:'60px'}},'11. Unit'),
-                    React.createElement('th',{style:{width:'100px'}},'12. Codes')
-                  )
-                ),
-                React.createElement('tbody',null,
-                  [1,2,3,4].map(function(wasteNum){var k='waste'+wasteNum;var wsOptions=data.wasteStreams||[];var genId=form.generatorEpaId;var linkedWastes=[];var availableWastes=wsOptions;try{var gen=(data.generators||[]).find(function(g){return g.epaId===genId});if(gen&&gen.profileIds){linkedWastes=wsOptions.filter(function(w){return gen.profileIds.indexOf(w.id)>=0});availableWastes=wsOptions.filter(function(w){return gen.profileIds.indexOf(w.id)<0})}}catch(ex){}var allOptions=[].concat(linkedWastes,availableWastes);return React.createElement('tr',{key:'waste'+wasteNum},
-                    React.createElement('td',{style:{fontWeight:'bold',textAlign:'center'}},wasteNum),
-                    React.createElement('td',null,
-                      React.createElement('select',{style:{width:'100%',padding:'4px 2px',border:'none',background:'#fff',fontSize:12},onChange:function(e){handleWasteSelect(wasteNum,e)}},
-                        React.createElement('option',{value:''},''),
-                        linkedWastes.length>0?React.createElement('optgroup',{label:'Linked'},linkedWastes.map(function(w){return React.createElement('option',{key:w.id,value:w.id},w.hm||'')})):null,
-                        availableWastes.length>0?React.createElement('optgroup',{label:'All'},availableWastes.map(function(w){return React.createElement('option',{key:w.id,value:w.id},w.hm||'')})):null
-                      )
-                    ),
-                    React.createElement('td',null,React.createElement('input',{type:'text',value:form[k+'Description']||'',onChange:function(e){set(k+'Description',e.target.value)}})),
-                    React.createElement('td',null,
-                      React.createElement('div',{style:{display:'flex',gap:4}},
-                        React.createElement('input',{type:'text',value:form[k+'ContainerNum']||'',onChange:function(e){set(k+'ContainerNum',e.target.value)},style:{flex:1,fontSize:11}}),
-                        React.createElement('input',{type:'text',value:form[k+'ContainerType']||'',onChange:function(e){set(k+'ContainerType',e.target.value)},style:{flex:1,fontSize:11}})
-                      )
-                    ),
-                    React.createElement('td',null,React.createElement('input',{type:'text',value:form[k+'Qty']||'',onChange:function(e){set(k+'Qty',e.target.value)}})),
-                    React.createElement('td',null,React.createElement('input',{type:'text',value:form[k+'Unit']||'',onChange:function(e){set(k+'Unit',e.target.value)}})),
-                    React.createElement('td',null,React.createElement('input',{type:'text',value:form[k+'WasteCodes']||'',onChange:function(e){set(k+'WasteCodes',e.target.value)},style:{fontSize:11}}))
-                  )})
-                )
-              )
-            ),
-            React.createElement('div',{className:'epa-special-handling'},
-              React.createElement('div',{className:'epa-box-number',style:{left:4,top:4}},'14'),
-              React.createElement('label',{className:'epa-form-label'},'Special Handling Instructions'),
-              React.createElement('div',{className:'epa-special-line'},
-                React.createElement('input',{type:'text',value:form.specialHandling||'',onChange:function(e){set('specialHandling',e.target.value)},placeholder:'Line 1'})
-              ),
-              React.createElement('div',{className:'epa-special-line'},
-                React.createElement('input',{type:'text',value:form.specialHandling2||'',onChange:function(e){set('specialHandling2',e.target.value)},placeholder:'Line 2'})
-              ),
-              React.createElement('div',{className:'epa-special-line'},
-                React.createElement('input',{type:'text',value:form.specialHandling3||'',onChange:function(e){set('specialHandling3',e.target.value)},placeholder:'Line 3'})
-              )
-            ),
-            React.createElement('div',{className:'epa-certification-box'},
-              React.createElement('div',{className:'epa-box-number',style:{left:4,top:4}},'15'),
-              React.createElement('label',{className:'epa-form-label'},'Generator Print Name (Certification)'),
-              React.createElement('input',{className:'epa-form-input',value:form.generatorPrintName||'',onChange:function(e){set('generatorPrintName',e.target.value)}})
             )
           ),
-          React.createElement('div',{className:'epa-form-actions'},
+          React.createElement('div',{className:'modal-actions'},
             React.createElement('button',{className:'btn btn-secondary',onClick:onClose},'Cancel'),
             React.createElement('button',{className:'btn btn-primary',onClick:function(){onSave(form)}},'Save Manifest')
           )
