@@ -459,106 +459,106 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
 // ============================================================
 var FORM_8700_MAP = {
   // Box 1 - Generator's US EPA ID Number
-  generatorEpaId:     { row: 4, col: 18 },
+  generatorEpaId:     { row: 4, col: 28 },
   // Box 2 - Page __ of __
-  page:               { row: 4, col: 40 },
-  totalPages:         { row: 4, col: 43 },
+  page:               { row: 4, col: 50 },
+  totalPages:         { row: 4, col: 53 },
   // Box 3 - Emergency Response Phone
-  emergencyPhone:     { row: 4, col: 47 },
+  emergencyPhone:     { row: 4, col: 57 },
   // Box 5 - Generator
-  generatorName:      { row: 6, col: 16 },
+  generatorName:      { row: 6, col: 26 },
   // Mailing Address (LEFT side of Box 5)
-  generatorMailAddr:  { row: 7, col: 16 },
-  generatorMailCity:  { row: 8, col: 16 },
-  generatorPhone:     { row: 8, col: 34 },
+  generatorMailAddr:  { row: 7, col: 26 },
+  generatorMailCity:  { row: 8, col: 26 },
+  generatorPhone:     { row: 8, col: 44 },
   // Site Address (RIGHT side of Box 5)
-  generatorSiteAddr:  { row: 7, col: 48 },
-  generatorSiteCity:  { row: 8, col: 48 },
+  generatorSiteAddr:  { row: 7, col: 58 },
+  generatorSiteCity:  { row: 8, col: 58 },
   // Box 6 - Transporter 1
-  transporter1Name:   { row: 10, col: 8 },
-  transporter1EpaId:  { row: 10, col: 62 },
+  transporter1Name:   { row: 10, col: 18 },
+  transporter1EpaId:  { row: 10, col: 72 },
   // Box 7 - Transporter 2
-  transporter2Name:   { row: 12, col: 8 },
-  transporter2EpaId:  { row: 12, col: 62 },
+  transporter2Name:   { row: 12, col: 18 },
+  transporter2EpaId:  { row: 12, col: 72 },
   // Box 8 - Designated Facility
-  facilityName:       { row: 14, col: 8 },
-  facilityEpaId:      { row: 14, col: 62 },
-  facilityAddress:    { row: 15, col: 8 },
-  facilityPhone:      { row: 16, col: 8 },
-  facilityCity:       { row: 16, col: 24 },
-  facilityState:      { row: 16, col: 38 },
-  facilityZip:        { row: 16, col: 42 },
+  facilityName:       { row: 14, col: 18 },
+  facilityEpaId:      { row: 14, col: 72 },
+  facilityAddress:    { row: 15, col: 18 },
+  facilityPhone:      { row: 16, col: 18 },
+  facilityCity:       { row: 16, col: 34 },
+  facilityState:      { row: 16, col: 48 },
+  facilityZip:        { row: 16, col: 52 },
   // Box 9a - HM
-  waste1hm:           { row: 21, col: 4 },
-  waste2hm:           { row: 24, col: 4 },
-  waste3hm:           { row: 27, col: 4 },
-  waste4hm:           { row: 30, col: 4 },
+  waste1hm:           { row: 21, col: 14 },
+  waste2hm:           { row: 24, col: 14 },
+  waste3hm:           { row: 27, col: 14 },
+  waste4hm:           { row: 30, col: 14 },
   // Box 9b - Description
-  waste1desc:         { row: 21, col: 9 },
-  waste2desc:         { row: 24, col: 9 },
-  waste3desc:         { row: 27, col: 9 },
-  waste4desc:         { row: 30, col: 9 },
+  waste1desc:         { row: 21, col: 19 },
+  waste2desc:         { row: 24, col: 19 },
+  waste3desc:         { row: 27, col: 19 },
+  waste4desc:         { row: 30, col: 19 },
   // Box 10 - Containers (number + type)
-  waste1containerNum: { row: 21, col: 60 },
-  waste1container:    { row: 21, col: 65 },
-  waste2containerNum: { row: 24, col: 60 },
-  waste2container:    { row: 24, col: 65 },
-  waste3containerNum: { row: 27, col: 60 },
-  waste3container:    { row: 27, col: 65 },
-  waste4containerNum: { row: 30, col: 60 },
-  waste4container:    { row: 30, col: 65 },
+  waste1containerNum: { row: 21, col: 70 },
+  waste1container:    { row: 21, col: 75 },
+  waste2containerNum: { row: 24, col: 70 },
+  waste2container:    { row: 24, col: 75 },
+  waste3containerNum: { row: 27, col: 70 },
+  waste3container:    { row: 27, col: 75 },
+  waste4containerNum: { row: 30, col: 70 },
+  waste4container:    { row: 30, col: 75 },
   // Box 11 - Quantity
-  waste1qty:          { row: 21, col: 72 },
-  waste2qty:          { row: 24, col: 72 },
-  waste3qty:          { row: 27, col: 72 },
-  waste4qty:          { row: 30, col: 72 },
+  waste1qty:          { row: 21, col: 82 },
+  waste2qty:          { row: 24, col: 82 },
+  waste3qty:          { row: 27, col: 82 },
+  waste4qty:          { row: 30, col: 82 },
   // Box 12 - Unit
-  waste1uom:          { row: 21, col: 79 },
-  waste2uom:          { row: 24, col: 79 },
-  waste3uom:          { row: 27, col: 79 },
-  waste4uom:          { row: 30, col: 79 },
+  waste1uom:          { row: 21, col: 89 },
+  waste2uom:          { row: 24, col: 89 },
+  waste3uom:          { row: 27, col: 89 },
+  waste4uom:          { row: 30, col: 89 },
   // Box 13 - Waste Codes (6 per line: 3 on row 1, 3 on row 2)
-  waste1wc1:          { row: 21, col: 83 },
-  waste1wc2:          { row: 21, col: 88 },
-  waste1wc3:          { row: 21, col: 93 },
-  waste1wc4:          { row: 22, col: 83 },
-  waste1wc5:          { row: 22, col: 88 },
-  waste1wc6:          { row: 22, col: 93 },
-  waste2wc1:          { row: 24, col: 83 },
-  waste2wc2:          { row: 24, col: 88 },
-  waste2wc3:          { row: 24, col: 93 },
-  waste2wc4:          { row: 25, col: 83 },
-  waste2wc5:          { row: 25, col: 88 },
-  waste2wc6:          { row: 25, col: 93 },
-  waste3wc1:          { row: 27, col: 83 },
-  waste3wc2:          { row: 27, col: 88 },
-  waste3wc3:          { row: 27, col: 93 },
-  waste3wc4:          { row: 28, col: 83 },
-  waste3wc5:          { row: 28, col: 88 },
-  waste3wc6:          { row: 28, col: 93 },
-  waste4wc1:          { row: 30, col: 83 },
-  waste4wc2:          { row: 30, col: 88 },
-  waste4wc3:          { row: 30, col: 93 },
-  waste4wc4:          { row: 31, col: 83 },
-  waste4wc5:          { row: 31, col: 88 },
-  waste4wc6:          { row: 31, col: 93 },
+  waste1wc1:          { row: 21, col: 93 },
+  waste1wc2:          { row: 21, col: 98 },
+  waste1wc3:          { row: 21, col: 103 },
+  waste1wc4:          { row: 22, col: 93 },
+  waste1wc5:          { row: 22, col: 98 },
+  waste1wc6:          { row: 22, col: 103 },
+  waste2wc1:          { row: 24, col: 93 },
+  waste2wc2:          { row: 24, col: 98 },
+  waste2wc3:          { row: 24, col: 103 },
+  waste2wc4:          { row: 25, col: 93 },
+  waste2wc5:          { row: 25, col: 98 },
+  waste2wc6:          { row: 25, col: 103 },
+  waste3wc1:          { row: 27, col: 93 },
+  waste3wc2:          { row: 27, col: 98 },
+  waste3wc3:          { row: 27, col: 103 },
+  waste3wc4:          { row: 28, col: 93 },
+  waste3wc5:          { row: 28, col: 98 },
+  waste3wc6:          { row: 28, col: 103 },
+  waste4wc1:          { row: 30, col: 93 },
+  waste4wc2:          { row: 30, col: 98 },
+  waste4wc3:          { row: 30, col: 103 },
+  waste4wc4:          { row: 31, col: 93 },
+  waste4wc5:          { row: 31, col: 98 },
+  waste4wc6:          { row: 31, col: 103 },
   // Box 14 - Special Handling (3 lines, MIS permanent on line 3)
-  specialHandling:    { row: 33, col: 8 },
-  specialHandling2:   { row: 34, col: 8 },
-  specialHandling3:   { row: 35, col: 8 },
+  specialHandling:    { row: 33, col: 18 },
+  specialHandling2:   { row: 34, col: 18 },
+  specialHandling3:   { row: 35, col: 18 },
   // Box 15 - Generator Certification
-  generatorCertName:  { row: 38, col: 8 }
+  generatorCertName:  { row: 38, col: 18 }
 };
 
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)
-var BUILD_VERSION = 'v17-2026-03-06';
+var BUILD_VERSION = 'v18-2026-03-06';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment editor endpoints
 var customAlignment = data.customAlignment || null;
 var previousAlignment = data.previousAlignment || null;
-var colOffset = data.colOffset || 0;
+var colOffset = (typeof data.colOffset === 'number') ? data.colOffset : 10;
 
 function getActiveMap() {
   if (!customAlignment) return FORM_8700_MAP;
@@ -593,7 +593,7 @@ app.put('/api/alignment', function(req, res) {
     colOffset = req.body.colOffset;
     data.colOffset = colOffset;
   }
-  saveData();
+  saveData(data);
   res.json({ ok: true });
 });
 
@@ -603,7 +603,9 @@ app.post('/api/alignment/reset', function(req, res) {
   data.previousAlignment = previousAlignment;
   customAlignment = null;
   delete data.customAlignment;
-  saveData();
+  colOffset = 10;
+  data.colOffset = 10;
+  saveData(data);
   res.json({ ok: true });
 });
 
@@ -617,7 +619,7 @@ app.post('/api/alignment/undo', function(req, res) {
   previousAlignment = temp;
   data.customAlignment = customAlignment;
   data.previousAlignment = previousAlignment;
-  saveData();
+  saveData(data);
   res.json({ ok: true, map: getActiveMap() });
 });
 
