@@ -358,8 +358,9 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
       var hcMatch = fullText.match(/Hazard Class[:\s]+(\S+)/i);
       if (hcMatch) hazardClass = hcMatch[1].trim();
 
-      // Packing Group
-      var pgMatch = fullText.match(/Packing Group[:\s]+(\S+)/i);
+      // Packing Group - try multiple patterns (I, II, III or PGI, PGII, PGIII)
+      var pgMatch = fullText.match(/Packing Group[:\s]+(I{1,3}V?|PG\s*I{1,3}V?)/i);
+      if (!pgMatch) pgMatch = fullText.match(/Packing Group[:\s]+(\S+)/i);
       if (pgMatch) packingGroup = pgMatch[1].trim();
 
       // ERG#
@@ -498,36 +499,31 @@ var FORM_8700_MAP = {
   waste1container:    { row: 21, col: 47 },
   waste1qty:          { row: 21, col: 51 },
   waste1uom:          { row: 21, col: 57 },
-  waste1wCodes:       { row: 21, col: 62 },
   waste2hm:           { row: 23, col: 3 },
   waste2desc:         { row: 23, col: 7 },
   waste2code:         { row: 23, col: 42 },
   waste2container:    { row: 23, col: 47 },
   waste2qty:          { row: 23, col: 51 },
   waste2uom:          { row: 23, col: 57 },
-  waste2wCodes:       { row: 23, col: 62 },
   waste3hm:           { row: 25, col: 3 },
   waste3desc:         { row: 25, col: 7 },
   waste3code:         { row: 25, col: 42 },
   waste3container:    { row: 25, col: 47 },
   waste3qty:          { row: 25, col: 51 },
   waste3uom:          { row: 25, col: 57 },
-  waste3wCodes:       { row: 25, col: 62 },
   waste4hm:           { row: 27, col: 3 },
   waste4desc:         { row: 27, col: 7 },
   waste4code:         { row: 27, col: 42 },
   waste4container:    { row: 27, col: 47 },
   waste4qty:          { row: 27, col: 51 },
   waste4uom:          { row: 27, col: 57 },
-  waste4wCodes:       { row: 27, col: 62 },
   // Box 14 - Special Handling (4 lines)
-  specialHandling:    { row: 30, col: 7 },
-  specialHandling2:   { row: 31, col: 7 },
-  specialHandling3:   { row: 32, col: 7 },
-  specialHandling4:   { row: 33, col: 7 },
+  specialHandling:    { row: 29, col: 7 },
+  specialHandling2:   { row: 30, col: 7 },
+  specialHandling3:   { row: 31, col: 7 },
+  specialHandling4:   { row: 32, col: 7 },
   // Box 15 - Generator Certification
-  generatorCertName:  { row: 35, col: 7 },
-  certDate:           { row: 35, col: 52 }
+  generatorCertName:  { row: 35, col: 7 }
 };
 
 // Print manifest - plain text for dot matrix
@@ -613,6 +609,12 @@ app.get('/api/print/manifest/:id', function(req, res) {
     }
     return result;
   }
+  // Box 13 waste code box positions: 6 boxes per waste line
+  // 3 codes on the main row, 3 codes on the next row
+  // Each code box is 5 chars wide (4 char code + 1 space)
+  var WASTE_CODE_COL1 = 62;
+  var WASTE_CODE_COL2 = 67;
+  var WASTE_CODE_COL3 = 72;
   for (var w = 1; w <= 4; w++) {
     var wasteDesc = manifest['waste' + w + 'Description'] || '';
     var descLines = wrapDescLines(wasteDesc, descRow1Width, descContWidth);
@@ -624,8 +626,23 @@ app.get('/api/print/manifest/:id', function(req, res) {
     placeText(FORM_8700_MAP['waste' + w + 'container'].row, FORM_8700_MAP['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
     placeText(FORM_8700_MAP['waste' + w + 'qty'].row, FORM_8700_MAP['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
     placeText(FORM_8700_MAP['waste' + w + 'uom'].row, FORM_8700_MAP['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
-    placeText(FORM_8700_MAP['waste' + w + 'wCodes'].row, FORM_8700_MAP['waste' + w + 'wCodes'].col, manifest['waste' + w + 'WasteCodes']);
     placeText(FORM_8700_MAP['waste' + w + 'code'].row, FORM_8700_MAP['waste' + w + 'code'].col, manifest['waste' + w + 'ContainerNum']);
+    // Box 13 - Split waste codes into 6 individual boxes (3 per row)
+    var allCodes = (manifest['waste' + w + 'WasteCodes'] || '').trim();
+    if (allCodes) {
+      var codeArr = allCodes.split(/[\s,]+/).filter(function(c) { return c.length > 0; });
+      var codeCols = [WASTE_CODE_COL1, WASTE_CODE_COL2, WASTE_CODE_COL3];
+      // First 3 codes on the main waste line row
+      for (var ci = 0; ci < Math.min(codeArr.length, 3); ci++) {
+        placeText(baseRow, codeCols[ci], codeArr[ci]);
+      }
+      // Next 3 codes on the row below
+      if (codeArr.length > 3) {
+        for (var ci2 = 3; ci2 < Math.min(codeArr.length, 6); ci2++) {
+          placeText(baseRow + 1, codeCols[ci2 - 3], codeArr[ci2]);
+        }
+      }
+    }
   }
 
   // Box 14 - Special Handling (4 lines)
@@ -634,9 +651,8 @@ app.get('/api/print/manifest/:id', function(req, res) {
   placeText(FORM_8700_MAP.specialHandling3.row, FORM_8700_MAP.specialHandling3.col, manifest.specialHandling3);
   placeText(FORM_8700_MAP.specialHandling4.row, FORM_8700_MAP.specialHandling4.col, manifest.specialHandling4);
 
-  // Box 15 - Generator Certification
+  // Box 15 - Generator Certification (date NOT printed - handwritten on form)
   placeText(FORM_8700_MAP.generatorCertName.row, FORM_8700_MAP.generatorCertName.col, manifest.generatorPrintName);
-  placeText(FORM_8700_MAP.certDate.row, FORM_8700_MAP.certDate.col, manifest.generatorDate);
 
   var output = lines.join('\n');
   res.set('Content-Type', 'text/plain');
