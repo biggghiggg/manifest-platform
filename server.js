@@ -116,6 +116,28 @@ collections.forEach(function(col) {
   });
 });
 
+// Waste Streams routes (HTML uses /api/waste-streams with hyphen)
+app.get('/api/waste-streams', function(req, res) { res.json(data.wasteStreams || []); });
+app.post('/api/waste-streams', function(req, res) {
+  var item = req.body; item.id = Date.now().toString(); item.createdAt = new Date().toISOString();
+  if (!data.wasteStreams) data.wasteStreams = [];
+  data.wasteStreams.push(item); saveData(data);
+  broadcast('update', { collection: 'wasteStreams', action: 'create', item: item }); res.json(item);
+});
+app.put('/api/waste-streams/:id', function(req, res) {
+  var idx = -1;
+  for (var i = 0; i < (data.wasteStreams || []).length; i++) { if (data.wasteStreams[i].id === req.params.id) { idx = i; break; } }
+  if (idx === -1) return res.status(404).json({ error: 'Not found' });
+  data.wasteStreams[idx] = Object.assign({}, data.wasteStreams[idx], req.body); saveData(data);
+  broadcast('update', { collection: 'wasteStreams', action: 'update', item: data.wasteStreams[idx] }); res.json(data.wasteStreams[idx]);
+});
+app.delete('/api/waste-streams/:id', function(req, res) {
+  var before = (data.wasteStreams || []).length;
+  data.wasteStreams = (data.wasteStreams || []).filter(function(item) { return item.id !== req.params.id; });
+  if (data.wasteStreams.length === before) return res.status(404).json({ error: 'Not found' });
+  saveData(data); broadcast('update', { collection: 'wasteStreams', action: 'delete', id: req.params.id }); res.json({ success: true });
+});
+
 // Delete ALL generators
 app.delete('/api/generators', function(req, res) {
   var count = data.generators.length;
@@ -178,25 +200,21 @@ app.post('/api/import/quickbooks', upload.single('file'), function(req, res) {
     function parseAddress(addr) {
       if (!addr) return { street: '', city: '', state: '', zip: '' };
       var str = String(addr).trim();
-      // Try to match: street, city, state zip
       var parts = str.split(',');
       if (parts.length >= 2) {
         var street = parts[0].trim();
         var rest = parts.slice(1).join(',').trim();
-        // Try state + zip at end
         var stateZipMatch = rest.match(/\s*([A-Za-z]{2})\s+(\d{5}(-\d{4})?)\s*$/);
         if (stateZipMatch) {
           var city = rest.substring(0, rest.length - stateZipMatch[0].length).trim().replace(/,\s*$/, '');
           return { street: street, city: city, state: stateZipMatch[1].toUpperCase(), zip: stateZipMatch[2] };
         }
-        // fallback: last part might be "City ST ZIP"
         var fallback = rest.match(/^(.+?)\s+([A-Za-z]{2})\s+(\d{5}(-\d{4})?)/);
         if (fallback) {
           return { street: street, city: fallback[1].trim(), state: fallback[2].toUpperCase(), zip: fallback[3] };
         }
         return { street: street, city: rest, state: '', zip: '' };
       }
-      // No commas - try "Street City ST 00000"
       var noComma = str.match(/^(.+?)\s+([A-Za-z]+)\s+([A-Za-z]{2})\s+(\d{5}(-\d{4})?)$/);
       if (noComma) {
         return { street: noComma[1], city: noComma[2], state: noComma[3].toUpperCase(), zip: noComma[4] };
@@ -211,7 +229,6 @@ app.post('/api/import/quickbooks', upload.single('file'), function(req, res) {
       var name = String(dataRow[nameCol] || '').trim();
       if (!name) continue;
 
-      // Check for duplicates by name
       var exists = false;
       for (var d = 0; d < data.generators.length; d++) {
         if (data.generators[d].name === name) { exists = true; break; }
@@ -245,8 +262,6 @@ app.post('/api/import/quickbooks', upload.single('file'), function(req, res) {
 
     saveData(data);
     broadcast('update', { collection: 'generators', action: 'import' });
-
-    // Clean up uploaded file
     try { fs.unlinkSync(req.file.path); } catch (e) {}
 
     res.json({
@@ -335,6 +350,7 @@ var FORM_8700_MAP = {
 };
 
 // Print manifest - plain text for dot matrix
+// Uses manifest fields directly (as saved by the frontend)
 app.get('/api/print/manifest/:id', function(req, res) {
   var manifest = null;
   for (var i = 0; i < data.manifests.length; i++) {
@@ -342,7 +358,6 @@ app.get('/api/print/manifest/:id', function(req, res) {
   }
   if (!manifest) return res.status(404).send('Manifest not found');
 
-  // Build 66-line page (80 cols each)
   var lines = [];
   for (var l = 0; l < 66; l++) {
     var row = '';
@@ -360,103 +375,54 @@ app.get('/api/print/manifest/:id', function(req, res) {
     lines[row - 1] = before + text + after;
   }
 
-  // Look up generator
-  var gen = null;
-  if (manifest.generatorId) {
-    for (var g = 0; g < data.generators.length; g++) {
-      if (data.generators[g].id === manifest.generatorId) { gen = data.generators[g]; break; }
-    }
-  }
-
-  // Look up transporters
-  var trans1 = null, trans2 = null;
-  if (manifest.transporter1Id) {
-    for (var t = 0; t < data.transporters.length; t++) {
-      if (data.transporters[t].id === manifest.transporter1Id) { trans1 = data.transporters[t]; break; }
-    }
-  }
-  if (manifest.transporter2Id) {
-    for (var t2 = 0; t2 < data.transporters.length; t2++) {
-      if (data.transporters[t2].id === manifest.transporter2Id) { trans2 = data.transporters[t2]; break; }
-    }
-  }
-
-  // Look up facility
-  var fac = null;
-  if (manifest.facilityId) {
-    for (var f = 0; f < data.facilities.length; f++) {
-      if (data.facilities[f].id === manifest.facilityId) { fac = data.facilities[f]; break; }
-    }
-  }
-
   // Box 1 - Generator EPA ID
-  if (gen) placeText(FORM_8700_MAP.generatorEpaId.row, FORM_8700_MAP.generatorEpaId.col, gen.epaId);
-
+  placeText(FORM_8700_MAP.generatorEpaId.row, FORM_8700_MAP.generatorEpaId.col, manifest.generatorEpaId);
   // Box 2 - Page
-  placeText(FORM_8700_MAP.page.row, FORM_8700_MAP.page.col, manifest.page || '1');
-  placeText(FORM_8700_MAP.totalPages.row, FORM_8700_MAP.totalPages.col, manifest.totalPages || '1');
-
+  placeText(FORM_8700_MAP.page.row, FORM_8700_MAP.page.col, manifest.pageNum || '1');
+  placeText(FORM_8700_MAP.totalPages.row, FORM_8700_MAP.totalPages.col, manifest.pageTotal || '1');
   // Box 3 - Emergency Response Phone
-  if (gen) placeText(FORM_8700_MAP.emergencyPhone.row, FORM_8700_MAP.emergencyPhone.col, gen.emergencyPhone || gen.phone);
+  placeText(FORM_8700_MAP.emergencyPhone.row, FORM_8700_MAP.emergencyPhone.col, manifest.emergencyPhone);
 
-  // Box 5 - Generator info
-  if (gen) {
-    placeText(FORM_8700_MAP.generatorName.row, FORM_8700_MAP.generatorName.col, gen.name);
-    placeText(FORM_8700_MAP.generatorPhone.row, FORM_8700_MAP.generatorPhone.col, gen.phone);
-    // Mailing address (LEFT)
-    placeText(FORM_8700_MAP.generatorMailAddr.row, FORM_8700_MAP.generatorMailAddr.col, gen.mailAddress);
-    var mailCityLine = (gen.mailCity || '') + ', ' + (gen.mailState || '') + ', ' + (gen.mailZip || '');
-    placeText(FORM_8700_MAP.generatorMailCity.row, FORM_8700_MAP.generatorMailCity.col, mailCityLine.replace(/^, |, $/g, ''));
-    // Site address (RIGHT - same rows, higher column)
-    placeText(FORM_8700_MAP.generatorSiteAddr.row, FORM_8700_MAP.generatorSiteAddr.col, gen.siteAddress);
-    var siteCityLine = (gen.city || '') + ', ' + (gen.state || '') + ', ' + (gen.zip || '');
-    placeText(FORM_8700_MAP.generatorSiteCity.row, FORM_8700_MAP.generatorSiteCity.col, siteCityLine.replace(/^, |, $/g, ''));
-  }
+  // Box 5 - Generator
+  placeText(FORM_8700_MAP.generatorName.row, FORM_8700_MAP.generatorName.col, manifest.generatorName);
+  placeText(FORM_8700_MAP.generatorPhone.row, FORM_8700_MAP.generatorPhone.col, manifest.generatorPhone);
+  // Mailing address (LEFT side of Box 5)
+  placeText(FORM_8700_MAP.generatorMailAddr.row, FORM_8700_MAP.generatorMailAddr.col, manifest.generatorMailAddress);
+  placeText(FORM_8700_MAP.generatorMailCity.row, FORM_8700_MAP.generatorMailCity.col, manifest.generatorMailCityStZip);
+  // Site address (RIGHT side of Box 5 - same rows, higher column)
+  placeText(FORM_8700_MAP.generatorSiteAddr.row, FORM_8700_MAP.generatorSiteAddr.col, manifest.genSiteAddress);
+  placeText(FORM_8700_MAP.generatorSiteCity.row, FORM_8700_MAP.generatorSiteCity.col, manifest.genSiteCityStZip);
 
   // Box 6 - Transporter 1
-  if (trans1) {
-    placeText(FORM_8700_MAP.transporter1Name.row, FORM_8700_MAP.transporter1Name.col, trans1.name);
-    placeText(FORM_8700_MAP.transporter1EpaId.row, FORM_8700_MAP.transporter1EpaId.col, trans1.epaId);
-  }
-
+  placeText(FORM_8700_MAP.transporter1Name.row, FORM_8700_MAP.transporter1Name.col, manifest.transporter1Name);
+  placeText(FORM_8700_MAP.transporter1EpaId.row, FORM_8700_MAP.transporter1EpaId.col, manifest.transporter1EpaId);
   // Box 7 - Transporter 2
-  if (trans2) {
-    placeText(FORM_8700_MAP.transporter2Name.row, FORM_8700_MAP.transporter2Name.col, trans2.name);
-    placeText(FORM_8700_MAP.transporter2EpaId.row, FORM_8700_MAP.transporter2EpaId.col, trans2.epaId);
-  }
+  placeText(FORM_8700_MAP.transporter2Name.row, FORM_8700_MAP.transporter2Name.col, manifest.transporter2Name);
+  placeText(FORM_8700_MAP.transporter2EpaId.row, FORM_8700_MAP.transporter2EpaId.col, manifest.transporter2EpaId);
 
   // Box 8 - Facility
-  if (fac) {
-    placeText(FORM_8700_MAP.facilityName.row, FORM_8700_MAP.facilityName.col, fac.name);
-    placeText(FORM_8700_MAP.facilityPhone.row, FORM_8700_MAP.facilityPhone.col, fac.phone);
-    placeText(FORM_8700_MAP.facilityAddress.row, FORM_8700_MAP.facilityAddress.col, fac.siteAddress);
-    var facCityLine = (fac.city || '') + ', ' + (fac.state || '') + ', ' + (fac.zip || '');
-    placeText(FORM_8700_MAP.facilityCity.row, FORM_8700_MAP.facilityCity.col, facCityLine.replace(/^, |, $/g, ''));
-    placeText(FORM_8700_MAP.facilityEpaId.row, FORM_8700_MAP.facilityEpaId.col, fac.epaId);
-  }
+  placeText(FORM_8700_MAP.facilityName.row, FORM_8700_MAP.facilityName.col, manifest.facilityName);
+  placeText(FORM_8700_MAP.facilityPhone.row, FORM_8700_MAP.facilityPhone.col, manifest.facilityPhone);
+  placeText(FORM_8700_MAP.facilityAddress.row, FORM_8700_MAP.facilityAddress.col, manifest.facilityAddress);
+  placeText(FORM_8700_MAP.facilityCity.row, FORM_8700_MAP.facilityCity.col, manifest.facilityCityStZip);
+  placeText(FORM_8700_MAP.facilityEpaId.row, FORM_8700_MAP.facilityEpaId.col, manifest.facilityEpaId);
 
-  // Box 9 - Waste lines
-  var wasteLines = manifest.wasteLines || [];
-  for (var w = 0; w < Math.min(wasteLines.length, 4); w++) {
-    var wl = wasteLines[w];
-    var n = w + 1;
-    if (wl.description) placeText(FORM_8700_MAP['waste' + n + 'desc'].row, FORM_8700_MAP['waste' + n + 'desc'].col, wl.description);
-    if (wl.dotCode) placeText(FORM_8700_MAP['waste' + n + 'code'].row, FORM_8700_MAP['waste' + n + 'code'].col, wl.dotCode);
-    if (wl.containerType) placeText(FORM_8700_MAP['waste' + n + 'container'].row, FORM_8700_MAP['waste' + n + 'container'].col, wl.containerType);
-    if (wl.quantity) placeText(FORM_8700_MAP['waste' + n + 'qty'].row, FORM_8700_MAP['waste' + n + 'qty'].col, String(wl.quantity));
-    if (wl.unitOfMeasure) placeText(FORM_8700_MAP['waste' + n + 'uom'].row, FORM_8700_MAP['waste' + n + 'uom'].col, wl.unitOfMeasure);
-    if (wl.wasteCodes) placeText(FORM_8700_MAP['waste' + n + 'wCodes'].row, FORM_8700_MAP['waste' + n + 'wCodes'].col, wl.wasteCodes);
+  // Box 9 - Waste lines (uses flattened fields: waste1Description, waste1ContainerType, etc.)
+  for (var w = 1; w <= 4; w++) {
+    placeText(FORM_8700_MAP['waste' + w + 'desc'].row, FORM_8700_MAP['waste' + w + 'desc'].col, manifest['waste' + w + 'Description']);
+    placeText(FORM_8700_MAP['waste' + w + 'container'].row, FORM_8700_MAP['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
+    placeText(FORM_8700_MAP['waste' + w + 'qty'].row, FORM_8700_MAP['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
+    placeText(FORM_8700_MAP['waste' + w + 'uom'].row, FORM_8700_MAP['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
+    placeText(FORM_8700_MAP['waste' + w + 'wCodes'].row, FORM_8700_MAP['waste' + w + 'wCodes'].col, manifest['waste' + w + 'WasteCodes']);
+    placeText(FORM_8700_MAP['waste' + w + 'code'].row, FORM_8700_MAP['waste' + w + 'code'].col, manifest['waste' + w + 'ContainerNum']);
   }
 
   // Box 14 - Special Handling
-  if (manifest.specialHandling) {
-    placeText(FORM_8700_MAP.specialHandling.row, FORM_8700_MAP.specialHandling.col, manifest.specialHandling);
-  }
+  placeText(FORM_8700_MAP.specialHandling.row, FORM_8700_MAP.specialHandling.col, manifest.specialHandling);
 
-  // Box 15 - Certification
-  if (manifest.certName) placeText(FORM_8700_MAP.generatorCertName.row, FORM_8700_MAP.generatorCertName.col, manifest.certName);
-  var today = new Date().toLocaleDateString('en-US');
-  placeText(FORM_8700_MAP.certDate.row, FORM_8700_MAP.certDate.col, manifest.certDate || today);
+  // Box 15 - Generator Certification
+  placeText(FORM_8700_MAP.generatorCertName.row, FORM_8700_MAP.generatorCertName.col, manifest.generatorPrintName);
+  placeText(FORM_8700_MAP.certDate.row, FORM_8700_MAP.certDate.col, manifest.generatorDate);
 
   var output = lines.join('\n');
   res.set('Content-Type', 'text/plain');
@@ -470,7 +436,6 @@ app.get('/api/print/raw/:id', function(req, res) {
     if (data.manifests[i].id === req.params.id) { manifest = data.manifests[i]; break; }
   }
   if (!manifest) return res.status(404).send('Manifest not found');
-  // Redirect to text version for now
   res.redirect('/api/print/manifest/' + req.params.id);
 });
 
