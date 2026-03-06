@@ -157,43 +157,296 @@
             )
           )
         ),
-        showModal?React.createElement(ManifestFormModal,{item:editing,data:data,onSave:handleSave,onClose:function(){setShowModal(false);setEditing(null);clearPreselected()}}):null
+        showModal?React.createElement(ManifestFormModal,{manifest:editing,data:data,reload:function(){reload();setShowModal(false);setEditing(null);clearPreselected()},onClose:function(){setShowModal(false);setEditing(null);clearPreselected()}}):null
       );
     }
 
-    function ManifestFormModal(props){
-      var item=props.item;var data=props.data;var onSave=props.onSave;var onClose=props.onClose;
-      var f1=useState(item||{manifestNum:'',generatorName:'',transporters:[],facilityName:'',wastes:[],status:'draft'});
-      var form=f1[0];var setForm=f1[1];
-      function set(k,v){setForm(function(f){var n=Object.assign({},f);n[k]=v;return n})}
-      return React.createElement('div',{className:'modal-overlay',onClick:onClose},
-        React.createElement('div',{className:'modal',onClick:function(e){e.stopPropagation()}},
-          React.createElement('h3',null,(item?'Edit':'New')+' Manifest'),
-          React.createElement('div',{className:'form-grid'},
-            React.createElement('div',{className:'form-group'},
-              React.createElement('label',null,'Manifest Number'),
-              React.createElement('input',{value:form.manifestNum||'',onChange:function(e){set('manifestNum',e.target.value)}})
-            ),
-            React.createElement('div',{className:'form-group'},
-              React.createElement('label',null,'Generator'),
-              React.createElement('select',{value:form.generatorName||'',onChange:function(e){set('generatorName',e.target.value)}},
-                React.createElement('option',{value:''},'-- Select --'),
-                (data.generators||[]).map(function(g){return React.createElement('option',{key:g.id,value:g.name},g.name)})
-              )
-            ),
-            React.createElement('div',{className:'form-group'},
-              React.createElement('label',null,'Facility'),
-              React.createElement('select',{value:form.facilityName||'',onChange:function(e){set('facilityName',e.target.value)}},
-                React.createElement('option',{value:''},'-- Select --'),
-                (data.facilities||[]).map(function(f){return React.createElement('option',{key:f.id,value:f.name},f.name)})
-              )
-            )
-          ),
-          React.createElement('div',{className:'modal-actions'},
-            React.createElement('button',{className:'btn btn-secondary',onClick:onClose},'Cancel'),
-            React.createElement('button',{className:'btn btn-primary',onClick:function(){onSave(form)}},'Save Manifest')
-          )
-        )
+    function ManifestFormModal(props) {
+      var manifest = props.manifest;
+      var data = props.data;
+      var onClose = props.onClose;
+      var reload = props.reload;
+      var isEdit = !!manifest;
+      var emptyWaste = { hm: '', description: '', containerNum: '', containerType: '', qty: '', unit: '', wasteCodes: '' };
+
+      var formState = useState(function() {
+        if (manifest) return Object.assign({}, manifest);
+        return {
+          manifestTrackingNum: '', emergencyPhone: '',
+          generatorEpaId: '', generatorName: '', generatorAddress: '', generatorCityStZip: '', generatorPhone: '',
+          genSiteAddress: '', genSiteCityStZip: '',
+          transporter1Name: '', transporter1EpaId: '',
+          transporter2Name: '', transporter2EpaId: '',
+          facilityName: '', facilityAddress: '', facilityCityStZip: '', facilityPhone: '', facilityEpaId: '',
+          wasteLines: [Object.assign({},emptyWaste), Object.assign({},emptyWaste), Object.assign({},emptyWaste), Object.assign({},emptyWaste)],
+          specialHandling: '', specialHandling2: '',
+          generatorPrintName: '', generatorDate: new Date().toLocaleDateString('en-US'),
+          pageNum: '1', pageTotal: '1',
+          status: 'draft'
+        };
+      });
+      var form = formState[0];
+      var setForm = formState[1];
+
+      function set(field, val) { setForm(function(f) { var n = Object.assign({}, f); n[field] = val; return n; }); }
+
+      function setWaste(idx, field, val) {
+        setForm(function(f) {
+          var lines = (f.wasteLines || []).slice();
+          while (lines.length <= idx) lines.push(Object.assign({}, emptyWaste));
+          lines[idx] = Object.assign({}, lines[idx]);
+          lines[idx][field] = val;
+          return Object.assign({}, f, { wasteLines: lines });
+        });
+      }
+
+      function loadGenerator(id) {
+        var gen = data.generators.find(function(g) { return g.id === id; });
+        if (!gen) return;
+        setForm(function(f) {
+          return Object.assign({}, f, {
+            generatorName: gen.name || '',
+            generatorEpaId: gen.epaId || '',
+            generatorAddress: gen.siteAddress || '',
+            generatorCityStZip: [gen.city, gen.state, gen.zip].filter(Boolean).join(', '),
+            generatorPhone: gen.phone || '',
+            emergencyPhone: gen.emergencyPhone || gen.phone || ''
+          });
+        });
+      }
+
+      function loadTransporter(id, num) {
+        var t = data.transporters.find(function(x) { return x.id === id; });
+        if (!t) return;
+        setForm(function(f) {
+          var n = Object.assign({}, f);
+          n['transporter' + num + 'Name'] = t.name || '';
+          n['transporter' + num + 'EpaId'] = t.epaId || '';
+          return n;
+        });
+      }
+
+      function loadFacility(id) {
+        var fac = data.facilities.find(function(x) { return x.id === id; });
+        if (!fac) return;
+        setForm(function(f) {
+          return Object.assign({}, f, {
+            facilityName: fac.name || '',
+            facilityAddress: fac.siteAddress || '',
+            facilityCityStZip: [fac.city, fac.state, fac.zip].filter(Boolean).join(', '),
+            facilityPhone: fac.phone || '',
+            facilityEpaId: fac.epaId || ''
+          });
+        });
+      }
+
+      function loadWasteStream(id, lineIdx) {
+        var w = data.wasteStreams.find(function(x) { return x.id === id; });
+        if (!w) return;
+        setForm(function(f) {
+          var lines = (f.wasteLines || []).slice();
+          while (lines.length <= lineIdx) lines.push(Object.assign({}, emptyWaste));
+          lines[lineIdx] = {
+            hm: w.hm || '', description: w.dotDescription || '', containerNum: '',
+            containerType: w.containerType || '', qty: '', unit: w.unit || '', wasteCodes: w.wasteCodes || ''
+          };
+          return Object.assign({}, f, { wasteLines: lines });
+        });
+      }
+
+      function handleSave() {
+        var payload = Object.assign({}, form);
+        var lines = payload.wasteLines || [];
+        for (var i = 0; i < 4; i++) {
+          var n = i + 1;
+          var line = lines[i] || emptyWaste;
+          payload['waste' + n + 'HM'] = line.hm || '';
+          payload['waste' + n + 'Description'] = line.description || '';
+          payload['waste' + n + 'ContainerNum'] = line.containerNum || '';
+          payload['waste' + n + 'ContainerType'] = line.containerType || '';
+          payload['waste' + n + 'Qty'] = line.qty || '';
+          payload['waste' + n + 'Unit'] = line.unit || '';
+          payload['waste' + n + 'WasteCodes'] = line.wasteCodes || '';
+        }
+        var promise;
+        if (isEdit) {
+          promise = api.put('/api/manifests/' + manifest.id, payload);
+        } else {
+          promise = api.post('/api/manifests', payload);
+        }
+        promise.then(function() { reload(); onClose(); });
+      }
+
+      return (
+        <div className="modal-overlay" onClick={onClose}>
+          <div className="modal" style={{maxWidth:850}} onClick={function(e){e.stopPropagation()}}>
+            <h3>{isEdit ? 'Edit' : 'New'} Manifest (EPA 8700-22)</h3>
+
+            <div className="form-grid" style={{marginBottom:20}}>
+              <div className="form-group">
+                <label>Manifest Tracking # (Box 4)</label>
+                <input value={form.manifestTrackingNum || ''} onChange={function(e){set('manifestTrackingNum',e.target.value)}} placeholder="Pre-printed on form" />
+              </div>
+              <div className="form-group">
+                <label>Page ___ of ___</label>
+                <div style={{display:'flex',gap:8}}>
+                  <input value={form.pageNum || '1'} onChange={function(e){set('pageNum',e.target.value)}} style={{width:50}} />
+                  <span style={{alignSelf:'center'}}>of</span>
+                  <input value={form.pageTotal || '1'} onChange={function(e){set('pageTotal',e.target.value)}} style={{width:50}} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Emergency Response Phone (Box 3)</label>
+                <input value={form.emergencyPhone || ''} onChange={function(e){set('emergencyPhone',e.target.value)}} />
+              </div>
+            </div>
+
+            <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
+              <h4 style={{marginBottom:8}}>Box 5 - Generator</h4>
+              <div className="profile-select">
+                <select onChange={function(e){loadGenerator(e.target.value)}} defaultValue="">
+                  <option value="">-- Load from saved generator --</option>
+                  {data.generators.map(function(g) { return <option key={g.id} value={g.id}>{g.name} {g.epaId ? '(' + g.epaId + ')' : ''}</option>; })}
+                </select>
+              </div>
+              <div className="form-grid">
+                <div className="form-group"><label>EPA ID (Box 1)</label><input value={form.generatorEpaId || ''} onChange={function(e){set('generatorEpaId',e.target.value)}} /></div>
+                <div className="form-group"><label>Generator Name</label><input value={form.generatorName || ''} onChange={function(e){set('generatorName',e.target.value)}} /></div>
+                <div className="form-group"><label>Mailing Address</label><input value={form.generatorAddress || ''} onChange={function(e){set('generatorAddress',e.target.value)}} /></div>
+                <div className="form-group"><label>City, State, Zip</label><input value={form.generatorCityStZip || ''} onChange={function(e){set('generatorCityStZip',e.target.value)}} /></div>
+                <div className="form-group"><label>Phone</label><input value={form.generatorPhone || ''} onChange={function(e){set('generatorPhone',e.target.value)}} /></div>
+                <div className="form-group"><label>Site Address (if different)</label><input value={form.genSiteAddress || ''} onChange={function(e){set('genSiteAddress',e.target.value)}} /></div>
+                <div className="form-group"><label>Site City, State, Zip</label><input value={form.genSiteCityStZip || ''} onChange={function(e){set('genSiteCityStZip',e.target.value)}} /></div>
+              </div>
+            </div>
+
+            <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
+              <h4 style={{marginBottom:8}}>Box 6 - Transporter 1</h4>
+              <div className="profile-select">
+                <select onChange={function(e){loadTransporter(e.target.value, 1)}} defaultValue="">
+                  <option value="">-- Load from saved transporter --</option>
+                  {data.transporters.map(function(t) { return <option key={t.id} value={t.id}>{t.name}</option>; })}
+                </select>
+              </div>
+              <div className="form-grid">
+                <div className="form-group"><label>Company Name</label><input value={form.transporter1Name || ''} onChange={function(e){set('transporter1Name',e.target.value)}} /></div>
+                <div className="form-group"><label>EPA ID</label><input value={form.transporter1EpaId || ''} onChange={function(e){set('transporter1EpaId',e.target.value)}} /></div>
+              </div>
+              <h4 style={{marginBottom:8,marginTop:16}}>Box 7 - Transporter 2</h4>
+              <div className="profile-select">
+                <select onChange={function(e){loadTransporter(e.target.value, 2)}} defaultValue="">
+                  <option value="">-- Load from saved transporter --</option>
+                  {data.transporters.map(function(t) { return <option key={t.id} value={t.id}>{t.name}</option>; })}
+                </select>
+              </div>
+              <div className="form-grid">
+                <div className="form-group"><label>Company Name</label><input value={form.transporter2Name || ''} onChange={function(e){set('transporter2Name',e.target.value)}} /></div>
+                <div className="form-group"><label>EPA ID</label><input value={form.transporter2EpaId || ''} onChange={function(e){set('transporter2EpaId',e.target.value)}} /></div>
+              </div>
+            </div>
+
+            <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
+              <h4 style={{marginBottom:8}}>Box 8 - Designated Facility (TSDF)</h4>
+              <div className="profile-select">
+                <select onChange={function(e){loadFacility(e.target.value)}} defaultValue="">
+                  <option value="">-- Load from saved facility --</option>
+                  {data.facilities.map(function(f) { return <option key={f.id} value={f.id}>{f.name}</option>; })}
+                </select>
+              </div>
+              <div className="form-grid">
+                <div className="form-group"><label>Facility Name</label><input value={form.facilityName || ''} onChange={function(e){set('facilityName',e.target.value)}} /></div>
+                <div className="form-group"><label>EPA ID</label><input value={form.facilityEpaId || ''} onChange={function(e){set('facilityEpaId',e.target.value)}} /></div>
+                <div className="form-group"><label>Address</label><input value={form.facilityAddress || ''} onChange={function(e){set('facilityAddress',e.target.value)}} /></div>
+                <div className="form-group"><label>City, State, Zip</label><input value={form.facilityCityStZip || ''} onChange={function(e){set('facilityCityStZip',e.target.value)}} /></div>
+                <div className="form-group"><label>Phone</label><input value={form.facilityPhone || ''} onChange={function(e){set('facilityPhone',e.target.value)}} /></div>
+              </div>
+            </div>
+
+            <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
+              <h4 style={{marginBottom:8}}>Box 9 - Waste Description (up to 4 lines)</h4>
+              <table className="waste-table">
+                <thead>
+                  <tr>
+                    <th style={{width:20}}>#</th>
+                    <th style={{width:30}}>HM</th>
+                    <th>US DOT Description</th>
+                    <th style={{width:50}}>Containers</th>
+                    <th style={{width:80}}>Type</th>
+                    <th style={{width:60}}>Qty</th>
+                    <th style={{width:70}}>Unit</th>
+                    <th style={{width:120}}>Waste Codes</th>
+                    <th style={{width:100}}>Template</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[0,1,2,3].map(function(i) {
+                    var line = (form.wasteLines || [])[i] || emptyWaste;
+                    return (
+                      <tr key={i}>
+                        <td style={{fontWeight:600,color:'#888'}}>{i+1}</td>
+                        <td><input value={line.hm} onChange={function(e){setWaste(i,'hm',e.target.value)}} maxLength={1} /></td>
+                        <td><input value={line.description} onChange={function(e){setWaste(i,'description',e.target.value)}} /></td>
+                        <td><input value={line.containerNum} onChange={function(e){setWaste(i,'containerNum',e.target.value)}} /></td>
+                        <td>
+                          <select value={line.containerType} onChange={function(e){setWaste(i,'containerType',e.target.value)}}>
+                            <option value="">--</option>
+                            {CONTAINER_TYPES.map(function(ct) { return <option key={ct.code} value={ct.code}>{ct.code}</option>; })}
+                          </select>
+                        </td>
+                        <td><input value={line.qty} onChange={function(e){setWaste(i,'qty',e.target.value)}} /></td>
+                        <td>
+                          <select value={line.unit} onChange={function(e){setWaste(i,'unit',e.target.value)}}>
+                            <option value="">--</option>
+                            {UNIT_TYPES.map(function(u) { return <option key={u.code} value={u.code}>{u.code}</option>; })}
+                          </select>
+                        </td>
+                        <td><input value={line.wasteCodes} onChange={function(e){setWaste(i,'wasteCodes',e.target.value)}} placeholder="D001 D002" /></td>
+                        <td>
+                          <select onChange={function(e){loadWasteStream(e.target.value,i)}} defaultValue="" style={{fontSize:11,padding:'4px 2px'}}>
+                            <option value="">Load...</option>
+                            {data.wasteStreams.map(function(w) { return <option key={w.id} value={w.id}>{w.name}</option>; })}
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="form-grid" style={{marginBottom:16}}>
+              <div className="form-group full-width">
+                <label>Special Handling Instructions (Box 14)</label>
+                <input value={form.specialHandling || ''} onChange={function(e){set('specialHandling',e.target.value)}} />
+              </div>
+              <div className="form-group full-width">
+                <label>Special Handling Line 2</label>
+                <input value={form.specialHandling2 || ''} onChange={function(e){set('specialHandling2',e.target.value)}} />
+              </div>
+              <div className="form-group">
+                <label>Generator Print Name (Box 15)</label>
+                <input value={form.generatorPrintName || ''} onChange={function(e){set('generatorPrintName',e.target.value)}} />
+              </div>
+              <div className="form-group">
+                <label>Date</label>
+                <input value={form.generatorDate || ''} onChange={function(e){set('generatorDate',e.target.value)}} />
+              </div>
+              <div className="form-group">
+                <label>Status</label>
+                <select value={form.status || 'draft'} onChange={function(e){set('status',e.target.value)}}>
+                  <option value="draft">Draft</option>
+                  <option value="printed">Printed</option>
+                  <option value="signed">Signed</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSave}>{isEdit ? 'Update' : 'Create'} Manifest</button>
+            </div>
+          </div>
+        </div>
       );
     }
 
