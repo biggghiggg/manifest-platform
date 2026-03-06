@@ -272,7 +272,9 @@
         setForm(function(f) {
           var lines = (f.wasteLines || []).slice();
           while (lines.length <= lineIdx) lines.push(Object.assign({}, emptyWaste));
-          var allCodes = [w.wasteCodes || '', w.stateWasteCodes || ''].filter(Boolean).join(' ').trim();
+          var fedCodes = (w.wasteCodes || '').replace(/\bnone\b/gi, '').trim();
+          var stateCodes = (w.stateWasteCodes || '').replace(/\bnone\b/gi, '').replace(/[A-Za-z]+-?/g, '').replace(/\s+/g, ' ').trim();
+          var allCodes = [fedCodes, stateCodes].filter(Boolean).join(' ').trim();
           lines[lineIdx] = {
             hm: w.hm || '', description: w.dotDescription || '', containerNum: '',
             containerType: w.containerType || '', qty: '', unit: w.unit || '', wasteCodes: allCodes
@@ -623,7 +625,11 @@
                           <td style={Object.assign({},cellStyle('8%'),{textAlign:'center'})}>{line.containerType || ''}</td>
                           <td style={Object.assign({},cellStyle('10%'),{textAlign:'center'})}>{line.qty || ''}</td>
                           <td style={Object.assign({},cellStyle('8%'),{textAlign:'center'})}>{line.unit || ''}</td>
-                          <td style={cellStyle('26%')}><span style={{fontSize:10,fontFamily:'monospace'}}>{line.wasteCodes || ''}</span></td>
+                          <td style={cellStyle('26%')}>
+                            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:1}}>
+                              {(function(){var codes=(line.wasteCodes||'').split(/[\s,]+/).filter(function(c){return c.length>0});var boxes=[];for(var b=0;b<6;b++){boxes.push(<div key={b} style={{border:'1px solid #999',padding:'1px 3px',fontSize:9,fontFamily:'monospace',fontWeight:600,textAlign:'center',minHeight:14,background:codes[b]?'#fffff0':'#fff'}}>{codes[b]||''}</div>)}return boxes})()}
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
