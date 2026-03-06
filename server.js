@@ -347,8 +347,11 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
         isHazMat = dotHazMatch[1].indexOf('Yes') !== -1;
       }
 
-      // UN/NA#
-      var unMatch = fullText.match(/UN\/NA#[:\s]+(\S+)/i);
+      // UN/NA# - try multiple patterns since pdf-parse layouts vary
+      var unMatch = fullText.match(/UN\/NA\s*#\s*:?\s*(UN\d{3,5}|NA\d{3,5})/i);
+      if (!unMatch) unMatch = fullText.match(/UN\/NA\s*(?:Number|#|No\.?)\s*:?\s*(UN\d{3,5}|NA\d{3,5})/i);
+      if (!unMatch) unMatch = fullText.match(/(UN\d{4,5})/);
+      if (!unMatch) unMatch = fullText.match(/(NA\d{4,5})/);
       if (unMatch) unNum = unMatch[1].trim();
 
       // Hazard Class
@@ -380,9 +383,13 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
         stateWasteCodes = rawStateCodes.replace(/[A-Za-z]+-?/g, '').replace(/\s+/g, ' ').trim();
       }
 
+      // Uppercase entire DOT description to match proper DOT style
+      if (dotDescription) {
+        dotDescription = dotDescription.toUpperCase();
+      }
       // If DOT description contains N.O.S., append common name in parentheses
       if (dotDescription && dotDescription.match(/N\.O\.S\.?\s*$/i) && commonName) {
-        dotDescription = dotDescription + ' (' + commonName + ')';
+        dotDescription = dotDescription + ' (' + commonName.toUpperCase() + ')';
       }
 
       // Build the waste stream template
