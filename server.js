@@ -612,9 +612,9 @@ app.get('/api/print/manifest/:id', function(req, res) {
   // Box 13 waste code box positions: 6 boxes per waste line
   // 3 codes on the main row, 3 codes on the next row
   // Each code box is 5 chars wide (4 char code + 1 space)
-  var WASTE_CODE_COL1 = 62;
+  var WASTE_CODE_COL1 = 61;
   var WASTE_CODE_COL2 = 67;
-  var WASTE_CODE_COL3 = 72;
+  var WASTE_CODE_COL3 = 73;
   for (var w = 1; w <= 4; w++) {
     var wasteDesc = manifest['waste' + w + 'Description'] || '';
     var descLines = wrapDescLines(wasteDesc, descRow1Width, descContWidth);
@@ -627,21 +627,19 @@ app.get('/api/print/manifest/:id', function(req, res) {
     placeText(FORM_8700_MAP['waste' + w + 'qty'].row, FORM_8700_MAP['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
     placeText(FORM_8700_MAP['waste' + w + 'uom'].row, FORM_8700_MAP['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
     placeText(FORM_8700_MAP['waste' + w + 'code'].row, FORM_8700_MAP['waste' + w + 'code'].col, manifest['waste' + w + 'ContainerNum']);
-    // Box 13 - Split waste codes into 6 individual boxes (3 per row)
+    // Box 13 - Split waste codes into 6 individual boxes (3 per row, 2 rows)
     var allCodes = (manifest['waste' + w + 'WasteCodes'] || '').trim();
     if (allCodes) {
       var codeArr = allCodes.split(/[\s,]+/).filter(function(c) { return c.length > 0; });
       var codeCols = [WASTE_CODE_COL1, WASTE_CODE_COL2, WASTE_CODE_COL3];
-      // First 3 codes on the main waste line row
-      for (var ci = 0; ci < Math.min(codeArr.length, 3); ci++) {
-        placeText(baseRow, codeCols[ci], codeArr[ci]);
-      }
-      // Next 3 codes on the row below
-      if (codeArr.length > 3) {
-        for (var ci2 = 3; ci2 < Math.min(codeArr.length, 6); ci2++) {
-          placeText(baseRow + 1, codeCols[ci2 - 3], codeArr[ci2]);
-        }
-      }
+      // First row: codes 1-3
+      if (codeArr[0]) placeText(baseRow, codeCols[0], codeArr[0]);
+      if (codeArr[1]) placeText(baseRow, codeCols[1], codeArr[1]);
+      if (codeArr[2]) placeText(baseRow, codeCols[2], codeArr[2]);
+      // Second row: codes 4-6
+      if (codeArr[3]) placeText(baseRow + 1, codeCols[0], codeArr[3]);
+      if (codeArr[4]) placeText(baseRow + 1, codeCols[1], codeArr[4]);
+      if (codeArr[5]) placeText(baseRow + 1, codeCols[2], codeArr[5]);
     }
   }
 
