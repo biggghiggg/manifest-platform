@@ -68,14 +68,12 @@
   <div id="root"></div>
   <script type="text/babel">
     var useState=React.useState,useEffect=React.useEffect,useCallback=React.useCallback,useRef=React.useRef;
-
     var api={
       get:function(url){return fetch(url).then(function(r){return r.json()})},
       post:function(url,body){return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()})},
       put:function(url,body){return fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()})},
       del:function(url){return fetch(url,{method:'DELETE'}).then(function(r){return r.json()})}
     };
-
     var CONTAINER_TYPES=[{code:'DM',label:'Metal Drums'},{code:'DP',label:'Plastic Drums'},{code:'DW',label:'Wooden Drums'},{code:'CF',label:'Fiber Drums'},{code:'TT',label:'Dump Truck/Trailer'},{code:'TC',label:'Tank Car'},{code:'TP',label:'Portable Tanks'},{code:'CY',label:'Cylinders'},{code:'CM',label:'Metal Boxes'},{code:'BA',label:'Burlap Bags'}];
     var UNIT_TYPES=[{code:'G',label:'Gallons'},{code:'L',label:'Liters'},{code:'P',label:'Pounds'},{code:'K',label:'Kilograms'},{code:'T',label:'Tons'},{code:'N',label:'Cubic Yards'}];
 
@@ -85,38 +83,26 @@
       var cs=useState(false);var connected=cs[0];var setConnected=cs[1];
       var ls=useState(true);var loading=ls[0];var setLoading=ls[1];
       var loadAllData=useCallback(function(){return api.get('/api/data').then(function(d){setData(d);setLoading(false)}).catch(function(e){console.error(e);setLoading(false)})},[]);
-      useEffect(function(){
-        loadAllData();
-        var es=new EventSource('/api/events');
-        es.onmessage=function(e){var ev=JSON.parse(e.data);if(ev.type==='connected')setConnected(true);if(ev.type==='data-updated')loadAllData()};
-        es.onerror=function(){setConnected(false)};
-        return function(){es.close()};
-      },[loadAllData]);
+      useEffect(function(){loadAllData();var es=new EventSource('/api/events');es.onmessage=function(e){var ev=JSON.parse(e.data);if(ev.type==='connected')setConnected(true);if(ev.type==='data-updated')loadAllData()};es.onerror=function(){setConnected(false)};return function(){es.close()}},[loadAllData]);
       if(loading) return React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontSize:18,color:'#888'}},'Loading...');
-      return(
-        <div>
-          <nav className="top-nav">
-            <h1><span>IES</span> Manifest Platform</h1>
-            <div className="nav-tabs">
-              <button className={"nav-tab"+(tab==='manifests'?' active':'')} onClick={function(){setTab('manifests')}}>Manifests</button>
-              <button className={"nav-tab"+(tab==='generators'?' active':'')} onClick={function(){setTab('generators')}}>Generators</button>
-              <button className={"nav-tab"+(tab==='transporters'?' active':'')} onClick={function(){setTab('transporters')}}>Transporters</button>
-              <button className={"nav-tab"+(tab==='facilities'?' active':'')} onClick={function(){setTab('facilities')}}>Facilities</button>
-              <button className={"nav-tab"+(tab==='waste'?' active':'')} onClick={function(){setTab('waste')}}>Waste Streams</button>
-              <button className={"nav-tab"+(tab==='import'?' active':'')} onClick={function(){setTab('import')}}>Import</button>
-            </div>
-            <span className={"status-dot "+(connected?'connected':'disconnected')} title={connected?'Connected':'Disconnected'}></span>
-          </nav>
-          <div className="main-content">
-            {tab==='manifests'&&<ManifestsTab data={data} reload={loadAllData}/>}
-            {tab==='generators'&&<ProfileTab type="generators" data={data} reload={loadAllData}/>}
-            {tab==='transporters'&&<ProfileTab type="transporters" data={data} reload={loadAllData}/>}
-            {tab==='facilities'&&<ProfileTab type="facilities" data={data} reload={loadAllData}/>}
-            {tab==='waste'&&<WasteStreamsTab data={data} reload={loadAllData}/>}
-            {tab==='import'&&<ImportTab reload={loadAllData}/>}
-          </div>
+      return(<div>
+        <nav className="top-nav"><h1><span>IES</span> Manifest Platform</h1><div className="nav-tabs">
+          <button className={"nav-tab"+(tab==='manifests'?' active':'')} onClick={function(){setTab('manifests')}}>Manifests</button>
+          <button className={"nav-tab"+(tab==='generators'?' active':'')} onClick={function(){setTab('generators')}}>Generators</button>
+          <button className={"nav-tab"+(tab==='transporters'?' active':'')} onClick={function(){setTab('transporters')}}>Transporters</button>
+          <button className={"nav-tab"+(tab==='facilities'?' active':'')} onClick={function(){setTab('facilities')}}>Facilities</button>
+          <button className={"nav-tab"+(tab==='waste'?' active':'')} onClick={function(){setTab('waste')}}>Waste Streams</button>
+          <button className={"nav-tab"+(tab==='import'?' active':'')} onClick={function(){setTab('import')}}>Import</button>
+        </div><span className={"status-dot "+(connected?'connected':'disconnected')} title={connected?'Connected':'Disconnected'}></span></nav>
+        <div className="main-content">
+          {tab==='manifests'&&<ManifestsTab data={data} reload={loadAllData}/>}
+          {tab==='generators'&&<ProfileTab type="generators" data={data} reload={loadAllData}/>}
+          {tab==='transporters'&&<ProfileTab type="transporters" data={data} reload={loadAllData}/>}
+          {tab==='facilities'&&<ProfileTab type="facilities" data={data} reload={loadAllData}/>}
+          {tab==='waste'&&<WasteStreamsTab data={data} reload={loadAllData}/>}
+          {tab==='import'&&<ImportTab reload={loadAllData}/>}
         </div>
-      );
+      </div>);
     }
 
     function ManifestsTab(props){
@@ -128,170 +114,73 @@
       var filtered=data.manifests.filter(function(m){var s=search.toLowerCase();return !s||(m.generatorName||'').toLowerCase().indexOf(s)>=0||(m.manifestTrackingNum||'').toLowerCase().indexOf(s)>=0||String(m.manifestNum).indexOf(s)>=0}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)});
       function handleDelete(id){if(confirm('Delete this manifest?')){api.del('/api/manifests/'+id).then(reload)}}
       function handlePreview(m){fetch('/api/print/manifest/'+m.id).then(function(r){return r.text()}).then(function(text){setShowPreview({manifest:m,text:text})})}
-      return(
-        <div>
-          <div className="section-header">
-            <h2 style={{fontSize:22,fontWeight:700}}>Hazardous Waste Manifests (8700-22)</h2>
-            <div style={{display:'flex',gap:8,alignItems:'center'}}>
-              <input className="search-bar" placeholder="Search manifests..." value={search} onChange={function(e){setSearch(e.target.value)}}/>
-              <button className="btn btn-primary" onClick={function(){setEditing(null);setShowForm(true)}}>+ New Manifest</button>
-            </div>
-          </div>
-          <div className="card">
-            <table className="data-table">
-              <thead><tr><th>#</th><th>Tracking #</th><th>Generator</th><th>Facility</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody>
-                {filtered.length===0&&<tr><td colSpan="7" style={{textAlign:'center',color:'#999',padding:24}}>No manifests yet.</td></tr>}
-                {filtered.map(function(m){return(
-                  <tr key={m.id}>
-                    <td>{m.manifestNum}</td><td>{m.manifestTrackingNum||'-'}</td><td>{m.generatorName||'-'}</td><td>{m.facilityName||'-'}</td>
-                    <td>{m.generatorDate||new Date(m.createdAt).toLocaleDateString()}</td>
-                    <td><span className={"badge badge-"+(m.status||'draft')}>{m.status||'draft'}</span></td>
-                    <td style={{display:'flex',gap:4}}>
-                      <button className="btn btn-sm btn-secondary" onClick={function(){setEditing(m);setShowForm(true)}}>Edit</button>
-                      <button className="btn btn-sm btn-print" onClick={function(){handlePreview(m)}}>Preview</button>
-                      <button className="btn btn-sm btn-success" onClick={function(){window.open('/api/print/manifest/'+m.id,'_blank')}}>Print</button>
-                      <button className="btn btn-sm btn-danger" onClick={function(){handleDelete(m.id)}}>X</button>
-                    </td>
-                  </tr>
-                )})}
-              </tbody>
-            </table>
-          </div>
-          {showForm&&<ManifestFormModal manifest={editing} data={data} onClose={function(){setShowForm(false);setEditing(null)}} reload={reload}/>}
-          {showPreview&&(
-            <div className="modal-overlay" onClick={function(){setShowPreview(null)}}>
-              <div className="modal" style={{maxWidth:900}} onClick={function(e){e.stopPropagation()}}>
-                <h3>Print Preview - Manifest #{showPreview.manifest.manifestNum}</h3>
-                <p style={{color:'#888',fontSize:13,marginBottom:12}}>Shows data positioning on pre-printed form.</p>
-                <div className="print-preview">{showPreview.text}</div>
-                <div className="modal-actions">
-                  <button className="btn btn-secondary" onClick={function(){setShowPreview(null)}}>Close</button>
-                  <button className="btn btn-print" onClick={function(){window.open('/api/print/manifest/'+showPreview.manifest.id,'_blank')}}>Send to Printer</button>
-                  <a className="btn btn-success" href={'/api/print/raw/'+showPreview.manifest.id} download>Download .prn</a>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
+      return(<div>
+        <div className="section-header"><h2 style={{fontSize:22,fontWeight:700}}>Hazardous Waste Manifests (8700-22)</h2><div style={{display:'flex',gap:8,alignItems:'center'}}><input className="search-bar" placeholder="Search manifests..." value={search} onChange={function(e){setSearch(e.target.value)}}/><button className="btn btn-primary" onClick={function(){setEditing(null);setShowForm(true)}}>+ New Manifest</button></div></div>
+        <div className="card"><table className="data-table"><thead><tr><th>#</th><th>Tracking #</th><th>Generator</th><th>Facility</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+          {filtered.length===0&&<tr><td colSpan="7" style={{textAlign:'center',color:'#999',padding:24}}>No manifests yet.</td></tr>}
+          {filtered.map(function(m){return(<tr key={m.id}><td>{m.manifestNum}</td><td>{m.manifestTrackingNum||'-'}</td><td>{m.generatorName||'-'}</td><td>{m.facilityName||'-'}</td><td>{m.generatorDate||new Date(m.createdAt).toLocaleDateString()}</td><td><span className={"badge badge-"+(m.status||'draft')}>{m.status||'draft'}</span></td><td style={{display:'flex',gap:4}}><button className="btn btn-sm btn-secondary" onClick={function(){setEditing(m);setShowForm(true)}}>Edit</button><button className="btn btn-sm btn-print" onClick={function(){handlePreview(m)}}>Preview</button><button className="btn btn-sm btn-success" onClick={function(){window.open('/api/print/manifest/'+m.id,'_blank')}}>Print</button><button className="btn btn-sm btn-danger" onClick={function(){handleDelete(m.id)}}>X</button></td></tr>)})}
+        </tbody></table></div>
+        {showForm&&<ManifestFormModal manifest={editing} data={data} onClose={function(){setShowForm(false);setEditing(null)}} reload={reload}/>}
+        {showPreview&&(<div className="modal-overlay" onClick={function(){setShowPreview(null)}}><div className="modal" style={{maxWidth:900}} onClick={function(e){e.stopPropagation()}}><h3>Print Preview - Manifest #{showPreview.manifest.manifestNum}</h3><p style={{color:'#888',fontSize:13,marginBottom:12}}>Shows data positioning on pre-printed form.</p><div className="print-preview">{showPreview.text}</div><div className="modal-actions"><button className="btn btn-secondary" onClick={function(){setShowPreview(null)}}>Close</button><button className="btn btn-print" onClick={function(){window.open('/api/print/manifest/'+showPreview.manifest.id,'_blank')}}>Send to Printer</button><a className="btn btn-success" href={'/api/print/raw/'+showPreview.manifest.id} download>Download .prn</a></div></div></div>)}
+      </div>);
     }
 
     function ManifestFormModal(props){
-      var manifest=props.manifest;var data=props.data;var onClose=props.onClose;var reload=props.reload;
-      var isEdit=!!manifest;
+      var manifest=props.manifest;var data=props.data;var onClose=props.onClose;var reload=props.reload;var isEdit=!!manifest;
       var emptyWaste={hm:'',description:'',containerNum:'',containerType:'',qty:'',unit:'',wasteCodes:''};
-      var f1=useState(function(){
-        if(manifest) return Object.assign({},manifest);
-        return{manifestTrackingNum:'',emergencyPhone:'',generatorEpaId:'',generatorName:'',generatorMailAddress:'',generatorMailCityStZip:'',generatorPhone:'',genSiteAddress:'',genSiteCityStZip:'',transporter1Name:'',transporter1EpaId:'',transporter2Name:'',transporter2EpaId:'',facilityName:'',facilityAddress:'',facilityCityStZip:'',facilityPhone:'',facilityEpaId:'',wasteLines:[Object.assign({},emptyWaste),Object.assign({},emptyWaste),Object.assign({},emptyWaste),Object.assign({},emptyWaste)],specialHandling:'',specialHandling2:'',generatorPrintName:'',generatorDate:new Date().toLocaleDateString('en-US'),pageNum:'1',pageTotal:'1',status:'draft'};
-      });
+      var f1=useState(function(){if(manifest)return Object.assign({},manifest);return{manifestTrackingNum:'',emergencyPhone:'',generatorEpaId:'',generatorName:'',generatorMailAddress:'',generatorMailCityStZip:'',generatorPhone:'',genSiteAddress:'',genSiteCityStZip:'',transporter1Name:'',transporter1EpaId:'',transporter2Name:'',transporter2EpaId:'',facilityName:'',facilityAddress:'',facilityCityStZip:'',facilityPhone:'',facilityEpaId:'',wasteLines:[Object.assign({},emptyWaste),Object.assign({},emptyWaste),Object.assign({},emptyWaste),Object.assign({},emptyWaste)],specialHandling:'',specialHandling2:'',generatorPrintName:'',generatorDate:new Date().toLocaleDateString('en-US'),pageNum:'1',pageTotal:'1',status:'draft'}});
       var form=f1[0];var setForm=f1[1];
       function set(field,val){setForm(function(f){var n=Object.assign({},f);n[field]=val;return n})}
       function setWaste(idx,field,val){setForm(function(f){var lines=(f.wasteLines||[]).slice();while(lines.length<=idx)lines.push(Object.assign({},emptyWaste));lines[idx]=Object.assign({},lines[idx]);lines[idx][field]=val;return Object.assign({},f,{wasteLines:lines})})}
-      function loadGenerator(id){
-        var gen=data.generators.find(function(g){return g.id===id});if(!gen)return;
-        setForm(function(f){return Object.assign({},f,{generatorName:gen.name||'',generatorEpaId:gen.epaId||'',generatorMailAddress:gen.mailAddress||gen.siteAddress||'',generatorMailCityStZip:[gen.mailCity||gen.city,gen.mailState||gen.state,gen.mailZip||gen.zip].filter(Boolean).join(', '),genSiteAddress:gen.siteAddress||'',genSiteCityStZip:[gen.city,gen.state,gen.zip].filter(Boolean).join(', '),generatorPhone:gen.phone||'',emergencyPhone:gen.emergencyPhone||gen.phone||''})});
-      }
+      function loadGenerator(id){var gen=data.generators.find(function(g){return g.id===id});if(!gen)return;setForm(function(f){return Object.assign({},f,{generatorName:gen.name||'',generatorEpaId:gen.epaId||'',generatorMailAddress:gen.mailAddress||gen.siteAddress||'',generatorMailCityStZip:[gen.mailCity||gen.city,gen.mailState||gen.state,gen.mailZip||gen.zip].filter(Boolean).join(', '),genSiteAddress:gen.siteAddress||'',genSiteCityStZip:[gen.city,gen.state,gen.zip].filter(Boolean).join(', '),generatorPhone:gen.phone||'',emergencyPhone:gen.emergencyPhone||gen.phone||''})})}
       function loadTransporter(id,num){var t=data.transporters.find(function(x){return x.id===id});if(!t)return;setForm(function(f){var n=Object.assign({},f);n['transporter'+num+'Name']=t.name||'';n['transporter'+num+'EpaId']=t.epaId||'';return n})}
       function loadFacility(id){var fac=data.facilities.find(function(x){return x.id===id});if(!fac)return;setForm(function(f){return Object.assign({},f,{facilityName:fac.name||'',facilityAddress:fac.siteAddress||'',facilityCityStZip:[fac.city,fac.state,fac.zip].filter(Boolean).join(', '),facilityPhone:fac.phone||'',facilityEpaId:fac.epaId||''})})}
       function loadWasteStream(id,lineIdx){var w=data.wasteStreams.find(function(x){return x.id===id});if(!w)return;setForm(function(f){var lines=(f.wasteLines||[]).slice();while(lines.length<=lineIdx)lines.push(Object.assign({},emptyWaste));lines[lineIdx]={hm:w.hm||'',description:w.dotDescription||'',containerNum:'',containerType:w.containerType||'',qty:'',unit:w.unit||'',wasteCodes:w.wasteCodes||''};return Object.assign({},f,{wasteLines:lines})})}
-      function handleSave(){
-        var payload=Object.assign({},form);var lines=payload.wasteLines||[];
-        for(var i=0;i<4;i++){var n=i+1;var line=lines[i]||emptyWaste;payload['waste'+n+'HM']=line.hm||'';payload['waste'+n+'Description']=line.description||'';payload['waste'+n+'ContainerNum']=line.containerNum||'';payload['waste'+n+'ContainerType']=line.containerType||'';payload['waste'+n+'Qty']=line.qty||'';payload['waste'+n+'Unit']=line.unit||'';payload['waste'+n+'WasteCodes']=line.wasteCodes||''}
-        var p=isEdit?api.put('/api/manifests/'+manifest.id,payload):api.post('/api/manifests',payload);
-        p.then(function(){reload();onClose()});
-      }
-      return(
-        <div className="modal-overlay" onClick={onClose}>
-          <div className="modal" style={{maxWidth:850}} onClick={function(e){e.stopPropagation()}}>
-            <h3>{isEdit?'Edit':'New'} Manifest (EPA 8700-22)</h3>
-            <div className="form-grid" style={{marginBottom:20}}>
-              <div className="form-group"><label>Manifest Tracking # (Box 4)</label><input value={form.manifestTrackingNum||''} onChange={function(e){set('manifestTrackingNum',e.target.value)}} placeholder="Pre-printed on form"/></div>
-              <div className="form-group"><label>Page ___ of ___</label><div style={{display:'flex',gap:8}}><input value={form.pageNum||'1'} onChange={function(e){set('pageNum',e.target.value)}} style={{width:50}}/><span style={{alignSelf:'center'}}>of</span><input value={form.pageTotal||'1'} onChange={function(e){set('pageTotal',e.target.value)}} style={{width:50}}/></div></div>
-              <div className="form-group"><label>Emergency Response Phone (Box 3)</label><input value={form.emergencyPhone||''} onChange={function(e){set('emergencyPhone',e.target.value)}}/></div>
-            </div>
-            <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
-              <h4 style={{marginBottom:8}}>Box 5 - Generator</h4>
-              <div className="profile-select"><select onChange={function(e){loadGenerator(e.target.value)}} defaultValue=""><option value="">-- Load from saved generator --</option>{data.generators.map(function(g){return <option key={g.id} value={g.id}>{g.name} {g.epaId?'('+g.epaId+')':''}</option>})}</select></div>
-              <div className="form-grid">
-                <div className="form-group"><label>EPA ID (Box 1)</label><input value={form.generatorEpaId||''} onChange={function(e){set('generatorEpaId',e.target.value)}}/></div>
-                <div className="form-group"><label>Generator Name</label><input value={form.generatorName||''} onChange={function(e){set('generatorName',e.target.value)}}/></div>
-                <div className="form-group"><label>Phone</label><input value={form.generatorPhone||''} onChange={function(e){set('generatorPhone',e.target.value)}}/></div>
-              </div>
-              <h5 style={{marginTop:12,marginBottom:6,color:'#555'}}>Mailing Address</h5>
-              <div className="form-grid">
-                <div className="form-group"><label>Mailing Address</label><input value={form.generatorMailAddress||''} onChange={function(e){set('generatorMailAddress',e.target.value)}}/></div>
-                <div className="form-group"><label>Mail City, State, Zip</label><input value={form.generatorMailCityStZip||''} onChange={function(e){set('generatorMailCityStZip',e.target.value)}}/></div>
-              </div>
-              <h5 style={{marginTop:12,marginBottom:6,color:'#555'}}>Site Address (if different from mailing)</h5>
-              <div className="form-grid">
-                <div className="form-group"><label>Site Address</label><input value={form.genSiteAddress||''} onChange={function(e){set('genSiteAddress',e.target.value)}}/></div>
-                <div className="form-group"><label>Site City, State, Zip</label><input value={form.genSiteCityStZip||''} onChange={function(e){set('genSiteCityStZip',e.target.value)}}/></div>
-              </div>
-            </div>
-            <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
-              <h4 style={{marginBottom:8}}>Box 6 - Transporter 1</h4>
-              <div className="profile-select"><select onChange={function(e){loadTransporter(e.target.value,1)}} defaultValue=""><option value="">-- Load from saved transporter --</option>{data.transporters.map(function(t){return <option key={t.id} value={t.id}>{t.name}</option>})}</select></div>
-              <div className="form-grid">
-                <div className="form-group"><label>Company Name</label><input value={form.transporter1Name||''} onChange={function(e){set('transporter1Name',e.target.value)}}/></div>
-                <div className="form-group"><label>EPA ID</label><input value={form.transporter1EpaId||''} onChange={function(e){set('transporter1EpaId',e.target.value)}}/></div>
-              </div>
-              <h4 style={{marginBottom:8,marginTop:16}}>Box 7 - Transporter 2</h4>
-              <div className="profile-select"><select onChange={function(e){loadTransporter(e.target.value,2)}} defaultValue=""><option value="">-- Load from saved transporter --</option>{data.transporters.map(function(t){return <option key={t.id} value={t.id}>{t.name}</option>})}</select></div>
-              <div className="form-grid">
-                <div className="form-group"><label>Company Name</label><input value={form.transporter2Name||''} onChange={function(e){set('transporter2Name',e.target.value)}}/></div>
-                <div className="form-group"><label>EPA ID</label><input value={form.transporter2EpaId||''} onChange={function(e){set('transporter2EpaId',e.target.value)}}/></div>
-              </div>
-            </div>
-            <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
-              <h4 style={{marginBottom:8}}>Box 8 - Designated Facility (TSDF)</h4>
-              <div className="profile-select"><select onChange={function(e){loadFacility(e.target.value)}} defaultValue=""><option value="">-- Load from saved facility --</option>{data.facilities.map(function(f){return <option key={f.id} value={f.id}>{f.name}</option>})}</select></div>
-              <div className="form-grid">
-                <div className="form-group"><label>Facility Name</label><input value={form.facilityName||''} onChange={function(e){set('facilityName',e.target.value)}}/></div>
-                <div className="form-group"><label>EPA ID</label><input value={form.facilityEpaId||''} onChange={function(e){set('facilityEpaId',e.target.value)}}/></div>
-                <div className="form-group"><label>Address</label><input value={form.facilityAddress||''} onChange={function(e){set('facilityAddress',e.target.value)}}/></div>
-                <div className="form-group"><label>City, State, Zip</label><input value={form.facilityCityStZip||''} onChange={function(e){set('facilityCityStZip',e.target.value)}}/></div>
-                <div className="form-group"><label>Phone</label><input value={form.facilityPhone||''} onChange={function(e){set('facilityPhone',e.target.value)}}/></div>
-              </div>
-            </div>
-            <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
-              <h4 style={{marginBottom:8}}>Box 9 - Waste Description (up to 4 lines)</h4>
-              <table className="waste-table">
-                <thead><tr><th style={{width:20}}>#</th><th style={{width:30}}>HM</th><th>US DOT Description</th><th style={{width:50}}>Cnt</th><th style={{width:80}}>Type</th><th style={{width:60}}>Qty</th><th style={{width:70}}>Unit</th><th style={{width:120}}>Waste Codes</th><th style={{width:100}}>Template</th></tr></thead>
-                <tbody>
-                  {[0,1,2,3].map(function(i){
-                    var line=(form.wasteLines||[])[i]||emptyWaste;
-                    return(
-                      <tr key={i}>
-                        <td style={{fontWeight:600,color:'#888'}}>{i+1}</td>
-                        <td><input value={line.hm} onChange={function(e){setWaste(i,'hm',e.target.value)}} maxLength={1}/></td>
-                        <td><input value={line.description} onChange={function(e){setWaste(i,'description',e.target.value)}}/></td>
-                        <td><input value={line.containerNum} onChange={function(e){setWaste(i,'containerNum',e.target.value)}}/></td>
-                        <td><select value={line.containerType} onChange={function(e){setWaste(i,'containerType',e.target.value)}}><option value="">--</option>{CONTAINER_TYPES.map(function(ct){return <option key={ct.code} value={ct.code}>{ct.code}</option>})}</select></td>
-                        <td><input value={line.qty} onChange={function(e){setWaste(i,'qty',e.target.value)}}/></td>
-                        <td><select value={line.unit} onChange={function(e){setWaste(i,'unit',e.target.value)}}><option value="">--</option>{UNIT_TYPES.map(function(u){return <option key={u.code} value={u.code}>{u.code}</option>})}</select></td>
-                        <td><input value={line.wasteCodes} onChange={function(e){setWaste(i,'wasteCodes',e.target.value)}} placeholder="D001 D002"/></td>
-                        <td><select onChange={function(e){loadWasteStream(e.target.value,i)}} defaultValue="" style={{fontSize:11,padding:'4px 2px'}}><option value="">Load...</option>{data.wasteStreams.map(function(w){return <option key={w.id} value={w.id}>{w.name}</option>})}</select></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="form-grid" style={{marginBottom:16}}>
-              <div className="form-group full-width"><label>Special Handling Instructions (Box 14)</label><input value={form.specialHandling||''} onChange={function(e){set('specialHandling',e.target.value)}}/></div>
-              <div className="form-group full-width"><label>Special Handling Line 2</label><input value={form.specialHandling2||''} onChange={function(e){set('specialHandling2',e.target.value)}}/></div>
-              <div className="form-group"><label>Generator Print Name (Box 15)</label><input value={form.generatorPrintName||''} onChange={function(e){set('generatorPrintName',e.target.value)}}/></div>
-              <div className="form-group"><label>Date</label><input value={form.generatorDate||''} onChange={function(e){set('generatorDate',e.target.value)}}/></div>
-              <div className="form-group"><label>Status</label><select value={form.status||'draft'} onChange={function(e){set('status',e.target.value)}}><option value="draft">Draft</option><option value="printed">Printed</option><option value="signed">Signed</option></select></div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleSave}>{isEdit?'Update':'Create'} Manifest</button>
-            </div>
-          </div>
+      function handleSave(){var payload=Object.assign({},form);var lines=payload.wasteLines||[];for(var i=0;i<4;i++){var n=i+1;var line=lines[i]||emptyWaste;payload['waste'+n+'HM']=line.hm||'';payload['waste'+n+'Description']=line.description||'';payload['waste'+n+'ContainerNum']=line.containerNum||'';payload['waste'+n+'ContainerType']=line.containerType||'';payload['waste'+n+'Qty']=line.qty||'';payload['waste'+n+'Unit']=line.unit||'';payload['waste'+n+'WasteCodes']=line.wasteCodes||''}var p=isEdit?api.put('/api/manifests/'+manifest.id,payload):api.post('/api/manifests',payload);p.then(function(){reload();onClose()})}
+      return(<div className="modal-overlay" onClick={onClose}><div className="modal" style={{maxWidth:850}} onClick={function(e){e.stopPropagation()}}>
+        <h3>{isEdit?'Edit':'New'} Manifest (EPA 8700-22)</h3>
+        <div className="form-grid" style={{marginBottom:20}}>
+          <div className="form-group"><label>Manifest Tracking # (Box 4)</label><input value={form.manifestTrackingNum||''} onChange={function(e){set('manifestTrackingNum',e.target.value)}} placeholder="Pre-printed on form"/></div>
+          <div className="form-group"><label>Page ___ of ___</label><div style={{display:'flex',gap:8}}><input value={form.pageNum||'1'} onChange={function(e){set('pageNum',e.target.value)}} style={{width:50}}/><span style={{alignSelf:'center'}}>of</span><input value={form.pageTotal||'1'} onChange={function(e){set('pageTotal',e.target.value)}} style={{width:50}}/></div></div>
+          <div className="form-group"><label>Emergency Response Phone (Box 3)</label><input value={form.emergencyPhone||''} onChange={function(e){set('emergencyPhone',e.target.value)}}/></div>
         </div>
-      );
+        <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
+          <h4 style={{marginBottom:8}}>Box 5 - Generator</h4>
+          <div className="profile-select"><select onChange={function(e){loadGenerator(e.target.value)}} defaultValue=""><option value="">-- Load from saved generator --</option>{data.generators.map(function(g){return <option key={g.id} value={g.id}>{g.name} {g.epaId?'('+g.epaId+')':''}</option>})}</select></div>
+          <div className="form-grid"><div className="form-group"><label>EPA ID (Box 1)</label><input value={form.generatorEpaId||''} onChange={function(e){set('generatorEpaId',e.target.value)}}/></div><div className="form-group"><label>Generator Name</label><input value={form.generatorName||''} onChange={function(e){set('generatorName',e.target.value)}}/></div><div className="form-group"><label>Phone</label><input value={form.generatorPhone||''} onChange={function(e){set('generatorPhone',e.target.value)}}/></div></div>
+          <h5 style={{marginTop:12,marginBottom:6,color:'#555'}}>Mailing Address</h5>
+          <div className="form-grid"><div className="form-group"><label>Mailing Address</label><input value={form.generatorMailAddress||''} onChange={function(e){set('generatorMailAddress',e.target.value)}}/></div><div className="form-group"><label>Mail City, State, Zip</label><input value={form.generatorMailCityStZip||''} onChange={function(e){set('generatorMailCityStZip',e.target.value)}}/></div></div>
+          <h5 style={{marginTop:12,marginBottom:6,color:'#555'}}>Site Address (if different from mailing)</h5>
+          <div className="form-grid"><div className="form-group"><label>Site Address</label><input value={form.genSiteAddress||''} onChange={function(e){set('genSiteAddress',e.target.value)}}/></div><div className="form-group"><label>Site City, State, Zip</label><input value={form.genSiteCityStZip||''} onChange={function(e){set('genSiteCityStZip',e.target.value)}}/></div></div>
+        </div>
+        <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
+          <h4 style={{marginBottom:8}}>Box 6 - Transporter 1</h4>
+          <div className="profile-select"><select onChange={function(e){loadTransporter(e.target.value,1)}} defaultValue=""><option value="">-- Load from saved transporter --</option>{data.transporters.map(function(t){return <option key={t.id} value={t.id}>{t.name}</option>})}</select></div>
+          <div className="form-grid"><div className="form-group"><label>Company Name</label><input value={form.transporter1Name||''} onChange={function(e){set('transporter1Name',e.target.value)}}/></div><div className="form-group"><label>EPA ID</label><input value={form.transporter1EpaId||''} onChange={function(e){set('transporter1EpaId',e.target.value)}}/></div></div>
+          <h4 style={{marginBottom:8,marginTop:16}}>Box 7 - Transporter 2</h4>
+          <div className="profile-select"><select onChange={function(e){loadTransporter(e.target.value,2)}} defaultValue=""><option value="">-- Load from saved transporter --</option>{data.transporters.map(function(t){return <option key={t.id} value={t.id}>{t.name}</option>})}</select></div>
+          <div className="form-grid"><div className="form-group"><label>Company Name</label><input value={form.transporter2Name||''} onChange={function(e){set('transporter2Name',e.target.value)}}/></div><div className="form-group"><label>EPA ID</label><input value={form.transporter2EpaId||''} onChange={function(e){set('transporter2EpaId',e.target.value)}}/></div></div>
+        </div>
+        <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
+          <h4 style={{marginBottom:8}}>Box 8 - Designated Facility (TSDF)</h4>
+          <div className="profile-select"><select onChange={function(e){loadFacility(e.target.value)}} defaultValue=""><option value="">-- Load from saved facility --</option>{data.facilities.map(function(f){return <option key={f.id} value={f.id}>{f.name}</option>})}</select></div>
+          <div className="form-grid"><div className="form-group"><label>Facility Name</label><input value={form.facilityName||''} onChange={function(e){set('facilityName',e.target.value)}}/></div><div className="form-group"><label>EPA ID</label><input value={form.facilityEpaId||''} onChange={function(e){set('facilityEpaId',e.target.value)}}/></div><div className="form-group"><label>Address</label><input value={form.facilityAddress||''} onChange={function(e){set('facilityAddress',e.target.value)}}/></div><div className="form-group"><label>City, State, Zip</label><input value={form.facilityCityStZip||''} onChange={function(e){set('facilityCityStZip',e.target.value)}}/></div><div className="form-group"><label>Phone</label><input value={form.facilityPhone||''} onChange={function(e){set('facilityPhone',e.target.value)}}/></div></div>
+        </div>
+        <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
+          <h4 style={{marginBottom:8}}>Box 9 - Waste Description (up to 4 lines)</h4>
+          <table className="waste-table"><thead><tr><th style={{width:20}}>#</th><th style={{width:30}}>HM</th><th>US DOT Description</th><th style={{width:50}}>Cnt</th><th style={{width:80}}>Type</th><th style={{width:60}}>Qty</th><th style={{width:70}}>Unit</th><th style={{width:120}}>Waste Codes</th><th style={{width:100}}>Template</th></tr></thead><tbody>
+            {[0,1,2,3].map(function(i){var line=(form.wasteLines||[])[i]||emptyWaste;return(<tr key={i}><td style={{fontWeight:600,color:'#888'}}>{i+1}</td><td><input value={line.hm} onChange={function(e){setWaste(i,'hm',e.target.value)}} maxLength={1}/></td><td><input value={line.description} onChange={function(e){setWaste(i,'description',e.target.value)}}/></td><td><input value={line.containerNum} onChange={function(e){setWaste(i,'containerNum',e.target.value)}}/></td><td><select value={line.containerType} onChange={function(e){setWaste(i,'containerType',e.target.value)}}><option value="">--</option>{CONTAINER_TYPES.map(function(ct){return <option key={ct.code} value={ct.code}>{ct.code}</option>})}</select></td><td><input value={line.qty} onChange={function(e){setWaste(i,'qty',e.target.value)}}/></td><td><select value={line.unit} onChange={function(e){setWaste(i,'unit',e.target.value)}}><option value="">--</option>{UNIT_TYPES.map(function(u){return <option key={u.code} value={u.code}>{u.code}</option>})}</select></td><td><input value={line.wasteCodes} onChange={function(e){setWaste(i,'wasteCodes',e.target.value)}} placeholder="D001 D002"/></td><td><select onChange={function(e){loadWasteStream(e.target.value,i)}} defaultValue="" style={{fontSize:11,padding:'4px 2px'}}><option value="">Load...</option>{data.wasteStreams.map(function(w){return <option key={w.id} value={w.id}>{w.name}</option>})}</select></td></tr>)})}
+          </tbody></table>
+        </div>
+        <div className="form-grid" style={{marginBottom:16}}>
+          <div className="form-group full-width"><label>Special Handling Instructions (Box 14)</label><input value={form.specialHandling||''} onChange={function(e){set('specialHandling',e.target.value)}}/></div>
+          <div className="form-group full-width"><label>Special Handling Line 2</label><input value={form.specialHandling2||''} onChange={function(e){set('specialHandling2',e.target.value)}}/></div>
+          <div className="form-group"><label>Generator Print Name (Box 15)</label><input value={form.generatorPrintName||''} onChange={function(e){set('generatorPrintName',e.target.value)}}/></div>
+          <div className="form-group"><label>Date</label><input value={form.generatorDate||''} onChange={function(e){set('generatorDate',e.target.value)}}/></div>
+          <div className="form-group"><label>Status</label><select value={form.status||'draft'} onChange={function(e){set('status',e.target.value)}}><option value="draft">Draft</option><option value="printed">Printed</option><option value="signed">Signed</option></select></div>
+        </div>
+        <div className="modal-actions"><button className="btn btn-secondary" onClick={onClose}>Cancel</button><button className="btn btn-primary" onClick={handleSave}>{isEdit?'Update':'Create'} Manifest</button></div>
+      </div></div>);
     }
 
     function ProfileTab(props){
@@ -305,40 +194,14 @@
       function handleSave(formData){var p=editing?api.put('/api/'+type+'/'+editing.id,formData):api.post('/api/'+type,formData);p.then(function(){reload();setShowModal(false);setEditing(null)})}
       function handleDelete(id){if(confirm('Delete this '+label.singular.toLowerCase()+'?')){api.del('/api/'+type+'/'+id).then(reload)}}
       function handleClearAll(){if(confirm('DELETE ALL GENERATORS? This cannot be undone!')){if(confirm('Are you really sure? This will remove all '+data.generators.length+' generators.')){api.del('/api/generators').then(reload)}}}
-      return(
-        <div>
-          <div className="section-header">
-            <h2 style={{fontSize:22,fontWeight:700}}>{label.plural}</h2>
-            <div style={{display:'flex',gap:8,alignItems:'center'}}>
-              <input className="search-bar" placeholder={'Search '+label.plural.toLowerCase()+'...'} value={search} onChange={function(e){setSearch(e.target.value)}}/>
-              <button className="btn btn-primary" onClick={function(){setEditing(null);setShowModal(true)}}>+ New {label.singular}</button>
-              {type==='generators'&&<button className="btn btn-danger" onClick={handleClearAll}>Clear All Generators</button>}
-            </div>
-          </div>
-          <div className="card">
-            <table className="data-table">
-              <thead><tr><th>Name</th><th>EPA ID</th><th>Mailing Address</th><th>Site Address</th><th>Phone</th><th>Actions</th></tr></thead>
-              <tbody>
-                {items.length===0&&<tr><td colSpan="6" style={{textAlign:'center',color:'#999',padding:24}}>No {label.plural.toLowerCase()} yet.</td></tr>}
-                {items.map(function(item){return(
-                  <tr key={item.id}>
-                    <td style={{fontWeight:600}}>{item.name}</td>
-                    <td>{item.epaId||'-'}</td>
-                    <td>{[item.mailAddress,item.mailCity,item.mailState].filter(Boolean).join(', ')||[item.siteAddress,item.city,item.state].filter(Boolean).join(', ')||'-'}</td>
-                    <td>{[item.siteAddress,item.city,item.state].filter(Boolean).join(', ')||'-'}</td>
-                    <td>{item.phone||'-'}</td>
-                    <td style={{display:'flex',gap:4}}>
-                      <button className="btn btn-sm btn-secondary" onClick={function(){setEditing(item);setShowModal(true)}}>Edit</button>
-                      <button className="btn btn-sm btn-danger" onClick={function(){handleDelete(item.id)}}>X</button>
-                    </td>
-                  </tr>
-                )})}
-              </tbody>
-            </table>
-          </div>
-          {showModal&&<ProfileFormModal type={type} item={editing} label={label} onSave={handleSave} onClose={function(){setShowModal(false);setEditing(null)}}/>}
-        </div>
-      );
+      return(<div>
+        <div className="section-header"><h2 style={{fontSize:22,fontWeight:700}}>{label.plural}</h2><div style={{display:'flex',gap:8,alignItems:'center'}}><input className="search-bar" placeholder={'Search '+label.plural.toLowerCase()+'...'} value={search} onChange={function(e){setSearch(e.target.value)}}/><button className="btn btn-primary" onClick={function(){setEditing(null);setShowModal(true)}}>+ New {label.singular}</button>{type==='generators'&&<button className="btn btn-danger" onClick={handleClearAll}>Clear All Generators</button>}</div></div>
+        <div className="card"><table className="data-table"><thead><tr><th>Name</th><th>EPA ID</th><th>Mailing Address</th><th>Site Address</th><th>Phone</th><th>Actions</th></tr></thead><tbody>
+          {items.length===0&&<tr><td colSpan="6" style={{textAlign:'center',color:'#999',padding:24}}>No {label.plural.toLowerCase()} yet.</td></tr>}
+          {items.map(function(item){return(<tr key={item.id}><td style={{fontWeight:600}}>{item.name}</td><td>{item.epaId||'-'}</td><td>{[item.mailAddress,item.mailCity,item.mailState].filter(Boolean).join(', ')||[item.siteAddress,item.city,item.state].filter(Boolean).join(', ')||'-'}</td><td>{[item.siteAddress,item.city,item.state].filter(Boolean).join(', ')||'-'}</td><td>{item.phone||'-'}</td><td style={{display:'flex',gap:4}}><button className="btn btn-sm btn-secondary" onClick={function(){setEditing(item);setShowModal(true)}}>Edit</button><button className="btn btn-sm btn-danger" onClick={function(){handleDelete(item.id)}}>X</button></td></tr>)})}
+        </tbody></table></div>
+        {showModal&&<ProfileFormModal type={type} item={editing} label={label} onSave={handleSave} onClose={function(){setShowModal(false);setEditing(null)}}/>}
+      </div>);
     }
 
     function ProfileFormModal(props){
@@ -346,38 +209,15 @@
       var f1=useState(item||{name:'',epaId:'',siteAddress:'',city:'',state:'',zip:'',mailAddress:'',mailCity:'',mailState:'',mailZip:'',phone:'',contactName:'',emergencyPhone:''});
       var form=f1[0];var setForm=f1[1];
       function set(k,v){setForm(function(f){var n=Object.assign({},f);n[k]=v;return n})}
-      return(
-        <div className="modal-overlay" onClick={onClose}>
-          <div className="modal" onClick={function(e){e.stopPropagation()}}>
-            <h3>{item?'Edit':'New'} {label.singular}</h3>
-            <div className="form-grid">
-              <div className="form-group"><label>Name</label><input value={form.name||''} onChange={function(e){set('name',e.target.value)}}/></div>
-              <div className="form-group"><label>EPA ID</label><input value={form.epaId||''} onChange={function(e){set('epaId',e.target.value)}} placeholder="e.g. CAD000000000"/></div>
-              <div className="form-group"><label>Phone</label><input value={form.phone||''} onChange={function(e){set('phone',e.target.value)}}/></div>
-              <div className="form-group"><label>Contact Name</label><input value={form.contactName||''} onChange={function(e){set('contactName',e.target.value)}}/></div>
-              {type==='generators'&&<div className="form-group"><label>Emergency Phone</label><input value={form.emergencyPhone||''} onChange={function(e){set('emergencyPhone',e.target.value)}}/></div>}
-            </div>
-            <h5 style={{marginTop:16,marginBottom:8,color:'#555'}}>Mailing Address</h5>
-            <div className="form-grid">
-              <div className="form-group"><label>Street</label><input value={form.mailAddress||''} onChange={function(e){set('mailAddress',e.target.value)}}/></div>
-              <div className="form-group"><label>City</label><input value={form.mailCity||''} onChange={function(e){set('mailCity',e.target.value)}}/></div>
-              <div className="form-group"><label>State</label><input value={form.mailState||''} onChange={function(e){set('mailState',e.target.value)}}/></div>
-              <div className="form-group"><label>Zip</label><input value={form.mailZip||''} onChange={function(e){set('mailZip',e.target.value)}}/></div>
-            </div>
-            <h5 style={{marginTop:16,marginBottom:8,color:'#555'}}>Site Address</h5>
-            <div className="form-grid">
-              <div className="form-group"><label>Street</label><input value={form.siteAddress||''} onChange={function(e){set('siteAddress',e.target.value)}}/></div>
-              <div className="form-group"><label>City</label><input value={form.city||''} onChange={function(e){set('city',e.target.value)}}/></div>
-              <div className="form-group"><label>State</label><input value={form.state||''} onChange={function(e){set('state',e.target.value)}}/></div>
-              <div className="form-group"><label>Zip</label><input value={form.zip||''} onChange={function(e){set('zip',e.target.value)}}/></div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button className="btn btn-primary" onClick={function(){onSave(form)}}>Save {label.singular}</button>
-            </div>
-          </div>
-        </div>
-      );
+      return(<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={function(e){e.stopPropagation()}}>
+        <h3>{item?'Edit':'New'} {label.singular}</h3>
+        <div className="form-grid"><div className="form-group"><label>Name</label><input value={form.name||''} onChange={function(e){set('name',e.target.value)}}/></div><div className="form-group"><label>EPA ID</label><input value={form.epaId||''} onChange={function(e){set('epaId',e.target.value)}} placeholder="e.g. CAD000000000"/></div><div className="form-group"><label>Phone</label><input value={form.phone||''} onChange={function(e){set('phone',e.target.value)}}/></div><div className="form-group"><label>Contact Name</label><input value={form.contactName||''} onChange={function(e){set('contactName',e.target.value)}}/></div>{type==='generators'&&<div className="form-group"><label>Emergency Phone</label><input value={form.emergencyPhone||''} onChange={function(e){set('emergencyPhone',e.target.value)}}/></div>}</div>
+        <h5 style={{marginTop:16,marginBottom:8,color:'#555'}}>Mailing Address</h5>
+        <div className="form-grid"><div className="form-group"><label>Street</label><input value={form.mailAddress||''} onChange={function(e){set('mailAddress',e.target.value)}}/></div><div className="form-group"><label>City</label><input value={form.mailCity||''} onChange={function(e){set('mailCity',e.target.value)}}/></div><div className="form-group"><label>State</label><input value={form.mailState||''} onChange={function(e){set('mailState',e.target.value)}}/></div><div className="form-group"><label>Zip</label><input value={form.mailZip||''} onChange={function(e){set('mailZip',e.target.value)}}/></div></div>
+        <h5 style={{marginTop:16,marginBottom:8,color:'#555'}}>Site Address</h5>
+        <div className="form-grid"><div className="form-group"><label>Street</label><input value={form.siteAddress||''} onChange={function(e){set('siteAddress',e.target.value)}}/></div><div className="form-group"><label>City</label><input value={form.city||''} onChange={function(e){set('city',e.target.value)}}/></div><div className="form-group"><label>State</label><input value={form.state||''} onChange={function(e){set('state',e.target.value)}}/></div><div className="form-group"><label>Zip</label><input value={form.zip||''} onChange={function(e){set('zip',e.target.value)}}/></div></div>
+        <div className="modal-actions"><button className="btn btn-secondary" onClick={onClose}>Cancel</button><button className="btn btn-primary" onClick={function(){onSave(form)}}>Save {label.singular}</button></div>
+      </div></div>);
     }
 
     function WasteStreamsTab(props){
@@ -386,58 +226,24 @@
       var s2=useState(null);var editing=s2[0];var setEditing=s2[1];
       function handleSave(formData){var p=editing?api.put('/api/waste-streams/'+editing.id,formData):api.post('/api/waste-streams',formData);p.then(function(){reload();setShowModal(false);setEditing(null)})}
       function handleDelete(id){if(confirm('Delete this waste stream?')){api.del('/api/waste-streams/'+id).then(reload)}}
-      return(
-        <div>
-          <div className="section-header">
-            <h2 style={{fontSize:22,fontWeight:700}}>Waste Stream Templates</h2>
-            <button className="btn btn-primary" onClick={function(){setEditing(null);setShowModal(true)}}>+ New Waste Stream</button>
-          </div>
-          <div className="card">
-            <table className="data-table">
-              <thead><tr><th>Name</th><th>DOT Description</th><th>Container</th><th>Unit</th><th>Waste Codes</th><th>Actions</th></tr></thead>
-              <tbody>
-                {(data.wasteStreams||[]).length===0&&<tr><td colSpan="6" style={{textAlign:'center',color:'#999',padding:24}}>No waste streams yet.</td></tr>}
-                {(data.wasteStreams||[]).map(function(w){return(
-                  <tr key={w.id}><td style={{fontWeight:600}}>{w.name}</td><td>{w.dotDescription||'-'}</td><td>{w.containerType||'-'}</td><td>{w.unit||'-'}</td><td>{w.wasteCodes||'-'}</td>
-                    <td style={{display:'flex',gap:4}}><button className="btn btn-sm btn-secondary" onClick={function(){setEditing(w);setShowModal(true)}}>Edit</button><button className="btn btn-sm btn-danger" onClick={function(){handleDelete(w.id)}}>X</button></td>
-                  </tr>
-                )})}
-              </tbody>
-            </table>
-          </div>
-          {showModal&&(
-            <div className="modal-overlay" onClick={function(){setShowModal(false);setEditing(null)}}>
-              <div className="modal" onClick={function(e){e.stopPropagation()}}>
-                <h3>{editing?'Edit':'New'} Waste Stream Template</h3>
-                <WasteStreamForm item={editing} onSave={handleSave} onClose={function(){setShowModal(false);setEditing(null)}}/>
-              </div>
-            </div>
-          )}
-        </div>
-      );
+      return(<div>
+        <div className="section-header"><h2 style={{fontSize:22,fontWeight:700}}>Waste Stream Templates</h2><button className="btn btn-primary" onClick={function(){setEditing(null);setShowModal(true)}}>+ New Waste Stream</button></div>
+        <div className="card"><table className="data-table"><thead><tr><th>Name</th><th>DOT Description</th><th>Container</th><th>Unit</th><th>Waste Codes</th><th>Actions</th></tr></thead><tbody>
+          {(data.wasteStreams||[]).length===0&&<tr><td colSpan="6" style={{textAlign:'center',color:'#999',padding:24}}>No waste streams yet.</td></tr>}
+          {(data.wasteStreams||[]).map(function(w){return(<tr key={w.id}><td style={{fontWeight:600}}>{w.name}</td><td>{w.dotDescription||'-'}</td><td>{w.containerType||'-'}</td><td>{w.unit||'-'}</td><td>{w.wasteCodes||'-'}</td><td style={{display:'flex',gap:4}}><button className="btn btn-sm btn-secondary" onClick={function(){setEditing(w);setShowModal(true)}}>Edit</button><button className="btn btn-sm btn-danger" onClick={function(){handleDelete(w.id)}}>X</button></td></tr>)})}
+        </tbody></table></div>
+        {showModal&&(<div className="modal-overlay" onClick={function(){setShowModal(false);setEditing(null)}}><div className="modal" onClick={function(e){e.stopPropagation()}}><h3>{editing?'Edit':'New'} Waste Stream Template</h3><WasteStreamForm item={editing} onSave={handleSave} onClose={function(){setShowModal(false);setEditing(null)}}/></div></div>)}
+      </div>);
     }
 
     function WasteStreamForm(props){
       var item=props.item;var onSave=props.onSave;var onClose=props.onClose;
-      var f1=useState(item||{name:'',dotDescription:'',hm:'',containerType:'',unit:'',wasteCodes:''});
-      var form=f1[0];var setForm=f1[1];
+      var f1=useState(item||{name:'',dotDescription:'',hm:'',containerType:'',unit:'',wasteCodes:''});var form=f1[0];var setForm=f1[1];
       function set(k,v){setForm(function(f){var n=Object.assign({},f);n[k]=v;return n})}
-      return(
-        <div>
-          <div className="form-grid">
-            <div className="form-group"><label>Template Name</label><input value={form.name||''} onChange={function(e){set('name',e.target.value)}} placeholder="e.g. Used Oil"/></div>
-            <div className="form-group"><label>HM (X if hazmat)</label><input value={form.hm||''} onChange={function(e){set('hm',e.target.value)}} maxLength={1}/></div>
-            <div className="form-group full-width"><label>US DOT Description</label><input value={form.dotDescription||''} onChange={function(e){set('dotDescription',e.target.value)}} placeholder="e.g. RQ, Hazardous Waste, Liquid, NOS"/></div>
-            <div className="form-group"><label>Container Type</label><select value={form.containerType||''} onChange={function(e){set('containerType',e.target.value)}}><option value="">--</option>{CONTAINER_TYPES.map(function(ct){return <option key={ct.code} value={ct.code}>{ct.code+' - '+ct.label}</option>})}</select></div>
-            <div className="form-group"><label>Unit of Measure</label><select value={form.unit||''} onChange={function(e){set('unit',e.target.value)}}><option value="">--</option>{UNIT_TYPES.map(function(u){return <option key={u.code} value={u.code}>{u.code+' - '+u.label}</option>})}</select></div>
-            <div className="form-group"><label>Waste Codes</label><input value={form.wasteCodes||''} onChange={function(e){set('wasteCodes',e.target.value)}} placeholder="D001 D002 D003"/></div>
-          </div>
-          <div className="modal-actions">
-            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={function(){onSave(form)}}>Save Waste Stream</button>
-          </div>
-        </div>
-      );
+      return(<div>
+        <div className="form-grid"><div className="form-group"><label>Template Name</label><input value={form.name||''} onChange={function(e){set('name',e.target.value)}} placeholder="e.g. Used Oil"/></div><div className="form-group"><label>HM (X if hazmat)</label><input value={form.hm||''} onChange={function(e){set('hm',e.target.value)}} maxLength={1}/></div><div className="form-group full-width"><label>US DOT Description</label><input value={form.dotDescription||''} onChange={function(e){set('dotDescription',e.target.value)}} placeholder="e.g. RQ, Hazardous Waste, Liquid, NOS"/></div><div className="form-group"><label>Container Type</label><select value={form.containerType||''} onChange={function(e){set('containerType',e.target.value)}}><option value="">--</option>{CONTAINER_TYPES.map(function(ct){return <option key={ct.code} value={ct.code}>{ct.code+' - '+ct.label}</option>})}</select></div><div className="form-group"><label>Unit of Measure</label><select value={form.unit||''} onChange={function(e){set('unit',e.target.value)}}><option value="">--</option>{UNIT_TYPES.map(function(u){return <option key={u.code} value={u.code}>{u.code+' - '+u.label}</option>})}</select></div><div className="form-group"><label>Waste Codes</label><input value={form.wasteCodes||''} onChange={function(e){set('wasteCodes',e.target.value)}} placeholder="D001 D002 D003"/></div></div>
+        <div className="modal-actions"><button className="btn btn-secondary" onClick={onClose}>Cancel</button><button className="btn btn-primary" onClick={function(){onSave(form)}}>Save Waste Stream</button></div>
+      </div>);
     }
 
     function ImportTab(props){
@@ -445,46 +251,17 @@
       var s1=useState(null);var result=s1[0];var setResult=s1[1];
       var s2=useState(false);var uploading=s2[0];var setUploading=s2[1];
       var fileRef=useRef();
-      function handleUpload(e){
-        var file=e.target.files[0];if(!file)return;
-        setUploading(true);setResult(null);
-        var formData=new FormData();formData.append('file',file);
-        fetch('/api/import/quickbooks',{method:'POST',body:formData}).then(function(res){return res.json()}).then(function(data){
-          if(data.error){setResult({error:data.error})}else{setResult({success:true,imported:data.imported,skipped:data.skipped||0,total:data.total});reload()}
-          setUploading(false);if(fileRef.current)fileRef.current.value='';
-        }).catch(function(err){setResult({error:'Upload failed: '+err.message});setUploading(false);if(fileRef.current)fileRef.current.value=''});
-      }
-      return(
-        <div>
-          <h2 style={{fontSize:22,fontWeight:700,marginBottom:16}}>Import from QuickBooks</h2>
-          <div className="card">
-            <h4 style={{marginBottom:12}}>Upload Customer List (Excel or CSV)</h4>
-            <p style={{color:'#666',marginBottom:16}}>Export your customer list from QuickBooks. Bill Address maps to mailing address, Ship Address maps to site address.</p>
-            <div className="upload-area" onClick={function(){fileRef.current&&fileRef.current.click()}}>
-              <div style={{fontSize:24,fontWeight:600}}>Upload File</div>
-              <p><strong>Click to upload</strong> or drag and drop</p>
-              <p style={{fontSize:12}}>Excel (.xlsx, .xls) or CSV files</p>
-              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:'none'}} onChange={handleUpload}/>
-            </div>
-            {uploading&&<p style={{marginTop:12,color:'#888'}}>Importing...</p>}
-            {result&&result.success&&<div style={{marginTop:16,padding:12,background:'#d1fae5',borderRadius:8,color:'#065f46'}}>Successfully imported <strong>{result.imported}</strong> new generators out of {result.total} rows.{result.skipped>0?' ('+result.skipped+' duplicates skipped)':''}</div>}
-            {result&&result.error&&<div style={{marginTop:16,padding:12,background:'#fee2e2',borderRadius:8,color:'#991b1b'}}>Error: {result.error}</div>}
-          </div>
-          <div className="card" style={{marginTop:20}}>
-            <h4 style={{marginBottom:12}}>Column Mapping</h4>
-            <table className="data-table">
-              <thead><tr><th>QuickBooks Column</th><th>Maps To</th></tr></thead>
-              <tbody>
-                <tr><td>Customer full name</td><td>Generator Name</td></tr>
-                <tr><td>Bill address</td><td>Mailing Address (street, city, state, zip)</td></tr>
-                <tr><td>Ship address</td><td>Site Address (street, city, state, zip)</td></tr>
-                <tr><td>Phone numbers</td><td>Phone</td></tr>
-                <tr><td>EPA ID Number</td><td>EPA ID</td></tr>
-              </tbody>
-            </table>
-          </div>
+      function handleUpload(e){var file=e.target.files[0];if(!file)return;setUploading(true);setResult(null);var formData=new FormData();formData.append('file',file);fetch('/api/import/quickbooks',{method:'POST',body:formData}).then(function(res){return res.json()}).then(function(data){if(data.error){setResult({error:data.error})}else{setResult({success:true,imported:data.imported,skipped:data.skipped||0,total:data.total});reload()}setUploading(false);if(fileRef.current)fileRef.current.value=''}).catch(function(err){setResult({error:'Upload failed: '+err.message});setUploading(false);if(fileRef.current)fileRef.current.value=''})}
+      return(<div>
+        <h2 style={{fontSize:22,fontWeight:700,marginBottom:16}}>Import from QuickBooks</h2>
+        <div className="card"><h4 style={{marginBottom:12}}>Upload Customer List (Excel or CSV)</h4><p style={{color:'#666',marginBottom:16}}>Export your customer list from QuickBooks. Bill Address maps to mailing address, Ship Address maps to site address.</p>
+          <div className="upload-area" onClick={function(){fileRef.current&&fileRef.current.click()}}><div style={{fontSize:24,fontWeight:600}}>Upload File</div><p><strong>Click to upload</strong> or drag and drop</p><p style={{fontSize:12}}>Excel (.xlsx, .xls) or CSV files</p><input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:'none'}} onChange={handleUpload}/></div>
+          {uploading&&<p style={{marginTop:12,color:'#888'}}>Importing...</p>}
+          {result&&result.success&&<div style={{marginTop:16,padding:12,background:'#d1fae5',borderRadius:8,color:'#065f46'}}>Successfully imported <strong>{result.imported}</strong> new generators out of {result.total} rows.{result.skipped>0?' ('+result.skipped+' duplicates skipped)':''}</div>}
+          {result&&result.error&&<div style={{marginTop:16,padding:12,background:'#fee2e2',borderRadius:8,color:'#991b1b'}}>Error: {result.error}</div>}
         </div>
-      );
+        <div className="card" style={{marginTop:20}}><h4 style={{marginBottom:12}}>Column Mapping</h4><table className="data-table"><thead><tr><th>QuickBooks Column</th><th>Maps To</th></tr></thead><tbody><tr><td>Customer full name</td><td>Generator Name</td></tr><tr><td>Bill address</td><td>Mailing Address</td></tr><tr><td>Ship address</td><td>Site Address</td></tr><tr><td>Phone numbers</td><td>Phone</td></tr><tr><td>EPA ID Number</td><td>EPA ID</td></tr></tbody></table></div>
+      </div>);
     }
 
     ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));

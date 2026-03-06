@@ -1,19 +1,19 @@
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const multer = require('multer');
-const XLSX = require('xlsx');
+var express = require('express');
+var fs = require('fs');
+var path = require('path');
+var multer = require('multer');
+var XLSX = require('xlsx');
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+var app = express();
+var PORT = process.env.PORT || 3000;
 
-const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
+var DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const DATA_FILE = path.join(DATA_DIR, 'manifest-data.json');
-const upload = multer({ dest: path.join(DATA_DIR, 'uploads') });
+var DATA_FILE = path.join(DATA_DIR, 'manifest-data.json');
+var upload = multer({ dest: path.join(DATA_DIR, 'uploads') });
 
-let sseClients = [];
+var sseClients = [];
 
 function getDefaultData() {
   return { generators: [], transporters: [], facilities: [], wasteStreams: [], manifests: [], nextManifestNum: 1 };
@@ -243,8 +243,8 @@ app.post('/api/import/quickbooks', upload.single('file'), function(req, res) {
     var imported = 0;
     var skipped = 0;
 
-    for (var i = headerIdx + 1; i < allRows.length; i++) {
-      var row = allRows[i];
+    for (var j = headerIdx + 1; j < allRows.length; j++) {
+      var row = allRows[j];
       if (!row || row.every(function(cell) { return !cell && cell !== 0; })) continue;
       var name = nameCol >= 0 ? String(row[nameCol] || '').trim() : '';
       if (!name) continue;
@@ -336,6 +336,7 @@ function buildPrintData(manifest) {
   return lines.join('\r\n');
 }
 
+// FIXED: Changed from app.post to app.get so browser tabs can access it
 app.get('/api/print/manifest/:id', function(req, res) {
   var data = loadData();
   var manifest = data.manifests.find(function(m) { return m.id === req.params.id; });
