@@ -183,7 +183,7 @@
             transporter2Name: '', transporter2EpaId: '',
             facilityName: '', facilityAddress: '', facilityCityStZip: '', facilityPhone: '', facilityEpaId: '',
             wasteLines: [Object.assign({},emptyWaste), Object.assign({},emptyWaste), Object.assign({},emptyWaste), Object.assign({},emptyWaste)],
-            specialHandling: '', specialHandling2: '',
+            specialHandling: '', specialHandling2: '', specialHandling3: 'MIS9933011',
             generatorPrintName: '', generatorDate: new Date().toLocaleDateString('en-US'),
             pageNum: '1', pageTotal: '1',
             status: 'draft'
@@ -453,6 +453,10 @@
               <div className="form-group full-width">
                 <label>Special Handling Line 2</label>
                 <input value={form.specialHandling2 || ''} onChange={function(e){set('specialHandling2',e.target.value)}} />
+              </div>
+              <div className="form-group full-width">
+                <label>Special Handling Line 3</label>
+                <input value={form.specialHandling3 || ''} onChange={function(e){set('specialHandling3',e.target.value)}} />
               </div>
               <div className="form-group">
                 <label>Generator Print Name (Box 15)</label>
