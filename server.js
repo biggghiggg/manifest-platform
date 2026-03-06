@@ -371,10 +371,12 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
         wasteCodes = rcraMatch[1].trim().replace(/\s+/g, ' ').replace(/If None.*$/i, '').trim();
       }
 
-      // State Waste Codes (E.2) - grab just the code, stop at newline or next field
+      // State Waste Codes (E.2) - grab just the code, strip letter prefixes (CA-122 -> 122)
       var stMatch = fullText.match(/State Waste Codes[:\s]+([A-Z0-9][A-Z0-9\s,.-]*)/i);
       if (stMatch) {
-        stateWasteCodes = stMatch[1].trim().split('\n')[0].trim();
+        var rawStateCodes = stMatch[1].trim().split('\n')[0].trim();
+        // Strip letter prefixes like CA-, AZ- etc. Keep only numbers
+        stateWasteCodes = rawStateCodes.replace(/[A-Za-z]+-?/g, '').replace(/\s+/g, ' ').trim();
       }
 
       // If DOT description contains N.O.S., append common name in parentheses
@@ -579,9 +581,38 @@ app.get('/api/print/manifest/:id', function(req, res) {
   placeText(FORM_8700_MAP.facilityEpaId.row, FORM_8700_MAP.facilityEpaId.col, manifest.facilityEpaId);
 
   // Box 9 - Waste lines (uses flattened fields: waste1Description, waste1ContainerType, etc.)
+  // Row 1 description: col 7 to col 41 (35 chars) - other fields start at col 42
+  // Rows 2-3 continuation: col 7 to col 73 (67 chars) - full width, no other fields
+  var descRow1Width = FORM_8700_MAP.waste1code.col - FORM_8700_MAP.waste1desc.col - 1;
+  var descContWidth = 67;
+  function wrapDescLines(text, firstMax, contMax) {
+    if (!text) return [];
+    var result = [];
+    var remaining = String(text);
+    // First line - limited width
+    if (remaining.length <= firstMax) { return [remaining]; }
+    var cut = remaining.lastIndexOf(' ', firstMax);
+    if (cut <= 0) cut = firstMax;
+    result.push(remaining.substring(0, cut));
+    remaining = remaining.substring(cut).replace(/^\s+/, '');
+    // Continuation lines - full width
+    while (remaining.length > 0) {
+      if (remaining.length <= contMax) { result.push(remaining); break; }
+      cut = remaining.lastIndexOf(' ', contMax);
+      if (cut <= 0) cut = contMax;
+      result.push(remaining.substring(0, cut));
+      remaining = remaining.substring(cut).replace(/^\s+/, '');
+    }
+    return result;
+  }
   for (var w = 1; w <= 4; w++) {
+    var wasteDesc = manifest['waste' + w + 'Description'] || '';
+    var descLines = wrapDescLines(wasteDesc, descRow1Width, descContWidth);
+    var baseRow = FORM_8700_MAP['waste' + w + 'desc'].row;
+    for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
+      placeText(baseRow + dl, FORM_8700_MAP['waste' + w + 'desc'].col, descLines[dl]);
+    }
     placeText(FORM_8700_MAP['waste' + w + 'hm'].row, FORM_8700_MAP['waste' + w + 'hm'].col, manifest['waste' + w + 'HM']);
-    placeText(FORM_8700_MAP['waste' + w + 'desc'].row, FORM_8700_MAP['waste' + w + 'desc'].col, manifest['waste' + w + 'Description']);
     placeText(FORM_8700_MAP['waste' + w + 'container'].row, FORM_8700_MAP['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
     placeText(FORM_8700_MAP['waste' + w + 'qty'].row, FORM_8700_MAP['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
     placeText(FORM_8700_MAP['waste' + w + 'uom'].row, FORM_8700_MAP['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
