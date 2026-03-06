@@ -523,8 +523,57 @@ var FORM_8700_MAP = {
 
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)
-var BUILD_VERSION = 'v8-2026-03-06';
+var BUILD_VERSION = 'v9-2026-03-06';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
+
+// Alignment editor endpoints
+var WASTE_CODE_COLS_DEFAULT = { col1: 66, col2: 71, col3: 76 };
+var customAlignment = data.customAlignment || null;
+var customWasteCodeCols = data.customWasteCodeCols || null;
+
+function getActiveMap() {
+  if (!customAlignment) return FORM_8700_MAP;
+  var merged = {};
+  var keys = Object.keys(FORM_8700_MAP);
+  for (var i = 0; i < keys.length; i++) {
+    if (customAlignment[keys[i]]) {
+      merged[keys[i]] = customAlignment[keys[i]];
+    } else {
+      merged[keys[i]] = FORM_8700_MAP[keys[i]];
+    }
+  }
+  return merged;
+}
+
+function getActiveWasteCodeCols() {
+  return customWasteCodeCols || WASTE_CODE_COLS_DEFAULT;
+}
+
+app.get('/api/alignment', function(req, res) {
+  res.json({
+    map: getActiveMap(),
+    wasteCodeCols: getActiveWasteCodeCols(),
+    defaults: { map: FORM_8700_MAP, wasteCodeCols: WASTE_CODE_COLS_DEFAULT }
+  });
+});
+
+app.put('/api/alignment', function(req, res) {
+  customAlignment = req.body.map || null;
+  customWasteCodeCols = req.body.wasteCodeCols || null;
+  data.customAlignment = customAlignment;
+  data.customWasteCodeCols = customWasteCodeCols;
+  saveData();
+  res.json({ ok: true });
+});
+
+app.post('/api/alignment/reset', function(req, res) {
+  customAlignment = null;
+  customWasteCodeCols = null;
+  delete data.customAlignment;
+  delete data.customWasteCodeCols;
+  saveData();
+  res.json({ ok: true });
+});
 
 app.get('/api/print/manifest/:id', function(req, res) {
   var manifest = null;
@@ -533,6 +582,8 @@ app.get('/api/print/manifest/:id', function(req, res) {
   }
   if (!manifest) return res.status(404).send('Manifest not found');
 
+  var MAP = getActiveMap();
+  var WCC = getActiveWasteCodeCols();
   var lines = [];
   for (var l = 0; l < 66; l++) {
     var row = '';
@@ -551,53 +602,47 @@ app.get('/api/print/manifest/:id', function(req, res) {
   }
 
   // Box 1 - Generator EPA ID
-  placeText(FORM_8700_MAP.generatorEpaId.row, FORM_8700_MAP.generatorEpaId.col, manifest.generatorEpaId);
+  placeText(MAP.generatorEpaId.row, MAP.generatorEpaId.col, manifest.generatorEpaId);
   // Box 2 - Page
-  placeText(FORM_8700_MAP.page.row, FORM_8700_MAP.page.col, manifest.pageNum || '1');
-  placeText(FORM_8700_MAP.totalPages.row, FORM_8700_MAP.totalPages.col, manifest.pageTotal || '1');
+  placeText(MAP.page.row, MAP.page.col, manifest.pageNum || '1');
+  placeText(MAP.totalPages.row, MAP.totalPages.col, manifest.pageTotal || '1');
   // Box 3 - Emergency Response Phone
-  placeText(FORM_8700_MAP.emergencyPhone.row, FORM_8700_MAP.emergencyPhone.col, manifest.emergencyPhone);
+  placeText(MAP.emergencyPhone.row, MAP.emergencyPhone.col, manifest.emergencyPhone);
 
   // Box 5 - Generator
-  placeText(FORM_8700_MAP.generatorName.row, FORM_8700_MAP.generatorName.col, manifest.generatorName);
-  placeText(FORM_8700_MAP.generatorPhone.row, FORM_8700_MAP.generatorPhone.col, manifest.generatorPhone);
-  // Mailing address (LEFT side of Box 5)
-  placeText(FORM_8700_MAP.generatorMailAddr.row, FORM_8700_MAP.generatorMailAddr.col, manifest.generatorMailAddress);
-  placeText(FORM_8700_MAP.generatorMailCity.row, FORM_8700_MAP.generatorMailCity.col, manifest.generatorMailCityStZip);
-  // Site address (RIGHT side of Box 5 - same rows, higher column)
-  placeText(FORM_8700_MAP.generatorSiteAddr.row, FORM_8700_MAP.generatorSiteAddr.col, manifest.genSiteAddress);
-  placeText(FORM_8700_MAP.generatorSiteCity.row, FORM_8700_MAP.generatorSiteCity.col, manifest.genSiteCityStZip);
+  placeText(MAP.generatorName.row, MAP.generatorName.col, manifest.generatorName);
+  placeText(MAP.generatorPhone.row, MAP.generatorPhone.col, manifest.generatorPhone);
+  placeText(MAP.generatorMailAddr.row, MAP.generatorMailAddr.col, manifest.generatorMailAddress);
+  placeText(MAP.generatorMailCity.row, MAP.generatorMailCity.col, manifest.generatorMailCityStZip);
+  placeText(MAP.generatorSiteAddr.row, MAP.generatorSiteAddr.col, manifest.genSiteAddress);
+  placeText(MAP.generatorSiteCity.row, MAP.generatorSiteCity.col, manifest.genSiteCityStZip);
 
   // Box 6 - Transporter 1
-  placeText(FORM_8700_MAP.transporter1Name.row, FORM_8700_MAP.transporter1Name.col, manifest.transporter1Name);
-  placeText(FORM_8700_MAP.transporter1EpaId.row, FORM_8700_MAP.transporter1EpaId.col, manifest.transporter1EpaId);
+  placeText(MAP.transporter1Name.row, MAP.transporter1Name.col, manifest.transporter1Name);
+  placeText(MAP.transporter1EpaId.row, MAP.transporter1EpaId.col, manifest.transporter1EpaId);
   // Box 7 - Transporter 2
-  placeText(FORM_8700_MAP.transporter2Name.row, FORM_8700_MAP.transporter2Name.col, manifest.transporter2Name);
-  placeText(FORM_8700_MAP.transporter2EpaId.row, FORM_8700_MAP.transporter2EpaId.col, manifest.transporter2EpaId);
+  placeText(MAP.transporter2Name.row, MAP.transporter2Name.col, manifest.transporter2Name);
+  placeText(MAP.transporter2EpaId.row, MAP.transporter2EpaId.col, manifest.transporter2EpaId);
 
   // Box 8 - Facility
-  placeText(FORM_8700_MAP.facilityName.row, FORM_8700_MAP.facilityName.col, manifest.facilityName);
-  placeText(FORM_8700_MAP.facilityPhone.row, FORM_8700_MAP.facilityPhone.col, manifest.facilityPhone);
-  placeText(FORM_8700_MAP.facilityAddress.row, FORM_8700_MAP.facilityAddress.col, manifest.facilityAddress);
-  placeText(FORM_8700_MAP.facilityCity.row, FORM_8700_MAP.facilityCity.col, manifest.facilityCityStZip);
-  placeText(FORM_8700_MAP.facilityEpaId.row, FORM_8700_MAP.facilityEpaId.col, manifest.facilityEpaId);
+  placeText(MAP.facilityName.row, MAP.facilityName.col, manifest.facilityName);
+  placeText(MAP.facilityPhone.row, MAP.facilityPhone.col, manifest.facilityPhone);
+  placeText(MAP.facilityAddress.row, MAP.facilityAddress.col, manifest.facilityAddress);
+  placeText(MAP.facilityCity.row, MAP.facilityCity.col, manifest.facilityCityStZip);
+  placeText(MAP.facilityEpaId.row, MAP.facilityEpaId.col, manifest.facilityEpaId);
 
-  // Box 9 - Waste lines (uses flattened fields: waste1Description, waste1ContainerType, etc.)
-  // Row 1 description: col 10 to col 47 (38 chars) - container fields start at col 48
-  // Rows 2-3 continuation: col 10 to col 73 (64 chars) - full width, no other fields
-  var descRow1Width = FORM_8700_MAP.waste1code.col - FORM_8700_MAP.waste1desc.col - 1;
+  // Box 9 - Waste lines
+  var descRow1Width = MAP.waste1code.col - MAP.waste1desc.col - 1;
   var descContWidth = 55;
   function wrapDescLines(text, firstMax, contMax) {
     if (!text) return [];
     var result = [];
     var remaining = String(text);
-    // First line - limited width
     if (remaining.length <= firstMax) { return [remaining]; }
     var cut = remaining.lastIndexOf(' ', firstMax);
     if (cut <= 0) cut = firstMax;
     result.push(remaining.substring(0, cut));
     remaining = remaining.substring(cut).replace(/^\s+/, '');
-    // Continuation lines - full width
     while (remaining.length > 0) {
       if (remaining.length <= contMax) { result.push(remaining); break; }
       cut = remaining.lastIndexOf(' ', contMax);
@@ -607,36 +652,27 @@ app.get('/api/print/manifest/:id', function(req, res) {
     }
     return result;
   }
-  // Box 13 waste code box positions: 6 boxes per waste line
-  // 3 codes on the main row, 3 codes on the next row
-  // Each code box is 5 chars wide (4 char code + 1 space)
-  var WASTE_CODE_COL1 = 66;
-  var WASTE_CODE_COL2 = 71;
-  var WASTE_CODE_COL3 = 76;
   for (var w = 1; w <= 4; w++) {
     var wasteDesc = manifest['waste' + w + 'Description'] || '';
     var descLines = wrapDescLines(wasteDesc, descRow1Width, descContWidth);
-    var baseRow = FORM_8700_MAP['waste' + w + 'desc'].row;
+    var baseRow = MAP['waste' + w + 'desc'].row;
     for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
-      placeText(baseRow + dl, FORM_8700_MAP['waste' + w + 'desc'].col, descLines[dl]);
+      placeText(baseRow + dl, MAP['waste' + w + 'desc'].col, descLines[dl]);
     }
-    placeText(FORM_8700_MAP['waste' + w + 'hm'].row, FORM_8700_MAP['waste' + w + 'hm'].col, manifest['waste' + w + 'HM']);
-    placeText(FORM_8700_MAP['waste' + w + 'container'].row, FORM_8700_MAP['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
-    placeText(FORM_8700_MAP['waste' + w + 'qty'].row, FORM_8700_MAP['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
-    placeText(FORM_8700_MAP['waste' + w + 'uom'].row, FORM_8700_MAP['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
-    placeText(FORM_8700_MAP['waste' + w + 'code'].row, FORM_8700_MAP['waste' + w + 'code'].col, manifest['waste' + w + 'ContainerNum']);
+    placeText(MAP['waste' + w + 'hm'].row, MAP['waste' + w + 'hm'].col, manifest['waste' + w + 'HM']);
+    placeText(MAP['waste' + w + 'container'].row, MAP['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
+    placeText(MAP['waste' + w + 'qty'].row, MAP['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
+    placeText(MAP['waste' + w + 'uom'].row, MAP['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
+    placeText(MAP['waste' + w + 'code'].row, MAP['waste' + w + 'code'].col, manifest['waste' + w + 'ContainerNum']);
     // Box 13 - Split waste codes into 6 individual boxes (3 per row, 2 rows)
     var allCodes = (manifest['waste' + w + 'WasteCodes'] || '').trim();
     if (allCodes) {
-      // First try splitting by spaces/commas
       var codeArr = allCodes.split(/[\s,]+/).filter(function(c) { return c.length > 0; });
-      // If any single chunk is longer than 4 chars, codes may be concatenated
       var needsSmart = false;
       for (var sc = 0; sc < codeArr.length; sc++) {
         if (codeArr[sc].length > 4) { needsSmart = true; break; }
       }
       if (needsSmart) {
-        // Smart split: find letter+3digit codes first, then 3-digit state codes in gaps
         var smartCodes = [];
         var joined = allCodes.replace(/[\s,]+/g, '');
         var letterRe = /[A-Za-z]\d{3}/g;
@@ -662,25 +698,23 @@ app.get('/api/print/manifest/:id', function(req, res) {
         }
         if (smartCodes.length > 1) codeArr = smartCodes;
       }
-      var codeCols = [WASTE_CODE_COL1, WASTE_CODE_COL2, WASTE_CODE_COL3];
-      // First row: codes 1-3
+      var codeCols = [WCC.col1, WCC.col2, WCC.col3];
       if (codeArr[0]) placeText(baseRow, codeCols[0], codeArr[0]);
       if (codeArr[1]) placeText(baseRow, codeCols[1], codeArr[1]);
       if (codeArr[2]) placeText(baseRow, codeCols[2], codeArr[2]);
-      // Second row: codes 4-6
       if (codeArr[3]) placeText(baseRow + 1, codeCols[0], codeArr[3]);
       if (codeArr[4]) placeText(baseRow + 1, codeCols[1], codeArr[4]);
       if (codeArr[5]) placeText(baseRow + 1, codeCols[2], codeArr[5]);
     }
   }
 
-  // Box 14 - Special Handling (4 lines)
-  placeText(FORM_8700_MAP.specialHandling.row, FORM_8700_MAP.specialHandling.col, manifest.specialHandling);
-  placeText(FORM_8700_MAP.specialHandling2.row, FORM_8700_MAP.specialHandling2.col, manifest.specialHandling2);
-  placeText(FORM_8700_MAP.specialHandling3.row, FORM_8700_MAP.specialHandling3.col, manifest.specialHandling3);
+  // Box 14 - Special Handling
+  placeText(MAP.specialHandling.row, MAP.specialHandling.col, manifest.specialHandling);
+  placeText(MAP.specialHandling2.row, MAP.specialHandling2.col, manifest.specialHandling2);
+  placeText(MAP.specialHandling3.row, MAP.specialHandling3.col, manifest.specialHandling3);
 
   // Box 15 - Generator Certification (date NOT printed - handwritten on form)
-  placeText(FORM_8700_MAP.generatorCertName.row, FORM_8700_MAP.generatorCertName.col, manifest.generatorPrintName);
+  placeText(MAP.generatorCertName.row, MAP.generatorCertName.col, manifest.generatorPrintName);
 
   var output = lines.join('\n');
   res.set('Content-Type', 'text/plain');

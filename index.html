@@ -93,6 +93,7 @@
           <button className={"nav-tab"+(tab==='facilities'?' active':'')} onClick={function(){setTab('facilities')}}>Facilities</button>
           <button className={"nav-tab"+(tab==='waste'?' active':'')} onClick={function(){setTab('waste')}}>Waste Streams</button>
           <button className={"nav-tab"+(tab==='import'?' active':'')} onClick={function(){setTab('import')}}>Import</button>
+          <button className={"nav-tab"+(tab==='alignment'?' active':'')} onClick={function(){setTab('alignment')}} style={{color:tab==='alignment'?'#fff':'rgba(255,255,255,0.4)'}}>Alignment</button>
         </div><span className={"status-dot "+(connected?'connected':'disconnected')} title={connected?'Connected':'Disconnected'}></span></nav>
         <div className="main-content">
           {tab==='manifests'&&<ManifestsTab data={data} reload={loadAllData}/>}
@@ -101,6 +102,7 @@
           {tab==='facilities'&&<ProfileTab type="facilities" data={data} reload={loadAllData}/>}
           {tab==='waste'&&<WasteStreamsTab data={data} reload={loadAllData}/>}
           {tab==='import'&&<ImportTab reload={loadAllData}/>}
+          {tab==='alignment'&&<AlignmentEditor/>}
         </div>
       </div>);
     }
@@ -270,6 +272,199 @@
         </div>
         <div className="card" style={{marginTop:20}}><h4 style={{marginBottom:12}}>Column Mapping</h4><table className="data-table"><thead><tr><th>QuickBooks Column</th><th>Maps To</th></tr></thead><tbody><tr><td>Customer full name</td><td>Generator Name</td></tr><tr><td>Bill address</td><td>Mailing Address</td></tr><tr><td>Ship address</td><td>Site Address</td></tr><tr><td>Phone numbers</td><td>Phone</td></tr><tr><td>EPA ID Number</td><td>EPA ID</td></tr></tbody></table></div>
       </div>);
+    }
+
+    function AlignmentEditor() {
+      var s1=useState(null);var alignData=s1[0];var setAlignData=s1[1];
+      var s2=useState(null);var selected=s2[0];var setSelected=s2[1];
+      var s3=useState('');var status=s3[0];var setStatus=s3[1];
+      var s4=useState(null);var wcc=s4[0];var setWcc=s4[1];
+
+      var FIELD_LABELS = {
+        generatorEpaId:'Box 1 - EPA ID', page:'Box 2 - Page', totalPages:'Box 2 - Total Pages',
+        emergencyPhone:'Box 3 - Emergency Phone',
+        generatorName:'Box 5 - Generator Name', generatorMailAddr:'Box 5 - Mail Address',
+        generatorMailCity:'Box 5 - Mail City/St/Zip', generatorPhone:'Box 5 - Phone',
+        generatorSiteAddr:'Box 5 - Site Address', generatorSiteCity:'Box 5 - Site City/St/Zip',
+        transporter1Name:'Box 6 - Transporter 1', transporter1EpaId:'Box 6 - Trans 1 EPA ID',
+        transporter2Name:'Box 7 - Transporter 2', transporter2EpaId:'Box 7 - Trans 2 EPA ID',
+        facilityName:'Box 8 - Facility Name', facilityEpaId:'Box 8 - Facility EPA ID',
+        facilityAddress:'Box 8 - Facility Addr', facilityPhone:'Box 8 - Facility Phone',
+        facilityCity:'Box 8 - Facility City', facilityState:'Box 8 - Facility State', facilityZip:'Box 8 - Facility Zip',
+        waste1hm:'Line 1 - HM', waste1desc:'Line 1 - Description', waste1code:'Line 1 - Container #',
+        waste1container:'Line 1 - Container Type', waste1qty:'Line 1 - Qty', waste1uom:'Line 1 - Unit',
+        waste2hm:'Line 2 - HM', waste2desc:'Line 2 - Description', waste2code:'Line 2 - Container #',
+        waste2container:'Line 2 - Container Type', waste2qty:'Line 2 - Qty', waste2uom:'Line 2 - Unit',
+        waste3hm:'Line 3 - HM', waste3desc:'Line 3 - Description', waste3code:'Line 3 - Container #',
+        waste3container:'Line 3 - Container Type', waste3qty:'Line 3 - Qty', waste3uom:'Line 3 - Unit',
+        waste4hm:'Line 4 - HM', waste4desc:'Line 4 - Description', waste4code:'Line 4 - Container #',
+        waste4container:'Line 4 - Container Type', waste4qty:'Line 4 - Qty', waste4uom:'Line 4 - Unit',
+        specialHandling:'Box 14 - Special Line 1', specialHandling2:'Box 14 - Special Line 2',
+        specialHandling3:'Box 14 - Special Line 3', generatorCertName:'Box 15 - Cert Name'
+      };
+
+      var FIELD_COLORS = {};
+      var keys = Object.keys(FIELD_LABELS);
+      var colorList = ['#e94560','#4ade80','#60a5fa','#f59e0b','#a78bfa','#f472b6','#2dd4bf','#fb923c','#818cf8','#34d399'];
+      for (var ci=0;ci<keys.length;ci++) {
+        var boxNum = FIELD_LABELS[keys[ci]].match(/Box (\d+)|Line (\d+)/);
+        var idx = boxNum ? parseInt(boxNum[1]||boxNum[2]) % colorList.length : ci % colorList.length;
+        FIELD_COLORS[keys[ci]] = colorList[idx];
+      }
+
+      useEffect(function(){
+        fetch('/api/alignment').then(function(r){return r.json()}).then(function(d){
+          setAlignData(d.map);
+          setWcc(d.wasteCodeCols);
+        });
+      },[]);
+
+      function updateField(key, prop, val) {
+        var num = parseInt(val);
+        if (isNaN(num) || num < 1) return;
+        if (prop === 'row' && num > 66) return;
+        if (prop === 'col' && num > 80) return;
+        setAlignData(function(prev){
+          var next = Object.assign({}, prev);
+          next[key] = Object.assign({}, prev[key]);
+          next[key][prop] = num;
+          return next;
+        });
+      }
+
+      function updateWcc(key, val) {
+        var num = parseInt(val);
+        if (isNaN(num) || num < 1 || num > 80) return;
+        setWcc(function(prev){
+          var next = Object.assign({}, prev);
+          next[key] = num;
+          return next;
+        });
+      }
+
+      function handleSave() {
+        setStatus('Saving...');
+        fetch('/api/alignment', {
+          method: 'PUT',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({map: alignData, wasteCodeCols: wcc})
+        }).then(function(r){return r.json()}).then(function(){
+          setStatus('Saved! Changes will apply to next print.');
+          setTimeout(function(){setStatus('')}, 3000);
+        });
+      }
+
+      function handleReset() {
+        if (!confirm('Reset all positions to defaults?')) return;
+        setStatus('Resetting...');
+        fetch('/api/alignment/reset', {method:'POST'}).then(function(r){return r.json()}).then(function(){
+          return fetch('/api/alignment').then(function(r){return r.json()}).then(function(d){
+            setAlignData(d.map);
+            setWcc(d.wasteCodeCols);
+            setStatus('Reset to defaults.');
+            setTimeout(function(){setStatus('')}, 3000);
+          });
+        });
+      }
+
+      function nudge(key, prop, delta) {
+        if (!alignData || !alignData[key]) return;
+        var cur = alignData[key][prop];
+        var next = cur + delta;
+        if (prop === 'row' && (next < 1 || next > 66)) return;
+        if (prop === 'col' && (next < 1 || next > 80)) return;
+        updateField(key, prop, next);
+      }
+
+      if (!alignData) return React.createElement('div',null,'Loading alignment data...');
+
+      var groups = [
+        {title:'Box 1-3 (Header)', fields:['generatorEpaId','page','totalPages','emergencyPhone']},
+        {title:'Box 5 (Generator)', fields:['generatorName','generatorMailAddr','generatorMailCity','generatorPhone','generatorSiteAddr','generatorSiteCity']},
+        {title:'Box 6-7 (Transporters)', fields:['transporter1Name','transporter1EpaId','transporter2Name','transporter2EpaId']},
+        {title:'Box 8 (Facility)', fields:['facilityName','facilityEpaId','facilityAddress','facilityPhone','facilityCity','facilityState','facilityZip']},
+        {title:'Waste Line 1', fields:['waste1hm','waste1desc','waste1code','waste1container','waste1qty','waste1uom']},
+        {title:'Waste Line 2', fields:['waste2hm','waste2desc','waste2code','waste2container','waste2qty','waste2uom']},
+        {title:'Waste Line 3', fields:['waste3hm','waste3desc','waste3code','waste3container','waste3qty','waste3uom']},
+        {title:'Waste Line 4', fields:['waste4hm','waste4desc','waste4code','waste4container','waste4qty','waste4uom']},
+        {title:'Box 14 (Special Handling)', fields:['specialHandling','specialHandling2','specialHandling3']},
+        {title:'Box 15 (Certification)', fields:['generatorCertName']}
+      ];
+
+      return React.createElement('div',null,
+        React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:8}},'Print Alignment Editor'),
+        React.createElement('p',{style:{color:'#666',marginBottom:16}},'Adjust row and column positions for each field. Row = line on page (1-66). Col = character position (1-80). Click arrows or type values. Save when done, then print a test.'),
+        React.createElement('div',{style:{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap'}},
+          React.createElement('button',{className:'btn btn-primary',onClick:handleSave,style:{padding:'10px 24px',fontSize:16}},'Save Alignment'),
+          React.createElement('button',{className:'btn',onClick:handleReset,style:{padding:'10px 24px',background:'#666'}},'Reset to Defaults'),
+          status ? React.createElement('span',{style:{color:'#4ade80',fontWeight:600,alignSelf:'center'}},status) : null
+        ),
+        React.createElement('div',{className:'card',style:{marginBottom:16,padding:16}},
+          React.createElement('h4',{style:{marginBottom:12}},'Waste Code Columns (Box 13)'),
+          React.createElement('p',{style:{color:'#666',fontSize:13,marginBottom:12}},'These control where the 6 waste code boxes print. 3 codes per row, 2 rows per waste line.'),
+          React.createElement('div',{style:{display:'flex',gap:20,flexWrap:'wrap'}},
+            (function(){
+              var colKeys=['col1','col2','col3'];
+              var elems=[];
+              for(var ci=0;ci<colKeys.length;ci++){
+                (function(ck,idx){
+                  elems.push(React.createElement('div',{key:ck,style:{display:'flex',alignItems:'center',gap:8}},
+                    React.createElement('label',{style:{fontWeight:600,minWidth:80}},'Code '+(idx+1)+':'),
+                    React.createElement('button',{onClick:function(){updateWcc(ck,(wcc[ck]||66)-1)},style:{width:28,height:28,cursor:'pointer',fontSize:16}},'<'),
+                    React.createElement('input',{type:'number',value:wcc[ck]||'',onChange:function(e){updateWcc(ck,e.target.value)},style:{width:50,textAlign:'center',padding:4}}),
+                    React.createElement('button',{onClick:function(){updateWcc(ck,(wcc[ck]||66)+1)},style:{width:28,height:28,cursor:'pointer',fontSize:16}},'>')
+                  ));
+                })(colKeys[ci],ci);
+              }
+              return elems;
+            })()
+          )
+        ),
+        groups.map(function(group){
+          return React.createElement('div',{key:group.title,className:'card',style:{marginBottom:12,padding:16}},
+            React.createElement('h4',{style:{marginBottom:12,borderBottom:'1px solid #eee',paddingBottom:8}},group.title),
+            React.createElement('table',{style:{width:'100%',borderCollapse:'collapse'}},
+              React.createElement('thead',null,
+                React.createElement('tr',null,
+                  React.createElement('th',{style:{textAlign:'left',padding:'4px 8px',width:'40%'}},'Field'),
+                  React.createElement('th',{style:{textAlign:'center',padding:'4px 8px',width:'30%'}},'Row (line)'),
+                  React.createElement('th',{style:{textAlign:'center',padding:'4px 8px',width:'30%'}},'Col (char)')
+                )
+              ),
+              React.createElement('tbody',null,
+                (function(){
+                  var rows=[];
+                  for(var fi=0;fi<group.fields.length;fi++){
+                    (function(fk){
+                      var pos = alignData[fk] || {row:1,col:1};
+                      var isSelected = selected === fk;
+                      rows.push(React.createElement('tr',{key:fk,onClick:function(){setSelected(fk)},
+                        style:{background:isSelected?'rgba(233,69,96,0.1)':'transparent',cursor:'pointer',borderBottom:'1px solid #f0f0f0'}},
+                        React.createElement('td',{style:{padding:'6px 8px',fontSize:13,fontWeight:isSelected?700:400}},FIELD_LABELS[fk]||fk),
+                        React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
+                          React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',-1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},(String.fromCharCode(9650))),
+                            React.createElement('input',{type:'number',value:pos.row,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'row',e.target.value)},style:{width:45,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},(String.fromCharCode(9660)))
+                          )
+                        ),
+                        React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
+                          React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',-1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},(String.fromCharCode(9664))),
+                            React.createElement('input',{type:'number',value:pos.col,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'col',e.target.value)},style:{width:45,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},(String.fromCharCode(9654)))
+                          )
+                        )
+                      ));
+                    })(group.fields[fi]);
+                  }
+                  return rows;
+                })()
+              )
+            )
+          );
+        })
+      );
     }
 
     ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
