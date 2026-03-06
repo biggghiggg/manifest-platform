@@ -365,10 +365,11 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
 
       // Container Type and Unit of Measure excluded - vary per shipment
 
-      // RCRA Waste Codes (E.3)
+      // RCRA Waste Codes (E.3) - strip "None" so it comes through empty
       var rcraMatch = fullText.match(/RCRA Waste Codes[:\s]+([A-Z0-9\s,]+)/i);
       if (rcraMatch) {
         wasteCodes = rcraMatch[1].trim().replace(/\s+/g, ' ').replace(/If None.*$/i, '').trim();
+        if (wasteCodes.toLowerCase() === 'none') wasteCodes = '';
       }
 
       // State Waste Codes (E.2) - grab just the code, strip letter prefixes (CA-122 -> 122)
