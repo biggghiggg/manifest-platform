@@ -620,7 +620,7 @@
         waste4wc1:'Waste 4 - Code 1',waste4wc2:'Waste 4 - Code 2',waste4wc3:'Waste 4 - Code 3',waste4wc4:'Waste 4 - Code 4',waste4wc5:'Waste 4 - Code 5',waste4wc6:'Waste 4 - Code 6'
       };
 
-      function handleSave(){setStatus('Saved!')setTimeout(function(){setStatus('')},2000)}
+      function handleSave(){setStatus('Saved!');setTimeout(function(){setStatus('')},2000)}
       function handleUndo(){setStatus('Restored previous settings')}
       function handleReset(){setAlignData({});setColOffset(0);setLeftMargin(0);setStatus('Reset to defaults')}
       function updateField(fk,dim,val){var v=parseInt(val);if(!isNaN(v)&&v>=1&&v<=100){var newData=Object.assign({},alignData);newData[fk]=Object.assign({},alignData[fk]||{row:1,col:1});newData[fk][dim]=v;setAlignData(newData)}}
