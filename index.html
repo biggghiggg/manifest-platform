@@ -1166,6 +1166,7 @@
       var profiles = data.profiles || [];
       var s1 = useState(''); var searchTerm = s1[0]; var setSearchTerm = s1[1];
       var s2 = useState(null); var confirmDelete = s2[0]; var setConfirmDelete = s2[1];
+      var s3 = useState(null); var expandedGen = s3[0]; var setExpandedGen = s3[1];
 
       function handleView(profile) {
         window.open('/api/profiles/' + profile.id + '/pdf', '_blank');
@@ -1209,16 +1210,42 @@
         });
       }
 
-      // Sort by most recent first
-      filtered = filtered.slice().sort(function(a, b) {
-        return (b.importedAt || '').localeCompare(a.importedAt || '');
-      });
+      // Group profiles by generator name
+      var genGroups = {};
+      var genOrder = [];
+      for (var gi = 0; gi < filtered.length; gi++) {
+        var genKey = filtered[gi].generatorName || 'Unknown Generator';
+        if (!genGroups[genKey]) {
+          genGroups[genKey] = [];
+          genOrder.push(genKey);
+        }
+        genGroups[genKey].push(filtered[gi]);
+      }
+      // Sort generators alphabetically
+      genOrder.sort(function(a, b) { return a.localeCompare(b); });
+      // Sort profiles within each generator by most recent first
+      for (var gk = 0; gk < genOrder.length; gk++) {
+        genGroups[genOrder[gk]].sort(function(a, b) {
+          return (b.importedAt || '').localeCompare(a.importedAt || '');
+        });
+      }
+
+      // If search is active, auto-expand all generators
+      var isSearching = searchTerm.length > 0;
+
+      function sourceBadge(source) {
+        return React.createElement('span', {style: {
+          background: source === 'EWS' ? '#dbeafe' : source === 'Samex' ? '#fef3c7' : '#d1fae5',
+          color: source === 'EWS' ? '#1e40af' : source === 'Samex' ? '#92400e' : '#065f46',
+          padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600
+        }}, source || 'Republic');
+      }
 
       return React.createElement('div', null,
         React.createElement('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16}},
           React.createElement('h2', {style: {fontSize: 22, fontWeight: 700}}, 'Imported Profiles'),
           React.createElement('div', {style: {display: 'flex', gap: 8, alignItems: 'center'}},
-            React.createElement('span', {style: {fontSize: 13, color: '#888'}}, profiles.length + ' profile' + (profiles.length !== 1 ? 's' : '') + ' stored'),
+            React.createElement('span', {style: {fontSize: 13, color: '#888'}}, profiles.length + ' profile' + (profiles.length !== 1 ? 's' : '') + ' across ' + genOrder.length + ' generator' + (genOrder.length !== 1 ? 's' : '')),
             React.createElement('input', {
               type: 'text', placeholder: 'Search profiles...', value: searchTerm,
               onChange: function(e) { setSearchTerm(e.target.value); },
@@ -1232,50 +1259,75 @@
             React.createElement('div', {style: {fontSize: 16, fontWeight: 600, marginBottom: 4}}, 'No profiles stored yet'),
             React.createElement('div', {style: {fontSize: 13}}, 'When you import a waste profile PDF in the Waste Streams tab, it will automatically be saved here.')
           ) :
-          React.createElement('div', {className: 'card'},
-            React.createElement('table', {className: 'data-table'},
-              React.createElement('thead', null,
-                React.createElement('tr', null,
-                  React.createElement('th', null, 'Profile #'),
-                  React.createElement('th', null, 'Waste Stream'),
-                  React.createElement('th', null, 'Generator'),
-                  React.createElement('th', null, 'Source'),
-                  React.createElement('th', null, 'File'),
-                  React.createElement('th', null, 'Size'),
-                  React.createElement('th', null, 'Imported'),
-                  React.createElement('th', {style: {width: 140}}, 'Actions')
+          genOrder.map(function(genName) {
+            var genProfiles = genGroups[genName];
+            var isExpanded = isSearching || expandedGen === genName;
+            // Collect unique sources for this generator
+            var genSources = {};
+            for (var si = 0; si < genProfiles.length; si++) {
+              genSources[genProfiles[si].source || 'Republic'] = true;
+            }
+            var sourceList = Object.keys(genSources);
+
+            return React.createElement('div', {key: genName, className: 'card', style: {marginBottom: 12, overflow: 'hidden'}},
+              // Generator header row (clickable to expand/collapse)
+              React.createElement('div', {
+                style: {
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '12px 16px', cursor: 'pointer', background: isExpanded ? '#f8f9fa' : '#fff',
+                  borderBottom: isExpanded ? '1px solid #eee' : 'none'
+                },
+                onClick: function() { setExpandedGen(isExpanded && !isSearching ? null : genName); }
+              },
+                React.createElement('div', {style: {display: 'flex', alignItems: 'center', gap: 10}},
+                  React.createElement('span', {style: {fontSize: 14, color: '#888', fontFamily: 'monospace', width: 16}}, isExpanded ? 'v' : '>'),
+                  React.createElement('span', {style: {fontWeight: 700, fontSize: 15, color: '#1a1a2e'}}, genName),
+                  React.createElement('span', {style: {
+                    background: '#f0f0f0', color: '#666', padding: '1px 8px', borderRadius: 10,
+                    fontSize: 12, fontWeight: 600
+                  }}, genProfiles.length + ' profile' + (genProfiles.length !== 1 ? 's' : ''))
+                ),
+                React.createElement('div', {style: {display: 'flex', gap: 4}},
+                  sourceList.map(function(src) { return sourceBadge(src); })
                 )
               ),
-              React.createElement('tbody', null,
-                filtered.length === 0 ?
-                  React.createElement('tr', null, React.createElement('td', {colSpan: 8, style: {textAlign: 'center', padding: 20, color: '#888'}}, 'No profiles match your search.')) :
-                  filtered.map(function(p) {
-                    return React.createElement('tr', {key: p.id},
-                      React.createElement('td', {style: {fontWeight: 600, color: '#e94560'}}, p.profileId || '-'),
-                      React.createElement('td', null, p.wasteStreamName || '-'),
-                      React.createElement('td', null, p.generatorName || '-'),
-                      React.createElement('td', null,
-                        React.createElement('span', {style: {
-                          background: p.source === 'EWS' ? '#dbeafe' : p.source === 'Samex' ? '#fef3c7' : '#d1fae5',
-                          color: p.source === 'EWS' ? '#1e40af' : p.source === 'Samex' ? '#92400e' : '#065f46',
-                          padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600
-                        }}, p.source || 'Republic')
-                      ),
-                      React.createElement('td', {style: {fontSize: 12, color: '#666', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}, p.originalName || '-'),
-                      React.createElement('td', {style: {fontSize: 12, color: '#888'}}, formatFileSize(p.fileSize)),
-                      React.createElement('td', {style: {fontSize: 12}}, formatDate(p.importedAt)),
-                      React.createElement('td', null,
-                        React.createElement('button', {className: 'btn btn-sm btn-primary', onClick: function() { handleView(p); }, style: {marginRight: 4}}, 'View PDF'),
-                        React.createElement('button', {
-                          className: 'btn btn-sm ' + (confirmDelete === p.id ? 'btn-danger' : 'btn-secondary'),
-                          onClick: function() { handleDelete(p); }
-                        }, confirmDelete === p.id ? 'Confirm?' : 'Delete')
-                      )
-                    );
-                  })
-              )
-            )
-          )
+              // Expanded: show profile table
+              isExpanded ? React.createElement('div', {style: {padding: 0}},
+                React.createElement('table', {className: 'data-table', style: {marginBottom: 0}},
+                  React.createElement('thead', null,
+                    React.createElement('tr', {style: {background: '#f8f9fa'}},
+                      React.createElement('th', null, 'Profile #'),
+                      React.createElement('th', null, 'Waste Stream'),
+                      React.createElement('th', null, 'Source'),
+                      React.createElement('th', null, 'File'),
+                      React.createElement('th', null, 'Size'),
+                      React.createElement('th', null, 'Imported'),
+                      React.createElement('th', {style: {width: 140}}, 'Actions')
+                    )
+                  ),
+                  React.createElement('tbody', null,
+                    genProfiles.map(function(p) {
+                      return React.createElement('tr', {key: p.id},
+                        React.createElement('td', {style: {fontWeight: 600, color: '#e94560'}}, p.profileId || '-'),
+                        React.createElement('td', null, p.wasteStreamName || '-'),
+                        React.createElement('td', null, sourceBadge(p.source)),
+                        React.createElement('td', {style: {fontSize: 12, color: '#666', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}, p.originalName || '-'),
+                        React.createElement('td', {style: {fontSize: 12, color: '#888'}}, formatFileSize(p.fileSize)),
+                        React.createElement('td', {style: {fontSize: 12}}, formatDate(p.importedAt)),
+                        React.createElement('td', null,
+                          React.createElement('button', {className: 'btn btn-sm btn-primary', onClick: function() { handleView(p); }, style: {marginRight: 4}}, 'View PDF'),
+                          React.createElement('button', {
+                            className: 'btn btn-sm ' + (confirmDelete === p.id ? 'btn-danger' : 'btn-secondary'),
+                            onClick: function() { handleDelete(p); }
+                          }, confirmDelete === p.id ? 'Confirm?' : 'Delete')
+                        )
+                      );
+                    })
+                  )
+                )
+              ) : null
+            );
+          })
       );
     }
 
