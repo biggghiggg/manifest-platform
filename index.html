@@ -978,10 +978,61 @@
       var s5=useState(null);var profileResult=s5[0];var setProfileResult=s5[1];
       var s6=useState(false);var profileUploading=s6[0];var setProfileUploading=s6[1];
       var s7=useState('');var wsSearch=s7[0];var setWsSearch=s7[1];
+      var s8=useState(null);var bulkProgress=s8[0];var setBulkProgress=s8[1];
       var profileRef=useRef();
+      var bulkRef=useRef();
       function handleSave(formData){var p=editing?api.put('/api/waste-streams/'+editing.id,formData):api.post('/api/waste-streams',formData);p.then(function(){reload();setShowModal(false);setEditing(null)})}
       function handleDelete(id){if(confirm('Delete this waste stream?')){api.del('/api/waste-streams/'+id).then(reload)}}
       function handleProfileUpload(e){var file=e.target.files[0];if(!file)return;setProfileUploading(true);setProfileResult(null);var formData=new FormData();formData.append('file',file);fetch('/api/import/waste-profile',{method:'POST',body:formData}).then(function(r){return r.json()}).then(function(d){setProfileResult(d);setProfileUploading(false);if(d.success)reload();if(profileRef.current)profileRef.current.value=''}).catch(function(err){setProfileResult({error:'Upload failed: '+err.message});setProfileUploading(false);if(profileRef.current)profileRef.current.value=''})}
+
+      function handleBulkUpload(e) {
+        var files = e.target.files;
+        if (!files || files.length === 0) return;
+        // Filter to only PDFs
+        var pdfs = [];
+        for (var fi = 0; fi < files.length; fi++) {
+          if (files[fi].name.toLowerCase().indexOf('.pdf') !== -1) pdfs.push(files[fi]);
+        }
+        if (pdfs.length === 0) { if (bulkRef.current) bulkRef.current.value = ''; return; }
+        var progress = { total: pdfs.length, current: 0, imported: 0, skipped: 0, failed: 0, errors: [], done: false };
+        setBulkProgress(Object.assign({}, progress));
+
+        function processNext(idx) {
+          if (idx >= pdfs.length) {
+            progress.done = true;
+            setBulkProgress(Object.assign({}, progress));
+            reload();
+            if (bulkRef.current) bulkRef.current.value = '';
+            return;
+          }
+          progress.current = idx + 1;
+          progress.currentFile = pdfs[idx].name;
+          setBulkProgress(Object.assign({}, progress));
+          var formData = new FormData();
+          formData.append('file', pdfs[idx]);
+          fetch('/api/import/waste-profile', { method: 'POST', body: formData })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+              if (d.success) {
+                progress.imported++;
+              } else if (d.error && d.error.indexOf('already exists') !== -1) {
+                progress.skipped++;
+              } else {
+                progress.failed++;
+                progress.errors.push(pdfs[idx].name + ': ' + (d.error || 'Unknown error'));
+              }
+              setBulkProgress(Object.assign({}, progress));
+              processNext(idx + 1);
+            })
+            .catch(function(err) {
+              progress.failed++;
+              progress.errors.push(pdfs[idx].name + ': ' + err.message);
+              setBulkProgress(Object.assign({}, progress));
+              processNext(idx + 1);
+            });
+        }
+        processNext(0);
+      }
 
       // Sort alphabetically by name, then filter by search
       var allStreams = (data.wasteStreams || []).slice().sort(function(a, b) {
@@ -1011,11 +1062,43 @@
               onChange:function(e){setWsSearch(e.target.value)},
               style:{padding:'6px 12px',borderRadius:6,border:'1px solid #ddd',fontSize:14,width:220}
             }),
-            React.createElement('button',{className:'btn btn-success',onClick:function(){profileRef.current&&profileRef.current.click()}},'Import from Waste Profile'),
+            React.createElement('button',{className:'btn btn-success',onClick:function(){profileRef.current&&profileRef.current.click()}},'Import Profile'),
+            React.createElement('button',{className:'btn btn-success',onClick:function(){bulkRef.current&&bulkRef.current.click()},style:{background:'#065f46'}},'Bulk Import Folder'),
             React.createElement('button',{className:'btn btn-primary',onClick:function(){setEditing(null);setShowModal(true)}},'+New Waste Stream'),
-            React.createElement('input',{ref:profileRef,type:'file',accept:'.pdf',style:{display:'none'},onChange:handleProfileUpload})
+            React.createElement('input',{ref:profileRef,type:'file',accept:'.pdf',style:{display:'none'},onChange:handleProfileUpload}),
+            React.createElement('input',{ref:bulkRef,type:'file',accept:'.pdf',multiple:true,webkitdirectory:'true',style:{display:'none'},onChange:handleBulkUpload})
           )
         ),
+        // Bulk import progress
+        bulkProgress&&!bulkProgress.done?React.createElement('div',{className:'card',style:{background:'#f0f4ff',padding:12,marginBottom:12}},
+          React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}},
+            React.createElement('strong',null,'Bulk Import: Processing ' + bulkProgress.current + ' of ' + bulkProgress.total + '...'),
+            React.createElement('span',{style:{fontSize:12,color:'#666'}},bulkProgress.currentFile || '')
+          ),
+          React.createElement('div',{style:{background:'#e5e7eb',borderRadius:4,height:8,overflow:'hidden'}},
+            React.createElement('div',{style:{background:'#3b82f6',height:'100%',width:Math.round(bulkProgress.current/bulkProgress.total*100)+'%',transition:'width 0.3s'}})
+          ),
+          React.createElement('div',{style:{display:'flex',gap:16,marginTop:6,fontSize:12}},
+            React.createElement('span',{style:{color:'#065f46'}},bulkProgress.imported+' imported'),
+            React.createElement('span',{style:{color:'#92400e'}},bulkProgress.skipped+' skipped (already exist)'),
+            bulkProgress.failed>0?React.createElement('span',{style:{color:'#991b1b'}},bulkProgress.failed+' failed'):null
+          )
+        ):null,
+        // Bulk import done summary
+        bulkProgress&&bulkProgress.done?React.createElement('div',{className:'card',style:{background:'#d1fae5',padding:12,marginBottom:12}},
+          React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},
+            React.createElement('div',null,
+              React.createElement('strong',null,'Bulk Import Complete: '),
+              bulkProgress.imported+' new profile'+(bulkProgress.imported!==1?'s':'')+' imported',
+              bulkProgress.skipped>0?', '+bulkProgress.skipped+' skipped (already existed)':'',
+              bulkProgress.failed>0?', '+bulkProgress.failed+' failed':''
+            ),
+            React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){setBulkProgress(null)}},'Dismiss')
+          ),
+          bulkProgress.errors.length>0?React.createElement('div',{style:{marginTop:8,fontSize:12,color:'#991b1b'}},
+            bulkProgress.errors.map(function(err,i){return React.createElement('div',{key:i},err)})
+          ):null
+        ):null,
         profileUploading?React.createElement('div',{className:'card',style:{background:'#f0f4ff',padding:12,marginBottom:12}},'Parsing waste profile PDF...'):null,
         profileResult&&profileResult.success?React.createElement('div',{className:'card',style:{background:'#d1fae5',padding:12,marginBottom:12}},
           React.createElement('strong',null,profileResult.source==='EWS'?'Imported (EWS): ':profileResult.source==='Samex'?'Imported (Samex): ':'Imported: '),
