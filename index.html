@@ -977,14 +977,40 @@
       var s2=useState(null);var editing=s2[0];var setEditing=s2[1];
       var s5=useState(null);var profileResult=s5[0];var setProfileResult=s5[1];
       var s6=useState(false);var profileUploading=s6[0];var setProfileUploading=s6[1];
+      var s7=useState('');var wsSearch=s7[0];var setWsSearch=s7[1];
       var profileRef=useRef();
       function handleSave(formData){var p=editing?api.put('/api/waste-streams/'+editing.id,formData):api.post('/api/waste-streams',formData);p.then(function(){reload();setShowModal(false);setEditing(null)})}
       function handleDelete(id){if(confirm('Delete this waste stream?')){api.del('/api/waste-streams/'+id).then(reload)}}
       function handleProfileUpload(e){var file=e.target.files[0];if(!file)return;setProfileUploading(true);setProfileResult(null);var formData=new FormData();formData.append('file',file);fetch('/api/import/waste-profile',{method:'POST',body:formData}).then(function(r){return r.json()}).then(function(d){setProfileResult(d);setProfileUploading(false);if(d.success)reload();if(profileRef.current)profileRef.current.value=''}).catch(function(err){setProfileResult({error:'Upload failed: '+err.message});setProfileUploading(false);if(profileRef.current)profileRef.current.value=''})}
+
+      // Sort alphabetically by name, then filter by search
+      var allStreams = (data.wasteStreams || []).slice().sort(function(a, b) {
+        return (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase());
+      });
+      var filtered = allStreams;
+      if (wsSearch) {
+        var term = wsSearch.toLowerCase();
+        filtered = allStreams.filter(function(w) {
+          return (w.name || '').toLowerCase().indexOf(term) !== -1 ||
+            (w.profileId || '').toLowerCase().indexOf(term) !== -1 ||
+            (w.dotDescription || '').toLowerCase().indexOf(term) !== -1 ||
+            (w.wasteCodes || '').toLowerCase().indexOf(term) !== -1 ||
+            (w.stateWasteCodes || '').toLowerCase().indexOf(term) !== -1 ||
+            (w.unNum || '').toLowerCase().indexOf(term) !== -1 ||
+            (w.source || '').toLowerCase().indexOf(term) !== -1;
+        });
+      }
+
       return React.createElement('div',null,
         React.createElement('div',{className:'section-header'},
           React.createElement('h2',{style:{fontSize:22,fontWeight:700}},'Waste Stream Templates'),
-          React.createElement('div',{style:{display:'flex',gap:8}},
+          React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center'}},
+            React.createElement('span',{style:{fontSize:13,color:'#888'}},allStreams.length+' stream'+(allStreams.length!==1?'s':'')),
+            React.createElement('input',{
+              type:'text',placeholder:'Search waste streams...',value:wsSearch,
+              onChange:function(e){setWsSearch(e.target.value)},
+              style:{padding:'6px 12px',borderRadius:6,border:'1px solid #ddd',fontSize:14,width:220}
+            }),
             React.createElement('button',{className:'btn btn-success',onClick:function(){profileRef.current&&profileRef.current.click()}},'Import from Waste Profile'),
             React.createElement('button',{className:'btn btn-primary',onClick:function(){setEditing(null);setShowModal(true)}},'+New Waste Stream'),
             React.createElement('input',{ref:profileRef,type:'file',accept:'.pdf',style:{display:'none'},onChange:handleProfileUpload})
@@ -1023,8 +1049,8 @@
               )
             ),
             React.createElement('tbody',null,
-              (data.wasteStreams||[]).length===0?React.createElement('tr',null,React.createElement('td',{colSpan:'9',style:{textAlign:'center',color:'#999',padding:24}},'No waste streams yet.')):null,
-              (data.wasteStreams||[]).map(function(w){return React.createElement('tr',{key:w.id},
+              filtered.length===0?React.createElement('tr',null,React.createElement('td',{colSpan:'9',style:{textAlign:'center',color:'#999',padding:24}},wsSearch?'No waste streams match "'+wsSearch+'"':'No waste streams yet.')):null,
+              filtered.map(function(w){return React.createElement('tr',{key:w.id},
                 React.createElement('td',null,w.profileId||'-'),
                 React.createElement('td',{style:{fontWeight:600}},w.name),
                 React.createElement('td',{style:{fontSize:12}},w.dotDescription||'-'),
