@@ -183,6 +183,24 @@ app.delete('/api/profiles/:id', function(req, res) {
   res.json({ success: true });
 });
 
+// Merge/move profiles from one generator to another
+app.post('/api/profiles/merge', function(req, res) {
+  var fromGen = req.body.from;
+  var toGen = req.body.to;
+  if (!fromGen || !toGen) return res.status(400).json({ error: 'Both "from" and "to" generator names required' });
+  var count = 0;
+  for (var i = 0; i < (data.profiles || []).length; i++) {
+    if (data.profiles[i].generatorName === fromGen) {
+      data.profiles[i].generatorName = toGen;
+      count++;
+    }
+  }
+  if (count === 0) return res.status(404).json({ error: 'No profiles found for generator "' + fromGen + '"' });
+  saveData(data);
+  broadcast('update', { collection: 'profiles', action: 'merge' });
+  res.json({ success: true, moved: count });
+});
+
 // Helper: save an imported profile PDF
 function saveProfilePDF(reqFile, profileId, source, wasteStreamName, generatorName, originalFilename) {
   var ext = path.extname(originalFilename || reqFile.originalname || '.pdf');

@@ -1194,6 +1194,17 @@
       var s2 = useState(null); var confirmDelete = s2[0]; var setConfirmDelete = s2[1];
       var s3 = useState(null); var expandedGen = s3[0]; var setExpandedGen = s3[1];
       var s4 = useState(null); var viewingPdf = s4[0]; var setViewingPdf = s4[1];
+      var s8 = useState(null); var mergingGen = s8[0]; var setMergingGen = s8[1];
+      var s9 = useState(''); var mergeTarget = s9[0]; var setMergeTarget = s9[1];
+
+      function handleMerge(fromGen) {
+        if (!mergeTarget) return;
+        api.post('/api/profiles/merge', { from: fromGen, to: mergeTarget }).then(function() {
+          reload();
+          setMergingGen(null);
+          setMergeTarget('');
+        });
+      }
 
       function handleView(profile) {
         setViewingPdf(profile);
@@ -1351,10 +1362,42 @@
                     fontSize: 12, fontWeight: 600
                   }}, genProfiles.length + ' profile' + (genProfiles.length !== 1 ? 's' : ''))
                 ),
-                React.createElement('div', {style: {display: 'flex', gap: 4}},
-                  sourceList.map(function(src) { return sourceBadge(src); })
+                React.createElement('div', {style: {display: 'flex', gap: 6, alignItems: 'center'}},
+                  sourceList.map(function(src) { return sourceBadge(src); }),
+                  React.createElement('button', {
+                    className: 'btn btn-sm btn-secondary',
+                    onClick: function(e) {
+                      e.stopPropagation();
+                      if (mergingGen === genName) { setMergingGen(null); setMergeTarget(''); }
+                      else { setMergingGen(genName); setMergeTarget(''); }
+                    },
+                    style: {marginLeft: 4, fontSize: 11, padding: '2px 8px'}
+                  }, mergingGen === genName ? 'Cancel' : 'Move to...')
                 )
               ),
+              // Merge UI - shown when "Move to..." is clicked
+              mergingGen === genName ? React.createElement('div', {
+                style: {padding: '10px 16px', background: '#fffbeb', borderBottom: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 8},
+                onClick: function(e) { e.stopPropagation(); }
+              },
+                React.createElement('span', {style: {fontSize: 13, fontWeight: 600, color: '#92400e'}}, 'Move all profiles to:'),
+                React.createElement('select', {
+                  value: mergeTarget,
+                  onChange: function(e) { setMergeTarget(e.target.value); },
+                  style: {padding: '4px 8px', borderRadius: 4, border: '1px solid #ddd', fontSize: 13, minWidth: 250}
+                },
+                  React.createElement('option', {value: ''}, '-- Select generator --'),
+                  genOrder.filter(function(g) { return g !== genName; }).map(function(g) {
+                    return React.createElement('option', {key: g, value: g}, g + ' (' + genGroups[g].length + ')');
+                  })
+                ),
+                React.createElement('button', {
+                  className: 'btn btn-sm btn-primary',
+                  disabled: !mergeTarget,
+                  onClick: function() { handleMerge(genName); },
+                  style: {fontSize: 12}
+                }, 'Move ' + genProfiles.length + ' profile' + (genProfiles.length !== 1 ? 's' : ''))
+              ) : null,
               // Expanded: show profile table
               isExpanded ? React.createElement('div', {style: {padding: 0}},
                 React.createElement('table', {className: 'data-table', style: {marginBottom: 0}},
