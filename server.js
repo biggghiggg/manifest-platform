@@ -352,16 +352,15 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
       if (!unMatch) unMatch = fullText.match(/UN\/NA\s*(?:Number|#|No\.?)\s*:?\s*(UN\d{3,5}|NA\d{3,5})/i);
       if (!unMatch) unMatch = fullText.match(/(UN\d{4,5})/);
       if (!unMatch) unMatch = fullText.match(/(NA\d{4,5})/);
-      if (unMatch) unNum = unMatch[1].trim();
+      if (unMatch && isHazMat) unNum = unMatch[1].trim();
 
-      // Hazard Class
-      var hcMatch = fullText.match(/Hazard Class[:\s]+(\S+)/i);
-      if (hcMatch) hazardClass = hcMatch[1].trim();
+      // Hazard Class - only match valid DOT hazard classes (1-9, with optional subdivision like 3, 4.1, 6.1, 8)
+      var hcMatch = fullText.match(/Hazard Class[:\s]+(\d(?:\.\d)?)\b/i);
+      if (hcMatch && isHazMat) hazardClass = hcMatch[1].trim();
 
-      // Packing Group - try multiple patterns (I, II, III or PGI, PGII, PGIII)
-      var pgMatch = fullText.match(/Packing Group[:\s]+(I{1,3}V?|PG\s*I{1,3}V?)/i);
-      if (!pgMatch) pgMatch = fullText.match(/Packing Group[:\s]+(\S+)/i);
-      if (pgMatch) packingGroup = pgMatch[1].trim();
+      // Packing Group - only match valid values (I, II, III or PG I, PG II, PG III)
+      var pgMatch = fullText.match(/Packing Group[:\s]+(I{1,3}|PG\s*I{1,3})\b/i);
+      if (pgMatch && isHazMat) packingGroup = pgMatch[1].trim();
 
       // ERG#
       var ergMatch = fullText.match(/ERG#[:\s]+(\S+)/i);

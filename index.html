@@ -77,6 +77,40 @@
     var CONTAINER_TYPES=[{code:'DM',label:'Metal Drums'},{code:'DP',label:'Plastic Drums'},{code:'DW',label:'Wooden Drums'},{code:'CF',label:'Fiber Drums'},{code:'TT',label:'Dump Truck/Trailer'},{code:'TC',label:'Tank Car'},{code:'TP',label:'Portable Tanks'},{code:'CY',label:'Cylinders'},{code:'CM',label:'Metal Boxes'},{code:'BA',label:'Burlap Bags'}];
     var UNIT_TYPES=[{code:'G',label:'Gallons'},{code:'L',label:'Liters'},{code:'P',label:'Pounds'},{code:'K',label:'Kilograms'},{code:'T',label:'Tons'},{code:'N',label:'Cubic Yards'}];
 
+    // CERCLA Reportable Quantities (in pounds) per 40 CFR 302.4
+    var RQ_TABLE={
+      D001:100,D002:100,D003:10,D004:1,D005:1000,D006:10,D007:10,D008:10,D009:1,D010:100,D011:1000,
+      D012:1,D013:5000,D014:5000,D015:5000,D016:100,D017:100,D018:100,D019:5000,D020:10,D021:10,
+      D022:100,D023:100,D024:100,D025:100,D026:1000,D027:10,D028:100,D029:1,D030:100,D031:100,
+      D032:10,D033:100,D034:100,D035:100,D036:10,D037:10,D038:100,D039:10,D040:100,D041:100,D042:10,D043:100,
+      F001:100,F002:100,F003:100,F004:100,F005:100,F006:100,F007:100,F008:100,F009:100,F010:100,
+      F011:100,F012:100,F019:100,F020:1,F021:1,F022:1,F023:1,F024:1,F025:1,F026:1,F027:1,F028:1,F032:1,F034:1,F035:1,F037:1,F038:1,F039:100
+    };
+    // Convert quantity to pounds based on unit code
+    function qtyToPounds(qty, unit) {
+      var n = parseFloat(qty);
+      if (isNaN(n) || n <= 0) return 0;
+      if (unit === 'P') return n;
+      if (unit === 'K') return n * 2.20462;
+      if (unit === 'T') return n * 2000;
+      if (unit === 'G') return n * 8.34;
+      if (unit === 'L') return n * 2.20462;
+      if (unit === 'N') return n * 1400;
+      return n;
+    }
+    // Check if RQ applies: returns lowest RQ threshold if quantity exceeds it
+    function checkRQ(wasteCodes, qty, unit) {
+      if (!wasteCodes || !qty || !unit) return false;
+      var codes = wasteCodes.split(/[\s,]+/).filter(function(c){return c.length>0});
+      var lbs = qtyToPounds(qty, unit);
+      if (lbs <= 0) return false;
+      for (var i = 0; i < codes.length; i++) {
+        var code = codes[i].toUpperCase();
+        if (RQ_TABLE[code] && lbs >= RQ_TABLE[code]) return true;
+      }
+      return false;
+    }
+
     function App(){
       var ts=useState('manifests');var tab=ts[0];var setTab=ts[1];
       var ds=useState({generators:[],transporters:[],facilities:[],wasteStreams:[],manifests:[]});var data=ds[0];var setData=ds[1];
@@ -279,11 +313,14 @@
           var hasRcra = fedCodes.length > 0;
           var descParts = [];
           var idNum = (w.unNum || '').trim();
-          if (idNum) descParts.push(idNum.match(/^(UN|NA)/i) ? idNum : 'UN' + idNum);
-          var dotDesc = (w.dotDescription || '').replace(/\b(UN|NA)\d{4,5}\b/gi, '').replace(/,\s*,/g, ',').replace(/^[\s,]+|[\s,]+$/g, '').trim();
+          var validId = idNum.match(/^(UN|NA)\s*\d{4,5}$/i) || idNum.match(/^\d{4,5}$/);
+          if (validId) descParts.push(idNum.match(/^(UN|NA)/i) ? idNum : 'UN' + idNum);
+          var dotDesc = (w.dotDescription || '').replace(/\b(UN|NA)\s*\d{4,5}\b/gi, '').replace(/,\s*,/g, ',').replace(/^[\s,]+|[\s,]+$/g, '').trim();
           if (dotDesc) descParts.push(dotDesc);
-          if (w.hazardClass) descParts.push(w.hazardClass);
-          if (w.packingGroup) descParts.push(w.packingGroup);
+          var hzClass = (w.hazardClass || '').trim();
+          if (hzClass && hzClass.match(/^\d(\.\d)?$/)) descParts.push(hzClass);
+          var pg = (w.packingGroup || '').trim();
+          if (pg && pg.match(/^(I{1,3}|PG\s*(I{1,3})|1|2|3)$/i)) descParts.push(pg.match(/^(I{1,3})$/)?'PG '+pg:pg);
           var desc = descParts.join(', ');
           lines[lineIdx] = {
             hm: hasRcra ? (w.hm || '') : '', description: desc, containerNum: '',
@@ -299,8 +336,11 @@
         for (var i = 0; i < 4; i++) {
           var n = i + 1;
           var line = lines[i] || emptyWaste;
-          payload['waste' + n + 'HM'] = line.hm || '';
-          payload['waste' + n + 'Description'] = line.description || '';
+          var lineIsRQ = checkRQ(line.wasteCodes, line.qty, line.unit);
+          payload['waste' + n + 'HM'] = lineIsRQ ? 'RQ' : (line.hm || '');
+          var saveDesc = line.description || '';
+          if (lineIsRQ && saveDesc.indexOf('RQ') !== 0) saveDesc = 'RQ, ' + saveDesc;
+          payload['waste' + n + 'Description'] = saveDesc;
           payload['waste' + n + 'ContainerNum'] = line.containerNum || '';
           payload['waste' + n + 'ContainerType'] = line.containerType || '';
           payload['waste' + n + 'Qty'] = line.qty || '';
@@ -420,10 +460,13 @@
                 <tbody>
                   {[0,1,2,3].map(function(i) {
                     var line = (form.wasteLines || [])[i] || emptyWaste;
+                    var isRQ = checkRQ(line.wasteCodes, line.qty, line.unit);
                     return (
-                      <tr key={i}>
+                      <tr key={i} style={isRQ?{background:'#fffbeb'}:{}}>
                         <td style={{fontWeight:600,color:'#888'}}>{i+1}</td>
-                        <td><input value={line.hm} onChange={function(e){setWaste(i,'hm',e.target.value)}} maxLength={1} /></td>
+                        <td style={isRQ?{position:'relative'}:{}}>
+                          <input value={isRQ?'RQ':(line.hm||'')} onChange={function(e){setWaste(i,'hm',e.target.value)}} maxLength={2} style={isRQ?{background:'#fef3c7',fontWeight:700,color:'#92400e'}:{}} readOnly={isRQ} />
+                        </td>
                         <td><input value={line.description} onChange={function(e){setWaste(i,'description',e.target.value)}} /></td>
                         <td><input value={line.containerNum} onChange={function(e){setWaste(i,'containerNum',e.target.value)}} /></td>
                         <td>
