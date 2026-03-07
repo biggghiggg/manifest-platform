@@ -129,6 +129,7 @@
             React.createElement('button',{className:'nav-tab'+(tab==='transporters'?' active':''),onClick:function(){setTab('transporters')}},'Transporters'),
             React.createElement('button',{className:'nav-tab'+(tab==='facilities'?' active':''),onClick:function(){setTab('facilities')}},'Facilities'),
             React.createElement('button',{className:'nav-tab'+(tab==='waste'?' active':''),onClick:function(){setTab('waste')}},'Waste Streams'),
+            React.createElement('button',{className:'nav-tab'+(tab==='profiles'?' active':''),onClick:function(){setTab('profiles')}},'Profiles'),
             React.createElement('button',{className:'nav-tab'+(tab==='import'?' active':''),onClick:function(){setTab('import')}},'Import'),
             React.createElement('button',{className:'nav-tab'+(tab==='alignment'?' active':''),onClick:function(){setTab('alignment')},style:{color:tab==='alignment'?'#fff':'rgba(255,255,255,0.4)'}},'Alignment')
           ),
@@ -140,6 +141,7 @@
           tab==='transporters'?React.createElement(ProfileTab,{data:data,type:'transporters',label:{singular:'Transporter',plural:'Transporters'},reload:loadAllData}):null,
           tab==='facilities'?React.createElement(ProfileTab,{data:data,type:'facilities',label:{singular:'Facility',plural:'Facilities'},reload:loadAllData}):null,
           tab==='waste'?React.createElement(WasteStreamsTab,{data:data,reload:loadAllData}):null,
+          tab==='profiles'?React.createElement(ProfilesTab,{data:data,reload:loadAllData}):null,
           tab==='import'?React.createElement(ImportTab,{reload:loadAllData}):null,
           tab==='alignment'?React.createElement(AlignmentEditor,null):null
         )
@@ -1155,6 +1157,125 @@
             )
           )
         )
+      );
+    }
+
+    function ProfilesTab(props) {
+      var data = props.data;
+      var reload = props.reload;
+      var profiles = data.profiles || [];
+      var s1 = useState(''); var searchTerm = s1[0]; var setSearchTerm = s1[1];
+      var s2 = useState(null); var confirmDelete = s2[0]; var setConfirmDelete = s2[1];
+
+      function handleView(profile) {
+        window.open('/api/profiles/' + profile.id + '/pdf', '_blank');
+      }
+
+      function handleDelete(profile) {
+        if (confirmDelete === profile.id) {
+          api.del('/api/profiles/' + profile.id).then(function() {
+            reload();
+            setConfirmDelete(null);
+          });
+        } else {
+          setConfirmDelete(profile.id);
+          setTimeout(function() { setConfirmDelete(null); }, 3000);
+        }
+      }
+
+      function formatFileSize(bytes) {
+        if (!bytes) return '';
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      }
+
+      function formatDate(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        return (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear();
+      }
+
+      // Filter profiles by search term
+      var filtered = profiles;
+      if (searchTerm) {
+        var term = searchTerm.toLowerCase();
+        filtered = profiles.filter(function(p) {
+          return (p.profileId || '').toLowerCase().indexOf(term) !== -1 ||
+            (p.wasteStreamName || '').toLowerCase().indexOf(term) !== -1 ||
+            (p.generatorName || '').toLowerCase().indexOf(term) !== -1 ||
+            (p.source || '').toLowerCase().indexOf(term) !== -1 ||
+            (p.originalName || '').toLowerCase().indexOf(term) !== -1;
+        });
+      }
+
+      // Sort by most recent first
+      filtered = filtered.slice().sort(function(a, b) {
+        return (b.importedAt || '').localeCompare(a.importedAt || '');
+      });
+
+      return React.createElement('div', null,
+        React.createElement('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16}},
+          React.createElement('h2', {style: {fontSize: 22, fontWeight: 700}}, 'Imported Profiles'),
+          React.createElement('div', {style: {display: 'flex', gap: 8, alignItems: 'center'}},
+            React.createElement('span', {style: {fontSize: 13, color: '#888'}}, profiles.length + ' profile' + (profiles.length !== 1 ? 's' : '') + ' stored'),
+            React.createElement('input', {
+              type: 'text', placeholder: 'Search profiles...', value: searchTerm,
+              onChange: function(e) { setSearchTerm(e.target.value); },
+              style: {padding: '6px 12px', borderRadius: 6, border: '1px solid #ddd', fontSize: 14, width: 220}
+            })
+          )
+        ),
+        profiles.length === 0 ?
+          React.createElement('div', {className: 'card', style: {textAlign: 'center', padding: 40, color: '#888'}},
+            React.createElement('div', {style: {fontSize: 40, marginBottom: 12}}, '\uD83D\uDCC4'),
+            React.createElement('div', {style: {fontSize: 16, fontWeight: 600, marginBottom: 4}}, 'No profiles stored yet'),
+            React.createElement('div', {style: {fontSize: 13}}, 'When you import a waste profile PDF in the Waste Streams tab, it will automatically be saved here.')
+          ) :
+          React.createElement('div', {className: 'card'},
+            React.createElement('table', {className: 'data-table'},
+              React.createElement('thead', null,
+                React.createElement('tr', null,
+                  React.createElement('th', null, 'Profile #'),
+                  React.createElement('th', null, 'Waste Stream'),
+                  React.createElement('th', null, 'Generator'),
+                  React.createElement('th', null, 'Source'),
+                  React.createElement('th', null, 'File'),
+                  React.createElement('th', null, 'Size'),
+                  React.createElement('th', null, 'Imported'),
+                  React.createElement('th', {style: {width: 140}}, 'Actions')
+                )
+              ),
+              React.createElement('tbody', null,
+                filtered.length === 0 ?
+                  React.createElement('tr', null, React.createElement('td', {colSpan: 8, style: {textAlign: 'center', padding: 20, color: '#888'}}, 'No profiles match your search.')) :
+                  filtered.map(function(p) {
+                    return React.createElement('tr', {key: p.id},
+                      React.createElement('td', {style: {fontWeight: 600, color: '#e94560'}}, p.profileId || '-'),
+                      React.createElement('td', null, p.wasteStreamName || '-'),
+                      React.createElement('td', null, p.generatorName || '-'),
+                      React.createElement('td', null,
+                        React.createElement('span', {style: {
+                          background: p.source === 'EWS' ? '#dbeafe' : p.source === 'Samex' ? '#fef3c7' : '#d1fae5',
+                          color: p.source === 'EWS' ? '#1e40af' : p.source === 'Samex' ? '#92400e' : '#065f46',
+                          padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600
+                        }}, p.source || 'Republic')
+                      ),
+                      React.createElement('td', {style: {fontSize: 12, color: '#666', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}, p.originalName || '-'),
+                      React.createElement('td', {style: {fontSize: 12, color: '#888'}}, formatFileSize(p.fileSize)),
+                      React.createElement('td', {style: {fontSize: 12}}, formatDate(p.importedAt)),
+                      React.createElement('td', null,
+                        React.createElement('button', {className: 'btn btn-sm btn-primary', onClick: function() { handleView(p); }, style: {marginRight: 4}}, 'View PDF'),
+                        React.createElement('button', {
+                          className: 'btn btn-sm ' + (confirmDelete === p.id ? 'btn-danger' : 'btn-secondary'),
+                          onClick: function() { handleDelete(p); }
+                        }, confirmDelete === p.id ? 'Confirm?' : 'Delete')
+                      )
+                    );
+                  })
+              )
+            )
+          )
       );
     }
 

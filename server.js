@@ -11,9 +11,13 @@ var DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || './data';
 var DATA_FILE = path.join(DATA_DIR, 'manifest-data.json');
 var upload = multer({ dest: path.join(DATA_DIR, 'uploads/') });
 
-// Ensure data directory exists
+// Ensure data directories exist
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+var PROFILES_DIR = path.join(DATA_DIR, 'profiles');
+if (!fs.existsSync(PROFILES_DIR)) {
+  fs.mkdirSync(PROFILES_DIR, { recursive: true });
 }
 
 // Initialize data
@@ -22,7 +26,8 @@ var defaultData = {
   transporters: [],
   facilities: [],
   wasteStreams: [],
-  manifests: []
+  manifests: [],
+  profiles: []
 };
 
 function loadData() {
@@ -42,6 +47,8 @@ function saveData(data) {
 }
 
 var data = loadData();
+// Ensure profiles array exists for older data files
+if (!data.profiles) { data.profiles = []; saveData(data); }
 
 // Middleware
 app.use(express.json({ limit: '50mb' }));
@@ -138,6 +145,67 @@ app.delete('/api/waste-streams/:id', function(req, res) {
   if (data.wasteStreams.length === before) return res.status(404).json({ error: 'Not found' });
   saveData(data); broadcast('update', { collection: 'wasteStreams', action: 'delete', id: req.params.id }); res.json({ success: true });
 });
+
+// ===== PROFILES (stored PDFs) =====
+// List all stored profiles
+app.get('/api/profiles', function(req, res) {
+  res.json(data.profiles || []);
+});
+
+// Serve a profile PDF file
+app.get('/api/profiles/:id/pdf', function(req, res) {
+  var profile = null;
+  for (var i = 0; i < (data.profiles || []).length; i++) {
+    if (data.profiles[i].id === req.params.id) { profile = data.profiles[i]; break; }
+  }
+  if (!profile) return res.status(404).json({ error: 'Profile not found' });
+  var filePath = path.join(PROFILES_DIR, profile.filename);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'PDF file not found' });
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'inline; filename="' + profile.originalName + '"');
+  fs.createReadStream(filePath).pipe(res);
+});
+
+// Delete a stored profile
+app.delete('/api/profiles/:id', function(req, res) {
+  var idx = -1;
+  for (var i = 0; i < (data.profiles || []).length; i++) {
+    if (data.profiles[i].id === req.params.id) { idx = i; break; }
+  }
+  if (idx === -1) return res.status(404).json({ error: 'Not found' });
+  var profile = data.profiles[idx];
+  // Delete the PDF file
+  var filePath = path.join(PROFILES_DIR, profile.filename);
+  try { fs.unlinkSync(filePath); } catch (e) {}
+  data.profiles.splice(idx, 1);
+  saveData(data);
+  broadcast('update', { collection: 'profiles', action: 'delete', id: req.params.id });
+  res.json({ success: true });
+});
+
+// Helper: save an imported profile PDF
+function saveProfilePDF(reqFile, profileId, source, wasteStreamName, generatorName, originalFilename) {
+  var ext = path.extname(originalFilename || reqFile.originalname || '.pdf');
+  var safeFilename = profileId + '-' + Date.now() + ext;
+  var destPath = path.join(PROFILES_DIR, safeFilename);
+  fs.copyFileSync(reqFile.path, destPath);
+  var profileRecord = {
+    id: Date.now().toString(),
+    profileId: profileId,
+    source: source,
+    wasteStreamName: wasteStreamName,
+    generatorName: generatorName,
+    originalName: originalFilename || reqFile.originalname || 'profile.pdf',
+    filename: safeFilename,
+    fileSize: reqFile.size || 0,
+    importedAt: new Date().toISOString()
+  };
+  if (!data.profiles) data.profiles = [];
+  data.profiles.push(profileRecord);
+  saveData(data);
+  broadcast('update', { collection: 'profiles', action: 'create', item: profileRecord });
+  return profileRecord;
+}
 
 // Delete ALL generators
 app.delete('/api/generators', function(req, res) {
@@ -463,6 +531,7 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
         data.wasteStreams.push(ewsWasteStream);
         saveData(data);
         broadcast('update', { collection: 'wasteStreams', action: 'create', item: ewsWasteStream });
+        saveProfilePDF(req.file, ewsProfileId, 'EWS', ewsWasteStream.name, ewsGenName, req.file.originalname);
         try { fs.unlinkSync(req.file.path); } catch (e) {}
 
         return res.json({ success: true, wasteStream: ewsWasteStream, source: 'EWS' });
@@ -719,6 +788,7 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
         data.wasteStreams.push(smxWasteStream);
         saveData(data);
         broadcast('update', { collection: 'wasteStreams', action: 'create', item: smxWasteStream });
+        saveProfilePDF(req.file, smxProfileId, 'Samex', smxWasteStream.name, smxGenName, req.file.originalname);
         try { fs.unlinkSync(req.file.path); } catch (e) {}
 
         return res.json({ success: true, wasteStream: smxWasteStream, source: 'Samex' });
@@ -850,7 +920,7 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
       data.wasteStreams.push(wasteStream);
       saveData(data);
       broadcast('update', { collection: 'wasteStreams', action: 'create', item: wasteStream });
-
+      saveProfilePDF(req.file, profileId || wasteStream.id, 'Republic', wasteStream.name, '', req.file.originalname);
       try { fs.unlinkSync(req.file.path); } catch (e) {}
 
       res.json({
