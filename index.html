@@ -277,8 +277,12 @@
           var stateCodes = (w.stateWasteCodes || '').replace(/\bnone\b/gi, '').replace(/[A-Za-z]+-?/g, '').replace(/\s+/g, ' ').trim();
           var allCodes = [fedCodes, stateCodes].filter(Boolean).join(' ').trim();
           var hasRcra = fedCodes.length > 0;
+          var desc = w.dotDescription || '';
+          if (w.unNum) desc += (desc ? ', ' : '') + 'UN' + w.unNum.replace(/^UN/i,'');
+          if (w.hazardClass) desc += (desc ? ', ' : '') + w.hazardClass;
+          if (w.packingGroup) desc += (desc ? ', ' : '') + w.packingGroup;
           lines[lineIdx] = {
-            hm: hasRcra ? (w.hm || '') : '', description: w.dotDescription || '', containerNum: '',
+            hm: hasRcra ? (w.hm || '') : '', description: desc, containerNum: '',
             containerType: w.containerType || '', qty: '', unit: w.unit || '', wasteCodes: allCodes
           };
           return Object.assign({}, f, { wasteLines: lines });
