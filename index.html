@@ -277,10 +277,12 @@
           var stateCodes = (w.stateWasteCodes || '').replace(/\bnone\b/gi, '').replace(/[A-Za-z]+-?/g, '').replace(/\s+/g, ' ').trim();
           var allCodes = [fedCodes, stateCodes].filter(Boolean).join(' ').trim();
           var hasRcra = fedCodes.length > 0;
-          var desc = w.dotDescription || '';
-          if (w.unNum) desc += (desc ? ', ' : '') + 'UN' + w.unNum.replace(/^UN/i,'');
-          if (w.hazardClass) desc += (desc ? ', ' : '') + w.hazardClass;
-          if (w.packingGroup) desc += (desc ? ', ' : '') + w.packingGroup;
+          var descParts = [];
+          if (w.unNum) descParts.push('UN' + w.unNum.replace(/^UN/i,''));
+          if (w.dotDescription) descParts.push(w.dotDescription);
+          if (w.hazardClass) descParts.push(w.hazardClass);
+          if (w.packingGroup) descParts.push(w.packingGroup);
+          var desc = descParts.join(', ');
           lines[lineIdx] = {
             hm: hasRcra ? (w.hm || '') : '', description: desc, containerNum: '',
             containerType: w.containerType || '', qty: '', unit: w.unit || '', wasteCodes: allCodes
@@ -1104,9 +1106,10 @@
         waste4wc1:'Waste 4 - Code 1',waste4wc2:'Waste 4 - Code 2',waste4wc3:'Waste 4 - Code 3',waste4wc4:'Waste 4 - Code 4',waste4wc5:'Waste 4 - Code 5',waste4wc6:'Waste 4 - Code 6'
       };
 
-      function handleSave(){setStatus('Saved!');setTimeout(function(){setStatus('')},2000)}
-      function handleUndo(){setStatus('Restored previous settings')}
-      function handleReset(){setAlignData({});setColOffset(0);setLeftMargin(0);setStatus('Reset to defaults')}
+      useEffect(function(){api.get('/api/alignment').then(function(d){if(d.fields)setAlignData(d.fields);if(typeof d.colOffset==='number')setColOffset(d.colOffset);if(typeof d.leftMargin==='number')setLeftMargin(d.leftMargin);if(d.hasPrevious)setHasPrevious(true)})},[]);
+      function handleSave(){api.put('/api/alignment',{fields:alignData,colOffset:colOffset,leftMargin:leftMargin}).then(function(){setHasPrevious(true);setStatus('Saved!');setTimeout(function(){setStatus('')},2000)})}
+      function handleUndo(){api.post('/api/alignment/undo').then(function(d){if(d.fields)setAlignData(d.fields);if(typeof d.colOffset==='number')setColOffset(d.colOffset);if(typeof d.leftMargin==='number')setLeftMargin(d.leftMargin);setStatus('Restored previous settings');setTimeout(function(){setStatus('')},2000)})}
+      function handleReset(){api.post('/api/alignment/reset').then(function(){setAlignData({});setColOffset(0);setLeftMargin(0);setStatus('Reset to defaults');setTimeout(function(){setStatus('')},2000)})}
       function updateField(fk,dim,val){var v=parseInt(val);if(!isNaN(v)&&v>=1&&v<=100){var newData=Object.assign({},alignData);newData[fk]=Object.assign({},alignData[fk]||{row:1,col:1});newData[fk][dim]=v;setAlignData(newData)}}
       function nudge(fk,dim,amt){var current=alignData[fk]||{row:1,col:1};var nv=current[dim]+amt;if(nv>=1&&nv<=100){updateField(fk,dim,nv)}}
 
