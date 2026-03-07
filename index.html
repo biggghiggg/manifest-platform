@@ -1250,10 +1250,10 @@
       }
       // Sort generators alphabetically
       genOrder.sort(function(a, b) { return a.localeCompare(b); });
-      // Sort profiles within each generator by most recent first
+      // Sort profiles within each generator alphabetically by waste stream name
       for (var gk = 0; gk < genOrder.length; gk++) {
         genGroups[genOrder[gk]].sort(function(a, b) {
-          return (b.importedAt || '').localeCompare(a.importedAt || '');
+          return (a.wasteStreamName || '').toLowerCase().localeCompare((b.wasteStreamName || '').toLowerCase());
         });
       }
 
