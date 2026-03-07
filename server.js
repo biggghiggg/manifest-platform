@@ -308,6 +308,167 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
         return after.substring(0, endIdx).trim().replace(/^\s*:?\s*/, '');
       }
 
+      // ===== DETECT EWS PROFILE FORMAT =====
+      var isEWS = fullText.indexOf('Environmental Waste Solution') !== -1 || fullText.indexOf('EWS') !== -1 && fullText.indexOf('GENERATOR WASTE PROFILE SHEET') !== -1;
+
+      if (isEWS) {
+        console.log('Detected EWS profile format');
+
+        // Profile Number - just need "EWS" + the numbers after it (e.g. EWS41291)
+        var ewsProfileId = '';
+        // First try: collapse all spaces/underscores from the full text and look for EWS followed by digits
+        var collapsed = fullText.replace(/[\s_]+/g, '');
+        var ewsNumMatch = collapsed.match(/EWS(\d{3,})/i);
+        if (ewsNumMatch) {
+          ewsProfileId = 'EWS' + ewsNumMatch[1];
+        }
+        // Fallback: check near Profile Number label
+        if (!ewsProfileId) {
+          var pidLine = fullText.match(/Profile Number[:\s]+([^\n]+)/i);
+          if (pidLine) {
+            var pidCollapsed = pidLine[1].replace(/[\s_]+/g, '');
+            var pidNumMatch = pidCollapsed.match(/EWS(\d{3,})/i);
+            if (pidNumMatch) ewsProfileId = 'EWS' + pidNumMatch[1];
+          }
+        }
+
+        // Generator info
+        var ewsGenName = '';
+        var gnMatch = fullText.match(/Generator Name[:\s]+([^\n]+)/i);
+        if (gnMatch) ewsGenName = gnMatch[1].trim();
+
+        var ewsEpaId = '';
+        // EPA ID may be on same line or a few lines below the label
+        var epaMatch = fullText.match(/EPA Identification Number[:\s]+([A-Z]{2}[A-Z0-9]{8,})/i);
+        if (epaMatch) {
+          ewsEpaId = epaMatch[1].trim();
+        } else {
+          // Look for standalone EPA ID pattern (2 letters + 9+ alphanumeric) near the label
+          var epaBlock = fullText.match(/EPA Identification Number[\s\S]{0,200}/i);
+          if (epaBlock) {
+            var epaLineMatch = epaBlock[0].match(/\b([A-Z]{2}[A-Z0-9]{8,12})\b/);
+            if (epaLineMatch) ewsEpaId = epaLineMatch[1].trim();
+          }
+        }
+
+        // Is EPA Hazardous Waste?
+        var ewsIsHaz = false;
+        var hazMatch = fullText.match(/US EPA HAZARDOUS WASTE[^)]*\)?\s*\??\s*(YES|NO)/i);
+        if (hazMatch) ewsIsHaz = hazMatch[1].toUpperCase() === 'YES';
+
+        // State Codes
+        var ewsStateCodes = '';
+        var scMatch = fullText.match(/State Codes[:\s]+([^\n]+)/i);
+        if (scMatch) {
+          ewsStateCodes = scMatch[1].trim().replace(/[A-Za-z]+-?/g, '').replace(/\s+/g, ' ').trim();
+          if (ewsStateCodes.toLowerCase() === 'none' || ewsStateCodes === '') ewsStateCodes = '';
+        }
+
+        // Waste Name (field 11a or "Common Waste Name" or "Waste Name")
+        var ewsWasteName = '';
+        var wnMatch = fullText.match(/(?:Common )?Waste Name[:\s]+([^\n]+)/i);
+        if (wnMatch) ewsWasteName = wnMatch[1].trim();
+        // Clean trailing field numbers
+        ewsWasteName = ewsWasteName.replace(/\s*\d+\.\s*US DOT.*$/i, '').trim();
+
+        // DOT Proper Shipping Name (field 11b or 13)
+        var ewsDotDesc = '';
+        var dotMatch = fullText.match(/(?:US )?DOT Proper Shipping Name[:\s]+([^\n]+)/i);
+        if (dotMatch) ewsDotDesc = dotMatch[1].trim();
+        // Clean up trailing field labels
+        ewsDotDesc = ewsDotDesc.replace(/\s*\d+\.\s*Physical.*$/i, '').trim();
+
+        // Try to extract UN/NA from the DOT description itself
+        var ewsUnNum = '';
+        var ewsUnMatch = ewsDotDesc.match(/\b(UN\d{4,5}|NA\d{4,5})\b/i);
+        if (ewsUnMatch) ewsUnNum = ewsUnMatch[1];
+
+        // Hazard class and packing group from description if present
+        var ewsHazClass = '';
+        var ewsPG = '';
+        var ewsHcMatch = ewsDotDesc.match(/\b(\d\.\d)\b/);
+        if (ewsHcMatch && ewsIsHaz) ewsHazClass = ewsHcMatch[1];
+        var ewsPgMatch = ewsDotDesc.match(/\bPG\s*(I{1,3})\b/i) || ewsDotDesc.match(/\b(I{1,3})\s*$/);
+        if (ewsPgMatch && ewsIsHaz) ewsPG = ewsPgMatch[1];
+
+        // Uppercase DOT description
+        if (ewsDotDesc) ewsDotDesc = ewsDotDesc.toUpperCase();
+        // If N.O.S., append common name
+        if (ewsDotDesc && ewsDotDesc.match(/N\.O\.S\.?\s*$/) && ewsWasteName) {
+          ewsDotDesc = ewsDotDesc + ' (' + ewsWasteName.toUpperCase() + ')';
+        }
+
+        // RCRA waste codes from description or text
+        var ewsRcraCodes = '';
+        var ewsRcraMatch = fullText.match(/RCRA Waste Codes?[:\s]+([A-Z0-9\s,]+)/i);
+        if (ewsRcraMatch) {
+          ewsRcraCodes = ewsRcraMatch[1].trim().replace(/\s+/g, ' ');
+          if (ewsRcraCodes.toLowerCase() === 'none') ewsRcraCodes = '';
+        }
+
+        // Physical state
+        var ewsPhysical = '';
+        var physMatch = fullText.match(/Physical State[^X\n]*X\s*(\w+)/i);
+        if (physMatch) ewsPhysical = physMatch[1].trim();
+
+        // Composition
+        var ewsComposition = '';
+        var compMatch = fullText.match(/Waste Composition[:\s]+([^\n]+([\n][A-Z][\w\s%.-]+)*)/i);
+        if (compMatch) ewsComposition = compMatch[1].replace(/\n/g, '; ').trim();
+
+        // pH and Flash Point from characteristic section
+        var ewsPH = '';
+        var phMatch = fullText.match(/pH[:\s]+([\d.-]+)/i);
+        if (phMatch) ewsPH = phMatch[1].trim();
+
+        var ewsFlash = '';
+        var fpMatch = fullText.match(/Flash Point[:\s]+([^\n]+)/i);
+        if (fpMatch) ewsFlash = fpMatch[1].trim().split(/\s{2,}/)[0].trim();
+
+        var ewsWasteStream = {
+          id: Date.now().toString(),
+          name: ewsWasteName || 'EWS Profile ' + ewsProfileId,
+          dotDescription: ewsDotDesc,
+          hm: ewsIsHaz ? 'X' : '',
+          containerType: '',
+          unit: '',
+          wasteCodes: ewsRcraCodes,
+          unNum: ewsUnNum,
+          hazardClass: ewsHazClass,
+          packingGroup: ewsPG,
+          stateWasteCodes: ewsStateCodes,
+          ergNum: '',
+          profileId: ewsProfileId,
+          source: 'EWS',
+          generatorName: ewsGenName,
+          generatorEpaId: ewsEpaId,
+          composition: ewsComposition,
+          physicalState: ewsPhysical,
+          pH: ewsPH,
+          flashPoint: ewsFlash,
+          createdAt: new Date().toISOString()
+        };
+
+        // Check for duplicate
+        var ewsExists = false;
+        for (var ed = 0; ed < (data.wasteStreams || []).length; ed++) {
+          if (data.wasteStreams[ed].name === ewsWasteStream.name) { ewsExists = true; break; }
+        }
+        if (ewsExists) {
+          try { fs.unlinkSync(req.file.path); } catch (e) {}
+          return res.json({ success: false, error: 'A waste stream named "' + ewsWasteStream.name + '" already exists.', extracted: ewsWasteStream });
+        }
+
+        if (!data.wasteStreams) data.wasteStreams = [];
+        data.wasteStreams.push(ewsWasteStream);
+        saveData(data);
+        broadcast('update', { collection: 'wasteStreams', action: 'create', item: ewsWasteStream });
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+
+        return res.json({ success: true, wasteStream: ewsWasteStream, source: 'EWS' });
+      }
+
+      // ===== REPUBLIC PROFILE FORMAT (original parser) =====
       // Extract fields
       var commonName = '';
       var dotDescription = '';
