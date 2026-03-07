@@ -983,7 +983,7 @@
         ),
         profileUploading?React.createElement('div',{className:'card',style:{background:'#f0f4ff',padding:12,marginBottom:12}},'Parsing waste profile PDF...'):null,
         profileResult&&profileResult.success?React.createElement('div',{className:'card',style:{background:'#d1fae5',padding:12,marginBottom:12}},
-          React.createElement('strong',null,profileResult.source==='EWS'?'Imported (EWS): ':'Imported: '),
+          React.createElement('strong',null,profileResult.source==='EWS'?'Imported (EWS): ':profileResult.source==='Samex'?'Imported (Samex): ':'Imported: '),
           profileResult.wasteStream.profileId?'Profile #'+profileResult.wasteStream.profileId+' - ':'',
           profileResult.wasteStream.name,' - ',profileResult.wasteStream.dotDescription,
           profileResult.wasteStream.wasteCodes?' | Waste Codes: '+profileResult.wasteStream.wasteCodes:'',

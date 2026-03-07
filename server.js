@@ -468,6 +468,256 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
         return res.json({ success: true, wasteStream: ewsWasteStream, source: 'EWS' });
       }
 
+      // ===== DETECT SAMEX PROFILE FORMAT =====
+      var isSamex = fullText.indexOf('WASTE PROFILE') !== -1 && fullText.indexOf('A.- Generator Information') !== -1 && fullText.indexOf('I.- Trans Information') !== -1;
+
+      if (isSamex) {
+        console.log('Detected Samex profile format');
+
+        // Profile Number - "Profile# 36183" -> "SMX36183"
+        var smxProfileId = '';
+        var smxPidMatch = fullText.match(/Profile#\s*(\d+)/i);
+        if (smxPidMatch) smxProfileId = 'SMX' + smxPidMatch[1];
+
+        // Generator Name - appears between "Generator Module" and "Name:" in raw text
+        var smxGenName = '';
+        var genBlock = fullText.match(/Generator (?:Module|Information)[\s\S]{0,500}/i);
+        if (genBlock) {
+          // Try the line right after "Generator Module" text and before "Name:"
+          var genLines = genBlock[0].split('\n');
+          for (var gl = 0; gl < genLines.length; gl++) {
+            var gline = genLines[gl].trim();
+            if (gline.length > 10 && gline === gline.toUpperCase() && gline.indexOf('*') === -1 && gline.indexOf('Generator') === -1 && gline.indexOf('WASTE') === -1 && gline.indexOf('ALL ') === -1 && gline.indexOf('Module') === -1) {
+              smxGenName = gline;
+              break;
+            }
+          }
+        }
+        // Fallback: try "Name:" label directly
+        if (!smxGenName) {
+          var nameMatch = fullText.match(/(?:^|\n)\s*Name:\s*([^\n]+)/);
+          if (nameMatch && nameMatch[1].trim().length > 3) smxGenName = nameMatch[1].trim();
+        }
+
+        // EPA ID
+        var smxEpaId = '';
+        var smxEpaMatch = fullText.match(/EPA ID#?[:\s]+([A-Z]{2}[A-Z0-9]{8,})/i);
+        if (!smxEpaMatch) {
+          // EPA ID may be on a separate line
+          var epaBlock = fullText.match(/EPA ID#?[\s\S]{0,100}/i);
+          if (epaBlock) {
+            var epaLineMatch = epaBlock[0].match(/\b([A-Z]{2}[A-Z0-9]{8,12})\b/);
+            if (epaLineMatch) smxEpaId = epaLineMatch[1];
+          }
+        } else {
+          smxEpaId = smxEpaMatch[1];
+        }
+
+        // Generator address
+        var smxAddress = '';
+        var smxCity = '';
+        var smxState = '';
+        var smxZip = '';
+        var siteAddrMatch = fullText.match(/Site\s*Address[:\s]+([^\n]+)/i);
+        if (siteAddrMatch) smxAddress = siteAddrMatch[1].trim();
+        // City/State/Zip after Site Address section
+        var addrBlock = fullText.match(/Site\s*Address[\s\S]{0,300}/i);
+        if (addrBlock) {
+          var cityMatch = addrBlock[0].match(/City[:\s]+([A-Z][A-Z\s]+)/i);
+          if (cityMatch) smxCity = cityMatch[1].trim();
+          var stateMatch = addrBlock[0].match(/State[:\s]+([A-Z]{2})/i);
+          if (stateMatch) smxState = stateMatch[1].trim();
+          var zipMatch = addrBlock[0].match(/Zip[:\s]+(\d{5})/);
+          if (zipMatch) smxZip = zipMatch[1].trim();
+        }
+
+        // State Waste Codes - in Samex PDFs, the value may be on a different line
+        var smxStateCodes = '';
+        var smxScBlock = fullText.match(/State Waste\s*Code\(s\)[\s\S]{0,300}?(?=Waste Common|Generating)/i);
+        if (smxScBlock) {
+          // Find standalone numbers (like 331) that aren't part of other fields
+          var scNums = smxScBlock[0].match(/\b(\d{3,4})\b/g);
+          if (scNums) {
+            // Filter out numbers that are likely D-code numbers
+            var stateOnly = [];
+            for (var sn = 0; sn < scNums.length; sn++) {
+              if (!smxScBlock[0].match(new RegExp('[DFKPU]' + scNums[sn]))) stateOnly.push(scNums[sn]);
+            }
+            smxStateCodes = stateOnly.join(' ');
+          }
+        }
+
+        // EPA Waste Codes
+        var smxWasteCodes = '';
+        var smxEpaWcBlock = fullText.match(/EPA Waste\s*Code\(s\)[\s\S]{0,200}/i);
+        if (smxEpaWcBlock) {
+          // Look for D/F/K/P/U codes in the block
+          var wcMatches = smxEpaWcBlock[0].match(/\b[DFKPU]\d{3}\b/g);
+          if (wcMatches) smxWasteCodes = wcMatches.join(' ');
+        }
+
+        // Is hazardous? Based on whether we have EPA waste codes or DOT Hazardous: Yes
+        var smxIsHaz = smxWasteCodes.length > 0;
+        var dotHazMatch = fullText.match(/DOT Hazardous[:\s]+(Yes|No)/i);
+        if (dotHazMatch && dotHazMatch[1].toUpperCase() === 'YES') smxIsHaz = true;
+
+        // Waste Common Name
+        var smxWasteName = '';
+        var smxWnMatch = fullText.match(/Waste Common\s*Name[:\s]+([^\n]+)/i);
+        if (smxWnMatch) smxWasteName = smxWnMatch[1].trim();
+        // Sometimes name is on the next line
+        if (!smxWasteName) {
+          var wnBlock = fullText.match(/Waste Common\s*\n([^\n]+)/i);
+          if (wnBlock) smxWasteName = wnBlock[1].replace(/Name[:\s]*/i, '').trim();
+        }
+
+        // DOT Shipping Name
+        var smxDotDesc = '';
+        var smxDotMatch = fullText.match(/DOT Shipping Name[:\s]+([^\n]+)/i);
+        if (smxDotMatch) smxDotDesc = smxDotMatch[1].trim();
+
+        // UN/NA# - explicit field
+        var smxUnNum = '';
+        var smxUnMatch = fullText.match(/UN\/NA#[:\s]+((?:UN|NA)\d{4,5})/i);
+        if (smxUnMatch) smxUnNum = smxUnMatch[1];
+        // Fallback: extract from DOT shipping name
+        if (!smxUnNum) {
+          var dotUnMatch = (smxDotDesc || '').match(/\b(UN\d{4,5}|NA\d{4,5})\b/i);
+          if (dotUnMatch) smxUnNum = dotUnMatch[1];
+        }
+
+        // Hazard Class - explicit field
+        var smxHazClass = '';
+        var smxHcMatch = fullText.match(/Hazard Class[:\s]+(\d(?:\.\d)?)\b/i);
+        if (smxHcMatch && smxIsHaz) smxHazClass = smxHcMatch[1];
+
+        // ERG Number
+        var smxErg = '';
+        var smxErgMatch = fullText.match(/ERG#[:\s]+(\d{2,4})/i);
+        if (smxErgMatch) smxErg = smxErgMatch[1];
+
+        // Packing Group - "Group: II" or "Packaging Group: II"
+        var smxPG = '';
+        var smxPgMatch = fullText.match(/(?:Packaging\s*)?Group[:\s]+(I{1,3})\b/i);
+        if (smxPgMatch && smxIsHaz) smxPG = smxPgMatch[1];
+
+        // Physical State
+        var smxPhysical = '';
+        var physBlock = fullText.match(/Physical State[\s\S]{0,200}/i);
+        if (physBlock) {
+          // Look for the selected radio option (comes after the bullet markers in PDF text)
+          if (physBlock[0].match(/Liquid/i)) smxPhysical = 'Liquid';
+          else if (physBlock[0].match(/Solid/i)) smxPhysical = 'Solid';
+          else if (physBlock[0].match(/Sludge/i)) smxPhysical = 'Sludge';
+          else if (physBlock[0].match(/Gas/i)) smxPhysical = 'Gas';
+        }
+
+        // Container Size/Type
+        var smxContainer = '';
+        var smxContMatch = fullText.match(/Container \(Size\/Type\)[:\s]+([^\n]+)/i);
+        if (smxContMatch) smxContainer = smxContMatch[1].trim();
+
+        // Flash Point range
+        var smxFlash = '';
+        var flashBlock = fullText.match(/Flash Point[\s\S]{0,200}/i);
+        if (flashBlock) {
+          if (flashBlock[0].indexOf('<73') !== -1 && flashBlock[0].match(/\<73/)) smxFlash = '<73F';
+          else if (flashBlock[0].match(/73-100/)) smxFlash = '73-100F';
+          else if (flashBlock[0].match(/101-141/)) smxFlash = '101-141F';
+          else if (flashBlock[0].match(/141-200/)) smxFlash = '141-200F';
+          else if (flashBlock[0].match(/>200/)) smxFlash = '>200F';
+        }
+
+        // Chemical Composition - two-column table, values separated by blank lines
+        // Pattern: Name, (blank), Min%, (blank), Max%, (blank), [2nd col name]
+        var smxComposition = '';
+        var compBlock = fullText.match(/H\.\-?\s*Chemical Composition[\s\S]{0,1500}?(?=I\.\-?\s*Trans)/i);
+        if (compBlock) {
+          var chemLines = [];
+          // Strip blank lines to get clean sequence
+          var compNonBlank = compBlock[0].split('\n').map(function(l){return l.trim()}).filter(function(l){return l.length > 0});
+          // Find where actual data starts (after "Names)" header)
+          var dataStart = -1;
+          for (var cn = 0; cn < compNonBlank.length; cn++) {
+            if (compNonBlank[cn] === 'Names)' && cn > compNonBlank.length / 2) { dataStart = cn + 1; break; }
+          }
+          if (dataStart > 0) {
+            var ci = dataStart;
+            while (ci < compNonBlank.length) {
+              var chemName = compNonBlank[ci];
+              // Check if this is a chemical name followed by min and max numbers
+              if (chemName.match(/^[A-Za-z]/) && ci + 2 < compNonBlank.length) {
+                var minVal = compNonBlank[ci + 1];
+                var maxVal = compNonBlank[ci + 2];
+                if (minVal.match(/^\d{1,3}$/) && maxVal.match(/^\d{1,3}$/)) {
+                  chemLines.push(chemName + ' ' + minVal + '-' + maxVal + '%');
+                  ci += 3;
+                  // Skip 2nd column name if present (no numbers after it)
+                  if (ci < compNonBlank.length && compNonBlank[ci].match(/^[A-Za-z]/) && (ci + 1 >= compNonBlank.length || !compNonBlank[ci + 1].match(/^\d{1,3}$/))) {
+                    ci++;
+                  }
+                  continue;
+                }
+              }
+              ci++;
+            }
+          }
+          smxComposition = chemLines.join('; ');
+        }
+
+        // Build the DOT description for the manifest
+        // The DOT Shipping Name already has everything: "UN1263, Waste Paint Related Marterial, 3, II"
+        // But we want to use the clean version from the explicit fields
+        var smxDotForManifest = smxDotDesc.toUpperCase();
+
+        var smxWasteStream = {
+          id: Date.now().toString(),
+          name: smxWasteName || 'Samex Profile ' + smxProfileId,
+          dotDescription: smxDotForManifest,
+          hm: smxIsHaz ? 'X' : '',
+          containerType: smxContainer,
+          unit: '',
+          wasteCodes: smxWasteCodes,
+          unNum: smxUnNum,
+          hazardClass: smxHazClass,
+          packingGroup: smxPG,
+          stateWasteCodes: smxStateCodes,
+          ergNum: smxErg,
+          profileId: smxProfileId,
+          source: 'Samex',
+          generatorName: smxGenName,
+          generatorEpaId: smxEpaId,
+          generatorAddress: smxAddress,
+          generatorCity: smxCity,
+          generatorState: smxState,
+          generatorZip: smxZip,
+          composition: smxComposition,
+          physicalState: smxPhysical,
+          flashPoint: smxFlash,
+          createdAt: new Date().toISOString()
+        };
+
+        console.log('Samex parsed:', JSON.stringify(smxWasteStream, null, 2));
+
+        // Check for duplicate
+        var smxExists = false;
+        for (var sd = 0; sd < (data.wasteStreams || []).length; sd++) {
+          if (data.wasteStreams[sd].profileId === smxProfileId) { smxExists = true; break; }
+        }
+        if (smxExists) {
+          try { fs.unlinkSync(req.file.path); } catch (e) {}
+          return res.json({ success: false, error: 'A waste stream with profile "' + smxProfileId + '" already exists.', extracted: smxWasteStream });
+        }
+
+        if (!data.wasteStreams) data.wasteStreams = [];
+        data.wasteStreams.push(smxWasteStream);
+        saveData(data);
+        broadcast('update', { collection: 'wasteStreams', action: 'create', item: smxWasteStream });
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+
+        return res.json({ success: true, wasteStream: smxWasteStream, source: 'Samex' });
+      }
+
       // ===== REPUBLIC PROFILE FORMAT (original parser) =====
       // Extract fields
       var commonName = '';
