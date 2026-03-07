@@ -884,6 +884,31 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
       var pidMatch = fullText.match(/Profile\s*ID[:\s]+(\d+)/i);
       if (pidMatch) profileId = pidMatch[1];
 
+      // Extract generator name from Section A / A.1
+      var repGenName = '';
+      var repGenMatch = fullText.match(/A\.?\s*1\.?\s*Generator[:\s]+([^\n]+)/i) ||
+                        fullText.match(/Generator Name[:\s]+([^\n]+)/i) ||
+                        fullText.match(/Section A[\s\S]{0,300}Generator[:\s]+([^\n]+)/i);
+      if (repGenMatch) repGenName = repGenMatch[1].trim();
+      // If not found, try looking for a line after "A.1" or "Generator" label
+      if (!repGenName) {
+        var genBlock = fullText.match(/Generator[\s\S]{0,200}/i);
+        if (genBlock) {
+          var gbLines = genBlock[0].split('\n');
+          for (var gb = 1; gb < gbLines.length; gb++) {
+            var gbl = gbLines[gb].trim();
+            if (gbl.length > 5 && !gbl.match(/^(address|city|state|zip|phone|contact|fax|email|site|mailing)/i)) {
+              repGenName = gbl;
+              break;
+            }
+          }
+        }
+      }
+
+      // Detect generic "Add Gen" profiles - Various Sites means no specific generator
+      var isAddGen = repGenName.match(/various\s*sites/i) || repGenName.match(/multiple\s*generators/i) || repGenName.match(/add\s*gen/i);
+      var profileGenName = isAddGen ? 'Republic / USE Add Gens' : repGenName;
+
       var wasteStream = {
         id: Date.now().toString(),
         name: commonName || 'Imported Profile ' + profileId,
@@ -920,7 +945,7 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
       data.wasteStreams.push(wasteStream);
       saveData(data);
       broadcast('update', { collection: 'wasteStreams', action: 'create', item: wasteStream });
-      saveProfilePDF(req.file, profileId || wasteStream.id, 'Republic', wasteStream.name, '', req.file.originalname);
+      saveProfilePDF(req.file, profileId || wasteStream.id, 'Republic', wasteStream.name, profileGenName, req.file.originalname);
       try { fs.unlinkSync(req.file.path); } catch (e) {}
 
       res.json({
