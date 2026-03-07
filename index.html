@@ -278,8 +278,10 @@
           var allCodes = [fedCodes, stateCodes].filter(Boolean).join(' ').trim();
           var hasRcra = fedCodes.length > 0;
           var descParts = [];
-          if (w.unNum) descParts.push('UN' + w.unNum.replace(/^UN/i,''));
-          if (w.dotDescription) descParts.push(w.dotDescription);
+          var idNum = (w.unNum || '').trim();
+          if (idNum) descParts.push(idNum.match(/^(UN|NA)/i) ? idNum : 'UN' + idNum);
+          var dotDesc = (w.dotDescription || '').replace(/\b(UN|NA)\d{4,5}\b/gi, '').replace(/,\s*,/g, ',').replace(/^[\s,]+|[\s,]+$/g, '').trim();
+          if (dotDesc) descParts.push(dotDesc);
           if (w.hazardClass) descParts.push(w.hazardClass);
           if (w.packingGroup) descParts.push(w.packingGroup);
           var desc = descParts.join(', ');
