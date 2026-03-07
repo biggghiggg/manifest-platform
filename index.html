@@ -517,7 +517,8 @@
             <div style={{background:'#006600',color:'#fff',padding:'8px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <span style={{fontWeight:700,fontSize:14}}>UNIFORM HAZARDOUS WASTE MANIFEST - EPA Form 8700-22 (Preview)</span>
               <div style={{display:'flex',gap:8}}>
-                <button className="btn btn-sm" style={{background:'#fff',color:'#333'}} onClick={function(){window.print()}}>Print Page</button>
+                {d.id ? <button className="btn btn-sm" style={{background:'#fff',color:'#333'}} onClick={function(){window.open('/api/print/manifest/'+d.id,'_blank')}}>Send to Printer</button> : null}
+                <button className="btn btn-sm" style={{background:'#fff',color:'#333'}} onClick={function(){var pw=window.open('','_blank');pw.document.write('<html><head><title>Manifest Preview</title></head><body>');pw.document.write(document.querySelector('.modal-overlay:last-child > div').innerHTML);pw.document.write('</body></html>');pw.document.close();pw.print()}}>Print Preview</button>
                 <button className="btn btn-sm" style={{background:'rgba(255,255,255,0.3)',color:'#fff'}} onClick={onClose}>Close</button>
               </div>
             </div>
