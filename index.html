@@ -74,7 +74,7 @@
       put:function(url,body){return fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()})},
       del:function(url){return fetch(url,{method:'DELETE'}).then(function(r){return r.json()})}
     };
-    var CONTAINER_TYPES=[{code:'DM',label:'Metal Drums'},{code:'DP',label:'Plastic Drums'},{code:'DW',label:'Wooden Drums'},{code:'CF',label:'Fiber Drums'},{code:'TT',label:'Dump Truck/Trailer'},{code:'TC',label:'Tank Car'},{code:'TP',label:'Portable Tanks'},{code:'CY',label:'Cylinders'},{code:'CM',label:'Metal Boxes'},{code:'BA',label:'Burlap Bags'}];
+    var CONTAINER_TYPES=[{code:'BA',label:'Burlap Bags'},{code:'CF',label:'Fiber/Cardboard Boxes'},{code:'CM',label:'Metal Boxes'},{code:'CW',label:'Wooden Boxes'},{code:'CY',label:'Cylinders'},{code:'DF',label:'Fiberboard Drums'},{code:'DM',label:'Metal Drums'},{code:'DP',label:'Plastic Drums'},{code:'DW',label:'Wooden Drums'},{code:'HG',label:'Hopper/Gondola Cars'},{code:'TC',label:'Tank Cars'},{code:'TP',label:'Portable Tanks'},{code:'TT',label:'Dump Truck/Trailer'}];
     var UNIT_TYPES=[{code:'G',label:'Gallons'},{code:'L',label:'Liters'},{code:'P',label:'Pounds'},{code:'K',label:'Kilograms'},{code:'T',label:'Tons'},{code:'N',label:'Cubic Yards'}];
 
     // CERCLA Reportable Quantities (in pounds) per 40 CFR 302.4
