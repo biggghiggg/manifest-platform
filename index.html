@@ -75,6 +75,7 @@
       del:function(url){return fetch(url,{method:'DELETE'}).then(function(r){return r.json()})}
     };
     var CONTAINER_TYPES=[{code:'BA',label:'Burlap Bags'},{code:'CF',label:'Fiber/Cardboard Boxes'},{code:'CM',label:'Metal Boxes'},{code:'CW',label:'Wooden Boxes'},{code:'CY',label:'Cylinders'},{code:'DF',label:'Fiberboard Drums'},{code:'DM',label:'Metal Drums'},{code:'DP',label:'Plastic Drums'},{code:'DW',label:'Wooden Drums'},{code:'HG',label:'Hopper/Gondola Cars'},{code:'TC',label:'Tank Cars'},{code:'TP',label:'Portable Tanks'},{code:'TT',label:'Dump Truck/Trailer'}];
+    var CONTAINER_SIZES=['5 gal','15 gal','30 gal','55 gal','85 gal','CYB','Pallet','275 gal tote','330 gal tote','20 yard bin','40 yard bin'];
     var UNIT_TYPES=[{code:'G',label:'Gallons'},{code:'L',label:'Liters'},{code:'P',label:'Pounds'},{code:'K',label:'Kilograms'},{code:'T',label:'Tons'},{code:'N',label:'Cubic Yards'}];
 
     // CERCLA Reportable Quantities (in pounds) per 40 CFR 302.4
@@ -491,7 +492,12 @@
                             {CONTAINER_TYPES.map(function(ct) { return <option key={ct.code} value={ct.code}>{ct.code}</option>; })}
                           </select>
                         </td>
-                        <td><input value={line.containerSize||''} onChange={function(e){setWaste(i,'containerSize',e.target.value)}} placeholder="55 gal" style={{fontSize:11}} /></td>
+                        <td>
+                          <select value={line.containerSize||''} onChange={function(e){setWaste(i,'containerSize',e.target.value)}} style={{fontSize:11,padding:'4px 2px'}}>
+                            <option value="">--</option>
+                            {CONTAINER_SIZES.map(function(sz) { return <option key={sz} value={sz}>{sz}</option>; })}
+                          </select>
+                        </td>
                         <td><input value={line.qty} onChange={function(e){setWaste(i,'qty',e.target.value)}} /></td>
                         <td>
                           <select value={line.unit} onChange={function(e){setWaste(i,'unit',e.target.value)}}>
