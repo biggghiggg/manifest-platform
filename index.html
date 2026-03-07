@@ -506,6 +506,24 @@
                   })}
                 </tbody>
               </table>
+              <div style={{marginTop:8,fontSize:11,color:'#666'}}>
+                {[0,1,2,3].map(function(i) {
+                  var line = (form.wasteLines || [])[i] || emptyWaste;
+                  if (!line.wasteCodes && !line.qty) return null;
+                  var codes = (line.wasteCodes||'').split(/[\s,]+/).filter(function(c){return c.length>0});
+                  var matchedCodes = codes.filter(function(c){return RQ_TABLE[c.toUpperCase()]});
+                  if (matchedCodes.length === 0 && codes.length > 0) return <div key={i} style={{color:'#999'}}>Line {i+1}: No RQ-listed codes found in "{line.wasteCodes}"</div>;
+                  if (matchedCodes.length > 0 && line.qty && line.unit) {
+                    var lbs = qtyToPounds(line.qty, line.unit);
+                    var lowestRQ = 99999;
+                    var triggerCode = '';
+                    for (var mi=0;mi<matchedCodes.length;mi++){var rq=RQ_TABLE[matchedCodes[mi].toUpperCase()];if(rq<lowestRQ){lowestRQ=rq;triggerCode=matchedCodes[mi].toUpperCase()}}
+                    var isRQ = lbs >= lowestRQ;
+                    return <div key={i} style={{color:isRQ?'#92400e':'#666',fontWeight:isRQ?600:400}}>{isRQ?'Line '+(i+1)+': RQ TRIGGERED - '+triggerCode+' threshold is '+lowestRQ+' lbs, shipment is '+Math.round(lbs)+' lbs':'Line '+(i+1)+': '+triggerCode+' RQ is '+lowestRQ+' lbs, shipment is '+Math.round(lbs)+' lbs (under threshold)'}</div>;
+                  }
+                  return null;
+                })}
+              </div>
             </div>
 
             <div className="form-grid" style={{marginBottom:16}}>
