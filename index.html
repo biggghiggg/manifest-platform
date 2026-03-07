@@ -158,7 +158,7 @@
       function handleSave(f){var p=editing?api.put('/api/manifests/'+editing.id,f):api.post('/api/manifests',f);p.then(function(){reload();setShowModal(false);setEditing(null)})}
       function handleDelete(id){if(confirm('Delete this manifest?')){api.del('/api/manifests/'+id).then(reload)}}
       function handlePrint(id){window.open('/api/print/manifest/'+id,'_blank')}
-      function handlePreview(m){var previewData=Object.assign({},m);var wl=[];for(var i=1;i<=4;i++){wl.push({hm:m['waste'+i+'HM']||'',description:m['waste'+i+'Description']||'',containerNum:m['waste'+i+'ContainerNum']||'',containerType:m['waste'+i+'ContainerType']||'',qty:m['waste'+i+'Qty']||'',unit:m['waste'+i+'Unit']||'',wasteCodes:m['waste'+i+'WasteCodes']||''})}previewData.wasteLines=wl;setPreviewing(previewData)}
+      function handlePreview(m){var previewData=Object.assign({},m);var wl=[];for(var i=1;i<=4;i++){wl.push({hm:m['waste'+i+'HM']||'',description:m['waste'+i+'Description']||'',containerNum:m['waste'+i+'ContainerNum']||'',containerType:m['waste'+i+'ContainerType']||'',containerSize:m['waste'+i+'ContainerSize']||'',qty:m['waste'+i+'Qty']||'',unit:m['waste'+i+'Unit']||'',wasteCodes:m['waste'+i+'WasteCodes']||'',profileId:m['waste'+i+'ProfileId']||''})}previewData.wasteLines=wl;setPreviewing(previewData)}
       var items=(data.manifests||[]).filter(function(m){var s=search.toLowerCase();return !s||(m.manifestNum||'').toLowerCase().indexOf(s)>=0||(m.generatorName||'').toLowerCase().indexOf(s)>=0});
       return React.createElement('div',null,
         React.createElement('div',{className:'section-header'},
@@ -211,7 +211,7 @@
       var onPreview = props.onPreview;
       var preGen = manifest && manifest._preselectedGen ? manifest._preselectedGen : null;
       var isEdit = !!manifest && !preGen;
-      var emptyWaste = { hm: '', description: '', containerNum: '', containerType: '', qty: '', unit: '', wasteCodes: '' };
+      var emptyWaste = { hm: '', description: '', containerNum: '', containerType: '', containerSize: '', qty: '', unit: '', wasteCodes: '' };
 
       var formState = useState(function() {
         if (preGen) {
@@ -335,7 +335,8 @@
           if (hasUNNA && desc.indexOf('RQ') !== 0) desc = 'RQ, ' + desc;
           lines[lineIdx] = {
             hm: hasRcra ? (w.hm || '') : '', description: desc, containerNum: '',
-            containerType: w.containerType || '', qty: '', unit: w.unit || '', wasteCodes: allCodes
+            containerType: w.containerType || '', containerSize: w.containerSize || '', qty: '', unit: w.unit || '', wasteCodes: allCodes,
+            profileId: w.profileId || ''
           };
           return Object.assign({}, f, { wasteLines: lines });
         });
@@ -355,9 +356,11 @@
           payload['waste' + n + 'Description'] = saveDesc;
           payload['waste' + n + 'ContainerNum'] = line.containerNum || '';
           payload['waste' + n + 'ContainerType'] = line.containerType || '';
+          payload['waste' + n + 'ContainerSize'] = line.containerSize || '';
           payload['waste' + n + 'Qty'] = line.qty || '';
           payload['waste' + n + 'Unit'] = line.unit || '';
           payload['waste' + n + 'WasteCodes'] = line.wasteCodes || '';
+          payload['waste' + n + 'ProfileId'] = line.profileId || '';
         }
         var promise;
         if (isEdit && manifest && manifest.id) {
@@ -463,6 +466,7 @@
                     <th>US DOT Description</th>
                     <th style={{width:50}}>Containers</th>
                     <th style={{width:80}}>Type</th>
+                    <th style={{width:65}}>Size</th>
                     <th style={{width:60}}>Qty</th>
                     <th style={{width:70}}>Unit</th>
                     <th style={{width:120}}>Waste Codes</th>
@@ -487,6 +491,7 @@
                             {CONTAINER_TYPES.map(function(ct) { return <option key={ct.code} value={ct.code}>{ct.code}</option>; })}
                           </select>
                         </td>
+                        <td><input value={line.containerSize||''} onChange={function(e){setWaste(i,'containerSize',e.target.value)}} placeholder="55 gal" style={{fontSize:11}} /></td>
                         <td><input value={line.qty} onChange={function(e){setWaste(i,'qty',e.target.value)}} /></td>
                         <td>
                           <select value={line.unit} onChange={function(e){setWaste(i,'unit',e.target.value)}}>
@@ -724,7 +729,7 @@
               {/* Box 14: Special Handling */}
               <div style={Object.assign({},bx,{marginTop:-1,background:'#fff8f8'})}>
                 <div style={lbl}>{Box('14','Special Handling Instructions and Additional Information')}</div>
-                <div style={{fontSize:12,fontWeight:500}}>{d.specialHandling || ''}</div>
+                <div style={{fontSize:12,fontWeight:500}}>{d.specialHandling || (function(){var p14=[];for(var b14i=0;b14i<lines.length;b14i++){var ln14=lines[b14i];if(!ln14.description&&!ln14.profileId)continue;var e14='';if(ln14.profileId)e14+=ln14.profileId;if(ln14.containerSize)e14+=(e14?' ':'')+ln14.containerSize;if(ln14.containerType)e14+=(e14?' ':'')+ln14.containerType;if(e14)p14.push((b14i+1)+') '+e14)}return p14.join('  ')})()}</div>
                 {d.specialHandling2 ? <div style={{fontSize:12}}>{d.specialHandling2}</div> : null}
                 {d.specialHandling3 ? <div style={{fontSize:12,fontStyle:'italic'}}>{d.specialHandling3}</div> : null}
               </div>

@@ -1387,7 +1387,26 @@ app.get('/api/print/manifest/:id', function(req, res) {
   }
 
   // Box 14 - Special Handling
-  placeText(MAP.specialHandling.row, MAP.specialHandling.col, manifest.specialHandling);
+  // Auto-build line 1 with profile # and container info per waste line (if not manually entered)
+  var autoLine1 = '';
+  if (!manifest.specialHandling || manifest.specialHandling.trim() === '') {
+    var parts14 = [];
+    for (var b14 = 1; b14 <= 4; b14++) {
+      var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
+      var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
+      var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
+      var cnum14 = manifest['waste' + b14 + 'ContainerNum'] || '';
+      var desc14 = manifest['waste' + b14 + 'Description'] || '';
+      if (!desc14 && !pid14) continue; // skip empty lines
+      var entry = '';
+      if (pid14) entry += pid14;
+      if (csize14) entry += (entry ? ' ' : '') + csize14;
+      if (ctype14) entry += (entry ? ' ' : '') + ctype14;
+      if (entry) parts14.push(b14 + ') ' + entry);
+    }
+    autoLine1 = parts14.join('  ');
+  }
+  placeText(MAP.specialHandling.row, MAP.specialHandling.col, manifest.specialHandling || autoLine1);
   placeText(MAP.specialHandling2.row, MAP.specialHandling2.col, manifest.specialHandling2);
   placeText(MAP.specialHandling3.row, MAP.specialHandling3.col, manifest.specialHandling3);
 
