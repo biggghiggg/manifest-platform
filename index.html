@@ -322,6 +322,8 @@
           var pg = (w.packingGroup || '').trim();
           if (pg && pg.match(/^(I{1,3}|PG\s*(I{1,3})|1|2|3)$/i)) descParts.push(pg.match(/^(I{1,3})$/)?'PG '+pg:pg);
           var desc = descParts.join(', ');
+          var hasUNNA = validId || desc.match(/\b(UN|NA)\d{4,5}\b/i);
+          if (hasUNNA && desc.indexOf('RQ') !== 0) desc = 'RQ, ' + desc;
           lines[lineIdx] = {
             hm: hasRcra ? (w.hm || '') : '', description: desc, containerNum: '',
             containerType: w.containerType || '', qty: '', unit: w.unit || '', wasteCodes: allCodes
