@@ -666,9 +666,15 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
         }
 
         // Build the DOT description for the manifest
-        // The DOT Shipping Name already has everything: "UN1263, Waste Paint Related Marterial, 3, II"
-        // But we want to use the clean version from the explicit fields
+        // Strip UN/NA number, hazard class, and PG from the shipping name since they're stored separately
         var smxDotForManifest = smxDotDesc.toUpperCase();
+        // Remove UN/NA number from front (loadWasteStream will re-add from unNum field)
+        smxDotForManifest = smxDotForManifest.replace(/\b(UN|NA)\d{4,5}\s*,?\s*/gi, '').trim();
+        // Remove trailing ", 3, II" or ", 3, III" etc (hazard class + PG at end)
+        if (smxHazClass) smxDotForManifest = smxDotForManifest.replace(new RegExp(',\\s*' + smxHazClass.replace('.', '\\.') + '\\s*$'), '').replace(new RegExp(',\\s*' + smxHazClass.replace('.', '\\.') + '\\s*,'), ',');
+        if (smxPG) smxDotForManifest = smxDotForManifest.replace(new RegExp(',\\s*' + smxPG + '\\s*$', 'i'), '');
+        // Clean up trailing/leading commas and spaces
+        smxDotForManifest = smxDotForManifest.replace(/^[\s,]+|[\s,]+$/g, '').replace(/,\s*,/g, ',').trim();
 
         var smxWasteStream = {
           id: Date.now().toString(),
