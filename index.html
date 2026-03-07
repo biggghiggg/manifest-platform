@@ -337,9 +337,10 @@
           var n = i + 1;
           var line = lines[i] || emptyWaste;
           var lineIsRQ = checkRQ(line.wasteCodes, line.qty, line.unit);
+          var hasUNNA = (line.description || '').match(/\b(UN|NA)\d{4,5}\b/i);
           payload['waste' + n + 'HM'] = lineIsRQ ? 'RQ' : (line.hm || '');
           var saveDesc = line.description || '';
-          if (lineIsRQ && saveDesc.indexOf('RQ') !== 0) saveDesc = 'RQ, ' + saveDesc;
+          if (hasUNNA && saveDesc.indexOf('RQ') !== 0) saveDesc = 'RQ, ' + saveDesc;
           payload['waste' + n + 'Description'] = saveDesc;
           payload['waste' + n + 'ContainerNum'] = line.containerNum || '';
           payload['waste' + n + 'ContainerType'] = line.containerType || '';
