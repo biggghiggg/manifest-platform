@@ -1167,9 +1167,10 @@
       var s1 = useState(''); var searchTerm = s1[0]; var setSearchTerm = s1[1];
       var s2 = useState(null); var confirmDelete = s2[0]; var setConfirmDelete = s2[1];
       var s3 = useState(null); var expandedGen = s3[0]; var setExpandedGen = s3[1];
+      var s4 = useState(null); var viewingPdf = s4[0]; var setViewingPdf = s4[1];
 
       function handleView(profile) {
-        window.open('/api/profiles/' + profile.id + '/pdf', '_blank');
+        setViewingPdf(profile);
       }
 
       function handleDelete(profile) {
@@ -1259,6 +1260,43 @@
             React.createElement('div', {style: {fontSize: 16, fontWeight: 600, marginBottom: 4}}, 'No profiles stored yet'),
             React.createElement('div', {style: {fontSize: 13}}, 'When you import a waste profile PDF in the Waste Streams tab, it will automatically be saved here.')
           ) :
+          // PDF viewer overlay
+          viewingPdf ? React.createElement('div', {
+            style: {
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.7)', zIndex: 9999,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+            },
+            onClick: function(e) { if (e.target === e.currentTarget) setViewingPdf(null); }
+          },
+            // Header bar with title and X
+            React.createElement('div', {style: {
+              width: '90%', maxWidth: 1000, background: '#1a1a2e', color: '#fff',
+              padding: '10px 16px', borderRadius: '8px 8px 0 0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }},
+              React.createElement('div', {style: {display: 'flex', alignItems: 'center', gap: 10}},
+                React.createElement('span', {style: {fontWeight: 700, fontSize: 15}}, viewingPdf.profileId || 'Profile'),
+                React.createElement('span', {style: {color: 'rgba(255,255,255,0.6)', fontSize: 13}}, viewingPdf.wasteStreamName || ''),
+                React.createElement('span', {style: {color: 'rgba(255,255,255,0.4)', fontSize: 12}}, viewingPdf.generatorName || '')
+              ),
+              React.createElement('button', {
+                onClick: function() { setViewingPdf(null); },
+                style: {
+                  background: 'none', border: 'none', color: '#fff', fontSize: 24,
+                  cursor: 'pointer', padding: '0 4px', lineHeight: 1, fontWeight: 700
+                }
+              }, 'X')
+            ),
+            // PDF iframe
+            React.createElement('iframe', {
+              src: '/api/profiles/' + viewingPdf.id + '/pdf',
+              style: {
+                width: '90%', maxWidth: 1000, height: '80vh',
+                border: 'none', borderRadius: '0 0 8px 8px', background: '#fff'
+              }
+            })
+          ) : null,
           genOrder.map(function(genName) {
             var genProfiles = genGroups[genName];
             var isExpanded = isSearching || expandedGen === genName;
