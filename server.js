@@ -1080,6 +1080,29 @@ var FORM_8700_MAP = {
   generatorCertName:  { row: 38, col: 8 }
 };
 
+// EPA Form 8700-22A Continuation Sheet MAP
+// Same column positions as main form, different row layout
+// Estimated positions - to be calibrated with actual form
+var FORM_8700_22A_MAP = {
+  // Box 21 - Generator's US EPA ID Number
+  generatorEpaId:       { row: 2, col: 18 },
+  // Box 22 - Page __ of __
+  page:                 { row: 2, col: 40 },
+  totalPages:           { row: 2, col: 43 },
+  // Box 23 - Manifest Tracking Number
+  manifestTrackingNum:  { row: 2, col: 55 },
+  // Box 33 - Special Handling
+  specialHandling:      { row: 56, col: 8 },
+  specialHandling2:     { row: 57, col: 8 },
+  specialHandling3:     { row: 58, col: 8 }
+};
+// Continuation sheet waste lines: up to 26 lines, starting row 5, 2 rows apart
+// Each line has: hm, desc, containerNum, container, qty, uom, wc1-wc6
+// Using same column positions as main form
+var CONT_WASTE_START_ROW = 5;
+var CONT_WASTE_ROW_SPACING = 2;
+var CONT_MAX_WASTE_LINES = 26;
+
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)
 var BUILD_VERSION = 'v24-2026-03-06';
@@ -1252,60 +1275,34 @@ app.get('/api/print/manifest/:id', function(req, res) {
   if (!manifest) return res.status(404).send('Manifest not found');
 
   var MAP = getActiveMap();
-  var lines = [];
-  for (var l = 0; l < 66; l++) {
-    var row = '';
-    for (var c = 0; c < 132; c++) { row += ' '; }
-    lines.push(row);
-  }
-
   var activeOffset = colOffset || 0;
   var activeLeftMargin = leftMargin || 0;
-  function placeText(row, col, text) {
+
+  // Helper: create blank 66x132 page canvas
+  function createCanvas() {
+    var pageLines = [];
+    for (var l = 0; l < 66; l++) {
+      var row = '';
+      for (var c = 0; c < 132; c++) { row += ' '; }
+      pageLines.push(row);
+    }
+    return pageLines;
+  }
+
+  // Helper: place text on a canvas
+  function placeText(pageLines, row, col, text) {
     if (!text) return;
     text = String(text);
     if (row < 1 || row > 66) return;
     var actualCol = col - activeOffset + activeLeftMargin;
     if (actualCol < 1) return;
-    var line = lines[row - 1];
+    var line = pageLines[row - 1];
     var before = line.substring(0, actualCol - 1);
     var after = line.substring(actualCol - 1 + text.length);
-    lines[row - 1] = before + text + after;
+    pageLines[row - 1] = before + text + after;
   }
 
-  // Box 1 - Generator EPA ID
-  placeText(MAP.generatorEpaId.row, MAP.generatorEpaId.col, manifest.generatorEpaId);
-  // Box 2 - Page
-  placeText(MAP.page.row, MAP.page.col, manifest.pageNum || '1');
-  placeText(MAP.totalPages.row, MAP.totalPages.col, manifest.pageTotal || '1');
-  // Box 3 - Emergency Response Phone
-  placeText(MAP.emergencyPhone.row, MAP.emergencyPhone.col, manifest.emergencyPhone);
-
-  // Box 5 - Generator
-  placeText(MAP.generatorName.row, MAP.generatorName.col, manifest.generatorName);
-  placeText(MAP.generatorPhone.row, MAP.generatorPhone.col, manifest.generatorPhone);
-  placeText(MAP.generatorMailAddr.row, MAP.generatorMailAddr.col, manifest.generatorMailAddress);
-  placeText(MAP.generatorMailCity.row, MAP.generatorMailCity.col, manifest.generatorMailCityStZip);
-  placeText(MAP.generatorSiteAddr.row, MAP.generatorSiteAddr.col, manifest.genSiteAddress);
-  placeText(MAP.generatorSiteCity.row, MAP.generatorSiteCity.col, manifest.genSiteCityStZip);
-
-  // Box 6 - Transporter 1
-  placeText(MAP.transporter1Name.row, MAP.transporter1Name.col, manifest.transporter1Name);
-  placeText(MAP.transporter1EpaId.row, MAP.transporter1EpaId.col, manifest.transporter1EpaId);
-  // Box 7 - Transporter 2
-  placeText(MAP.transporter2Name.row, MAP.transporter2Name.col, manifest.transporter2Name);
-  placeText(MAP.transporter2EpaId.row, MAP.transporter2EpaId.col, manifest.transporter2EpaId);
-
-  // Box 8 - Facility
-  placeText(MAP.facilityName.row, MAP.facilityName.col, manifest.facilityName);
-  placeText(MAP.facilityPhone.row, MAP.facilityPhone.col, manifest.facilityPhone);
-  placeText(MAP.facilityAddress.row, MAP.facilityAddress.col, manifest.facilityAddress);
-  placeText(MAP.facilityCity.row, MAP.facilityCity.col, manifest.facilityCityStZip);
-  placeText(MAP.facilityEpaId.row, MAP.facilityEpaId.col, manifest.facilityEpaId);
-
-  // Box 9-13 - Waste lines (all positions independent)
-  var descRow1Width = MAP.waste1containerNum.col - MAP.waste1desc.col - 1;
-  var descContWidth = 55;
+  // Helper: wrap description text
   function wrapDescLines(text, firstMax, contMax) {
     if (!text) return [];
     var result = [];
@@ -1324,80 +1321,80 @@ app.get('/api/print/manifest/:id', function(req, res) {
     }
     return result;
   }
-  for (var w = 1; w <= 4; w++) {
-    var wasteDesc = manifest['waste' + w + 'Description'] || '';
-    var descLines = wrapDescLines(wasteDesc, descRow1Width, descContWidth);
-    var descRow = MAP['waste' + w + 'desc'].row;
-    for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
-      placeText(descRow + dl, MAP['waste' + w + 'desc'].col, descLines[dl]);
+
+  // Helper: smart parse waste codes
+  function parseWasteCodes(allCodes) {
+    if (!allCodes) return [];
+    var codeArr = allCodes.split(/[\s,]+/).filter(function(c) { return c.length > 0; });
+    var needsSmart = false;
+    for (var sc = 0; sc < codeArr.length; sc++) {
+      if (codeArr[sc].length > 4) { needsSmart = true; break; }
     }
-    // 9a - HM
-    placeText(MAP['waste' + w + 'hm'].row, MAP['waste' + w + 'hm'].col, manifest['waste' + w + 'HM']);
-    // 10 - Containers
-    placeText(MAP['waste' + w + 'containerNum'].row, MAP['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
-    placeText(MAP['waste' + w + 'container'].row, MAP['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
-    // 11 - Qty
-    placeText(MAP['waste' + w + 'qty'].row, MAP['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
-    // 12 - Unit
-    placeText(MAP['waste' + w + 'uom'].row, MAP['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
-    // 13 - Waste codes (6 per line, each with independent row/col)
-    var allCodes = (manifest['waste' + w + 'WasteCodes'] || '').trim();
-    if (allCodes) {
-      var codeArr = allCodes.split(/[\s,]+/).filter(function(c) { return c.length > 0; });
-      var needsSmart = false;
-      for (var sc = 0; sc < codeArr.length; sc++) {
-        if (codeArr[sc].length > 4) { needsSmart = true; break; }
+    if (needsSmart) {
+      var smartCodes = [];
+      var joined = allCodes.replace(/[\s,]+/g, '');
+      var letterRe = /[A-Za-z]\d{3}/g;
+      var lm;
+      var positions = [];
+      while ((lm = letterRe.exec(joined)) !== null) {
+        positions.push({start: lm.index, end: lm.index + lm[0].length, code: lm[0]});
       }
-      if (needsSmart) {
-        var smartCodes = [];
-        var joined = allCodes.replace(/[\s,]+/g, '');
-        var letterRe = /[A-Za-z]\d{3}/g;
-        var lm;
-        var positions = [];
-        while ((lm = letterRe.exec(joined)) !== null) {
-          positions.push({start: lm.index, end: lm.index + lm[0].length, code: lm[0]});
+      var lastEnd = 0;
+      for (var pi = 0; pi < positions.length; pi++) {
+        var gap = joined.substring(lastEnd, positions[pi].start);
+        if (gap.length > 0) {
+          var gapNums = gap.match(/\d{3}/g);
+          if (gapNums) { for (var gi = 0; gi < gapNums.length; gi++) smartCodes.push(gapNums[gi]); }
         }
-        var lastEnd = 0;
-        for (var pi = 0; pi < positions.length; pi++) {
-          var gap = joined.substring(lastEnd, positions[pi].start);
-          if (gap.length > 0) {
-            var gapNums = gap.match(/\d{3}/g);
-            if (gapNums) { for (var gi = 0; gi < gapNums.length; gi++) smartCodes.push(gapNums[gi]); }
-          }
-          smartCodes.push(positions[pi].code);
-          lastEnd = positions[pi].end;
-        }
-        var trail = joined.substring(lastEnd);
-        if (trail.length > 0) {
-          var trailNums = trail.match(/\d{3}/g);
-          if (trailNums) { for (var ti = 0; ti < trailNums.length; ti++) smartCodes.push(trailNums[ti]); }
-        }
-        if (smartCodes.length > 1) codeArr = smartCodes;
+        smartCodes.push(positions[pi].code);
+        lastEnd = positions[pi].end;
       }
-      // Place each code at its own independent row/col from the map
-      for (var ci = 0; ci < 6; ci++) {
-        if (codeArr[ci]) {
-          var wcKey = 'waste' + w + 'wc' + (ci + 1);
-          if (MAP[wcKey]) {
-            placeText(MAP[wcKey].row, MAP[wcKey].col, codeArr[ci]);
-          }
-        }
+      var trail = joined.substring(lastEnd);
+      if (trail.length > 0) {
+        var trailNums = trail.match(/\d{3}/g);
+        if (trailNums) { for (var ti = 0; ti < trailNums.length; ti++) smartCodes.push(trailNums[ti]); }
       }
+      if (smartCodes.length > 1) codeArr = smartCodes;
+    }
+    return codeArr;
+  }
+
+  // Helper: place a waste line on a canvas given row positions
+  function placeWasteLine(pageLines, manifestLineNum, baseRow, descCol, hmCol, containerNumCol, containerCol, qtyCol, uomCol, wcCol, wcRowSpacing) {
+    var w = manifestLineNum;
+    var wasteDesc = manifest['waste' + w + 'Description'] || '';
+    var descRow1Width = containerNumCol - descCol - 1;
+    var descLines = wrapDescLines(wasteDesc, descRow1Width, 55);
+    for (var dl = 0; dl < descLines.length && dl < 2; dl++) {
+      placeText(pageLines, baseRow + dl, descCol, descLines[dl]);
+    }
+    placeText(pageLines, baseRow, hmCol, manifest['waste' + w + 'HM']);
+    placeText(pageLines, baseRow, containerNumCol, manifest['waste' + w + 'ContainerNum']);
+    placeText(pageLines, baseRow, containerCol, manifest['waste' + w + 'ContainerType']);
+    placeText(pageLines, baseRow, qtyCol, manifest['waste' + w + 'Qty']);
+    placeText(pageLines, baseRow, uomCol, manifest['waste' + w + 'Unit']);
+    var codeArr = parseWasteCodes((manifest['waste' + w + 'WasteCodes'] || '').trim());
+    for (var ci = 0; ci < 6 && ci < codeArr.length; ci++) {
+      var wcRow = baseRow + (ci >= 3 ? wcRowSpacing : 0);
+      var wcColOffset = (ci % 3) * 5;
+      placeText(pageLines, wcRow, wcCol + wcColOffset, codeArr[ci]);
     }
   }
 
-  // Box 14 - Special Handling
-  // Auto-build line 1 with profile # and container info per waste line (if not manually entered)
+  // Calculate total waste lines and pages
+  var wasteLineCount = parseInt(manifest.wasteLineCount) || 4;
+  var totalPages = wasteLineCount <= 4 ? 1 : Math.ceil((wasteLineCount - 4) / CONT_MAX_WASTE_LINES) + 1;
+
+  // Build Box 14 auto-populate across ALL waste lines
   var autoLine1 = '';
   if (!manifest.specialHandling || manifest.specialHandling.trim() === '') {
     var parts14 = [];
-    for (var b14 = 1; b14 <= 4; b14++) {
+    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
       var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
       var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
       var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
-      var cnum14 = manifest['waste' + b14 + 'ContainerNum'] || '';
       var desc14 = manifest['waste' + b14 + 'Description'] || '';
-      if (!desc14 && !pid14) continue; // skip empty lines
+      if (!desc14 && !pid14) continue;
       var entry = '';
       if (pid14) entry += pid14;
       if (csize14) entry += (entry ? ' ' : '') + csize14;
@@ -1406,14 +1403,122 @@ app.get('/api/print/manifest/:id', function(req, res) {
     }
     autoLine1 = parts14.join(', ');
   }
-  placeText(MAP.specialHandling.row, MAP.specialHandling.col, manifest.specialHandling || autoLine1);
-  placeText(MAP.specialHandling2.row, MAP.specialHandling2.col, manifest.specialHandling2);
-  placeText(MAP.specialHandling3.row, MAP.specialHandling3.col, manifest.specialHandling3);
+  var sh1 = manifest.specialHandling || autoLine1;
+  var sh2 = manifest.specialHandling2 || '';
+  var sh3 = manifest.specialHandling3 || '';
 
-  // Box 15 - Generator Certification (date NOT printed - handwritten on form)
-  placeText(MAP.generatorCertName.row, MAP.generatorCertName.col, manifest.generatorPrintName);
+  // ===== PAGE 1: Main Form (8700-22) =====
+  var page1 = createCanvas();
 
-  var output = lines.join('\n');
+  // Box 1 - Generator EPA ID
+  placeText(page1, MAP.generatorEpaId.row, MAP.generatorEpaId.col, manifest.generatorEpaId);
+  // Box 2 - Page
+  placeText(page1, MAP.page.row, MAP.page.col, '1');
+  placeText(page1, MAP.totalPages.row, MAP.totalPages.col, String(totalPages));
+  // Box 3 - Emergency Response Phone
+  placeText(page1, MAP.emergencyPhone.row, MAP.emergencyPhone.col, manifest.emergencyPhone);
+  // Box 5 - Generator
+  placeText(page1, MAP.generatorName.row, MAP.generatorName.col, manifest.generatorName);
+  placeText(page1, MAP.generatorPhone.row, MAP.generatorPhone.col, manifest.generatorPhone);
+  placeText(page1, MAP.generatorMailAddr.row, MAP.generatorMailAddr.col, manifest.generatorMailAddress);
+  placeText(page1, MAP.generatorMailCity.row, MAP.generatorMailCity.col, manifest.generatorMailCityStZip);
+  placeText(page1, MAP.generatorSiteAddr.row, MAP.generatorSiteAddr.col, manifest.genSiteAddress);
+  placeText(page1, MAP.generatorSiteCity.row, MAP.generatorSiteCity.col, manifest.genSiteCityStZip);
+  // Box 6 - Transporter 1
+  placeText(page1, MAP.transporter1Name.row, MAP.transporter1Name.col, manifest.transporter1Name);
+  placeText(page1, MAP.transporter1EpaId.row, MAP.transporter1EpaId.col, manifest.transporter1EpaId);
+  // Box 7 - Transporter 2
+  placeText(page1, MAP.transporter2Name.row, MAP.transporter2Name.col, manifest.transporter2Name);
+  placeText(page1, MAP.transporter2EpaId.row, MAP.transporter2EpaId.col, manifest.transporter2EpaId);
+  // Box 8 - Facility
+  placeText(page1, MAP.facilityName.row, MAP.facilityName.col, manifest.facilityName);
+  placeText(page1, MAP.facilityPhone.row, MAP.facilityPhone.col, manifest.facilityPhone);
+  placeText(page1, MAP.facilityAddress.row, MAP.facilityAddress.col, manifest.facilityAddress);
+  placeText(page1, MAP.facilityCity.row, MAP.facilityCity.col, manifest.facilityCityStZip);
+  placeText(page1, MAP.facilityEpaId.row, MAP.facilityEpaId.col, manifest.facilityEpaId);
+
+  // Box 9-13 - Waste lines 1-4 on main form
+  for (var w = 1; w <= 4; w++) {
+    var wasteDesc = manifest['waste' + w + 'Description'] || '';
+    var descRow1Width = MAP.waste1containerNum.col - MAP.waste1desc.col - 1;
+    var descLines = wrapDescLines(wasteDesc, descRow1Width, 55);
+    var descRow = MAP['waste' + w + 'desc'].row;
+    for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
+      placeText(page1, descRow + dl, MAP['waste' + w + 'desc'].col, descLines[dl]);
+    }
+    placeText(page1, MAP['waste' + w + 'hm'].row, MAP['waste' + w + 'hm'].col, manifest['waste' + w + 'HM']);
+    placeText(page1, MAP['waste' + w + 'containerNum'].row, MAP['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
+    placeText(page1, MAP['waste' + w + 'container'].row, MAP['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
+    placeText(page1, MAP['waste' + w + 'qty'].row, MAP['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
+    placeText(page1, MAP['waste' + w + 'uom'].row, MAP['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
+    var allCodes = (manifest['waste' + w + 'WasteCodes'] || '').trim();
+    if (allCodes) {
+      var codeArr = parseWasteCodes(allCodes);
+      for (var ci = 0; ci < 6; ci++) {
+        if (codeArr[ci]) {
+          var wcKey = 'waste' + w + 'wc' + (ci + 1);
+          if (MAP[wcKey]) {
+            placeText(page1, MAP[wcKey].row, MAP[wcKey].col, codeArr[ci]);
+          }
+        }
+      }
+    }
+  }
+
+  // Box 14 - Special Handling
+  placeText(page1, MAP.specialHandling.row, MAP.specialHandling.col, sh1);
+  placeText(page1, MAP.specialHandling2.row, MAP.specialHandling2.col, sh2);
+  placeText(page1, MAP.specialHandling3.row, MAP.specialHandling3.col, sh3);
+  // Box 15 - Generator Certification
+  placeText(page1, MAP.generatorCertName.row, MAP.generatorCertName.col, manifest.generatorPrintName);
+
+  var allPages = [page1.join('\n')];
+
+  // ===== CONTINUATION PAGES (8700-22A) =====
+  if (wasteLineCount > 4) {
+    var contMap = FORM_8700_22A_MAP;
+    var remainingLines = wasteLineCount - 4;
+    var contPageNum = 2;
+    var manifestLineStart = 5; // waste line 5 is first on continuation
+
+    while (remainingLines > 0) {
+      var linesOnThisPage = Math.min(remainingLines, CONT_MAX_WASTE_LINES);
+      var contPage = createCanvas();
+
+      // Box 21 - Generator EPA ID
+      placeText(contPage, contMap.generatorEpaId.row, contMap.generatorEpaId.col, manifest.generatorEpaId);
+      // Box 22 - Page
+      placeText(contPage, contMap.page.row, contMap.page.col, String(contPageNum));
+      placeText(contPage, contMap.totalPages.row, contMap.totalPages.col, String(totalPages));
+      // Box 23 - Manifest Tracking Number
+      placeText(contPage, contMap.manifestTrackingNum.row, contMap.manifestTrackingNum.col, manifest.manifestTrackingNum);
+
+      // Waste lines on this continuation page
+      for (var cw = 0; cw < linesOnThisPage; cw++) {
+        var mLineNum = manifestLineStart + cw; // manifest waste line number (5, 6, 7, ...)
+        var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
+        // Use same column positions as main form waste1
+        placeWasteLine(contPage, mLineNum, contRow,
+          MAP.waste1desc.col, MAP.waste1hm.col,
+          MAP.waste1containerNum.col, MAP.waste1container.col,
+          MAP.waste1qty.col, MAP.waste1uom.col,
+          MAP.waste1wc1.col, 1);
+      }
+
+      // Box 33 - Special Handling (same as main form)
+      placeText(contPage, contMap.specialHandling.row, contMap.specialHandling.col, sh1);
+      placeText(contPage, contMap.specialHandling2.row, contMap.specialHandling2.col, sh2);
+      placeText(contPage, contMap.specialHandling3.row, contMap.specialHandling3.col, sh3);
+
+      allPages.push(contPage.join('\n'));
+      remainingLines -= linesOnThisPage;
+      manifestLineStart += linesOnThisPage;
+      contPageNum++;
+    }
+  }
+
+  // Join pages with form feed character
+  var output = allPages.join('\f');
   res.set('Content-Type', 'text/plain');
   res.send(output);
 });

@@ -159,7 +159,7 @@
       function handleSave(f){var p=editing?api.put('/api/manifests/'+editing.id,f):api.post('/api/manifests',f);p.then(function(){reload();setShowModal(false);setEditing(null)})}
       function handleDelete(id){if(confirm('Delete this manifest?')){api.del('/api/manifests/'+id).then(reload)}}
       function handlePrint(id){window.open('/api/print/manifest/'+id,'_blank')}
-      function handlePreview(m){var previewData=Object.assign({},m);var wl=[];for(var i=1;i<=4;i++){wl.push({hm:m['waste'+i+'HM']||'',description:m['waste'+i+'Description']||'',containerNum:m['waste'+i+'ContainerNum']||'',containerType:m['waste'+i+'ContainerType']||'',containerSize:m['waste'+i+'ContainerSize']||'',qty:m['waste'+i+'Qty']||'',unit:m['waste'+i+'Unit']||'',wasteCodes:m['waste'+i+'WasteCodes']||'',profileId:m['waste'+i+'ProfileId']||''})}previewData.wasteLines=wl;setPreviewing(previewData)}
+      function handlePreview(m){var previewData=Object.assign({},m);var wl=[];var wlc=parseInt(m.wasteLineCount)||4;for(var i=1;i<=wlc;i++){wl.push({hm:m['waste'+i+'HM']||'',description:m['waste'+i+'Description']||'',containerNum:m['waste'+i+'ContainerNum']||'',containerType:m['waste'+i+'ContainerType']||'',containerSize:m['waste'+i+'ContainerSize']||'',qty:m['waste'+i+'Qty']||'',unit:m['waste'+i+'Unit']||'',wasteCodes:m['waste'+i+'WasteCodes']||'',profileId:m['waste'+i+'ProfileId']||''})}previewData.wasteLines=wl;setPreviewing(previewData)}
       var items=(data.manifests||[]).filter(function(m){var s=search.toLowerCase();return !s||(m.manifestNum||'').toLowerCase().indexOf(s)>=0||(m.generatorName||'').toLowerCase().indexOf(s)>=0});
       return React.createElement('div',null,
         React.createElement('div',{className:'section-header'},
@@ -233,7 +233,19 @@
             status: 'draft'
           };
         }
-        if (manifest) return Object.assign({}, manifest);
+        if (manifest) {
+          var mCopy = Object.assign({}, manifest);
+          if (!mCopy.wasteLines) {
+            var wlc = parseInt(mCopy.wasteLineCount) || 4;
+            var wls = [];
+            for (var wli = 1; wli <= wlc; wli++) {
+              wls.push({hm:mCopy['waste'+wli+'HM']||'',description:mCopy['waste'+wli+'Description']||'',containerNum:mCopy['waste'+wli+'ContainerNum']||'',containerType:mCopy['waste'+wli+'ContainerType']||'',containerSize:mCopy['waste'+wli+'ContainerSize']||'',qty:mCopy['waste'+wli+'Qty']||'',unit:mCopy['waste'+wli+'Unit']||'',wasteCodes:mCopy['waste'+wli+'WasteCodes']||'',profileId:mCopy['waste'+wli+'ProfileId']||''});
+            }
+            while (wls.length < 4) wls.push(Object.assign({}, emptyWaste));
+            mCopy.wasteLines = wls;
+          }
+          return mCopy;
+        }
         return {
           manifestTrackingNum: '', emergencyPhone: '800-255-3924',
           generatorEpaId: '', generatorName: '', generatorAddress: '', generatorCityStZip: '', generatorPhone: '',
@@ -346,7 +358,12 @@
       function handleSave() {
         var payload = Object.assign({}, form);
         var lines = payload.wasteLines || [];
-        for (var i = 0; i < 4; i++) {
+        payload.wasteLineCount = lines.length;
+        // Auto-calculate page total: page 1 = lines 1-4, continuation pages = 8 lines each
+        var totalPages = lines.length <= 4 ? 1 : Math.ceil((lines.length - 4) / 8) + 1;
+        payload.pageTotal = String(totalPages);
+        if (!payload.pageNum || payload.pageNum === '1') payload.pageNum = '1';
+        for (var i = 0; i < lines.length; i++) {
           var n = i + 1;
           var line = lines[i] || emptyWaste;
           var lineIsRQ = checkRQ(line.wasteCodes, line.qty, line.unit);
@@ -363,6 +380,7 @@
           payload['waste' + n + 'WasteCodes'] = line.wasteCodes || '';
           payload['waste' + n + 'ProfileId'] = line.profileId || '';
         }
+        delete payload.wasteLines; // flattened to waste1*, waste2*, etc.
         var promise;
         if (isEdit && manifest && manifest.id) {
           promise = api.put('/api/manifests/' + manifest.id, payload);
@@ -458,7 +476,10 @@
             </div>
 
             <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
-              <h4 style={{marginBottom:8}}>Box 9 - Waste Description (up to 4 lines)</h4>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                <h4>Box 9 - Waste Description ({(form.wasteLines||[]).length} lines{(form.wasteLines||[]).length > 4 ? ' - ' + (Math.ceil(((form.wasteLines||[]).length - 4) / 8) + 1) + ' pages' : ''})</h4>
+                <button className="btn btn-sm btn-secondary" type="button" onClick={function(){setForm(function(f){var ls=(f.wasteLines||[]).slice();ls.push(Object.assign({},emptyWaste));return Object.assign({},f,{wasteLines:ls})})}}>+ Add Waste Line</button>
+              </div>
               <table className="waste-table">
                 <thead>
                   <tr>
@@ -472,15 +493,16 @@
                     <th style={{width:70}}>Unit</th>
                     <th style={{width:120}}>Waste Codes</th>
                     <th style={{width:100}}>Template</th>
+                    <th style={{width:25}}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {[0,1,2,3].map(function(i) {
-                    var line = (form.wasteLines || [])[i] || emptyWaste;
+                  {(form.wasteLines || []).map(function(line, i) {
                     var isRQ = checkRQ(line.wasteCodes, line.qty, line.unit);
+                    var pgLabel = i < 4 ? 'Pg1' : 'Pg' + (Math.floor((i - 4) / 8) + 2);
                     return (
-                      <tr key={i} style={isRQ?{background:'#fffbeb'}:{}}>
-                        <td style={{fontWeight:600,color:'#888'}}>{i+1}</td>
+                      <tr key={i} style={isRQ?{background:'#fffbeb'}:i>=4?{background:'#f0f7ff'}:{}}>
+                        <td style={{fontWeight:600,color:i>=4?'#3b82f6':'#888',fontSize:11}}>{i+1}<div style={{fontSize:8,color:'#999'}}>{pgLabel}</div></td>
                         <td style={isRQ?{position:'relative'}:{}}>
                           <input value={isRQ?'RQ':(line.hm||'')} onChange={function(e){setWaste(i,'hm',e.target.value)}} maxLength={2} style={isRQ?{background:'#fef3c7',fontWeight:700,color:'#92400e'}:{}} readOnly={isRQ} />
                         </td>
@@ -524,14 +546,14 @@
                             })()}
                           </select>
                         </td>
+                        <td>{i >= 4 ? <button type="button" onClick={function(){var idx=i;setForm(function(f){var ls=(f.wasteLines||[]).slice();ls.splice(idx,1);return Object.assign({},f,{wasteLines:ls})})}} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontWeight:700,fontSize:14}} title="Remove line">X</button> : null}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
               <div style={{marginTop:8,fontSize:11,color:'#666'}}>
-                {[0,1,2,3].map(function(i) {
-                  var line = (form.wasteLines || [])[i] || emptyWaste;
+                {(form.wasteLines || []).map(function(line, i) {
                   if (!line.wasteCodes && !line.qty) return null;
                   var codes = (line.wasteCodes||'').split(/[\s,]+/).filter(function(c){return c.length>0});
                   var matchedCodes = codes.filter(function(c){return RQ_TABLE[c.toUpperCase()]});
@@ -708,26 +730,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    {[0,1,2,3].map(function(i) {
-                      var line = lines[i] || {};
-                      var hasData = line.description || line.containerNum || line.qty || line.wasteCodes;
-                      return (
-                        <tr key={i} style={{background: hasData ? '#fffff0' : '#fff'}}>
-                          <td style={Object.assign({},cellStyle('3%'),{textAlign:'center',fontWeight:700,color:'#888'})}>{i+1}</td>
-                          <td style={Object.assign({},cellStyle('3%'),{textAlign:'center',fontWeight:600})}>{line.hm || ''}</td>
-                          <td style={cellStyle('34%')}><span style={{fontSize:11,fontWeight: hasData?600:400}}>{line.description || ''}</span></td>
-                          <td style={Object.assign({},cellStyle('8%'),{textAlign:'center'})}>{line.containerNum || ''}</td>
-                          <td style={Object.assign({},cellStyle('8%'),{textAlign:'center'})}>{line.containerType || ''}</td>
-                          <td style={Object.assign({},cellStyle('10%'),{textAlign:'center'})}>{line.qty || ''}</td>
-                          <td style={Object.assign({},cellStyle('8%'),{textAlign:'center'})}>{line.unit || ''}</td>
-                          <td style={cellStyle('26%')}>
-                            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:1}}>
-                              {(function(){var codes=(line.wasteCodes||'').split(/[\s,]+/).filter(function(c){return c.length>0});var boxes=[];for(var b=0;b<6;b++){boxes.push(<div key={b} style={{border:'1px solid #999',padding:'1px 3px',fontSize:9,fontFamily:'monospace',fontWeight:600,textAlign:'center',minHeight:14,background:codes[b]?'#fffff0':'#fff'}}>{codes[b]||''}</div>)}return boxes})()}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {(function(){var rows=[];for(var ri=0;ri<lines.length;ri++){var line=lines[ri]||{};var hasData=line.description||line.containerNum||line.qty||line.wasteCodes;var isCont=ri>=4;if(ri===4){rows.push(<tr key="cont-sep"><td colSpan={8} style={{background:'#3b82f6',color:'#fff',fontSize:10,fontWeight:700,padding:'3px 8px',textAlign:'center'}}>Continuation Sheet (Form 8700-22A)</td></tr>)}rows.push(<tr key={ri} style={{background:isCont?'#f0f7ff':(hasData?'#fffff0':'#fff')}}><td style={Object.assign({},cellStyle('3%'),{textAlign:'center',fontWeight:700,color:isCont?'#3b82f6':'#888'})}>{ri+1}</td><td style={Object.assign({},cellStyle('3%'),{textAlign:'center',fontWeight:600})}>{line.hm||''}</td><td style={cellStyle('34%')}><span style={{fontSize:11,fontWeight:hasData?600:400}}>{line.description||''}</span></td><td style={Object.assign({},cellStyle('8%'),{textAlign:'center'})}>{line.containerNum||''}</td><td style={Object.assign({},cellStyle('8%'),{textAlign:'center'})}>{line.containerType||''}</td><td style={Object.assign({},cellStyle('10%'),{textAlign:'center'})}>{line.qty||''}</td><td style={Object.assign({},cellStyle('8%'),{textAlign:'center'})}>{line.unit||''}</td><td style={cellStyle('26%')}><div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:1}}>{(function(){var codes=(line.wasteCodes||'').split(/[\s,]+/).filter(function(c){return c.length>0});var boxes=[];for(var b=0;b<6;b++){boxes.push(<div key={b} style={{border:'1px solid #999',padding:'1px 3px',fontSize:9,fontFamily:'monospace',fontWeight:600,textAlign:'center',minHeight:14,background:codes[b]?'#fffff0':'#fff'}}>{codes[b]||''}</div>)}return boxes})()}</div></td></tr>)}return rows})()}
                   </tbody>
                 </table>
               </div>
