@@ -221,10 +221,10 @@
           return {
             manifestTrackingNum: '', emergencyPhone: '800-255-3924',
             generatorEpaId: preGen.epaId || '', generatorName: preGen.name || '',
-            generatorAddress: preGen.siteAddress || '',
-            generatorCityStZip: [preGen.city, preGen.state, preGen.zip].filter(Boolean).join(', '),
+            generatorAddress: preGen.mailAddress || preGen.siteAddress || '',
+            generatorCityStZip: preGen.mailCity ? [preGen.mailCity, preGen.mailState, preGen.mailZip].filter(Boolean).join(', ') : [preGen.city, preGen.state, preGen.zip].filter(Boolean).join(', '),
             generatorPhone: preGen.phone || '',
-            genSiteAddress: '', genSiteCityStZip: '',
+            genSiteAddress: preGen.siteAddress || '', genSiteCityStZip: [preGen.city, preGen.state, preGen.zip].filter(Boolean).join(', '),
             transporter1Name: '', transporter1EpaId: '',
             transporter2Name: '', transporter2EpaId: '',
             facilityName: '', facilityAddress: '', facilityCityStZip: '', facilityPhone: '', facilityEpaId: '',
@@ -284,9 +284,11 @@
           return Object.assign({}, f, {
             generatorName: gen.name || '',
             generatorEpaId: gen.epaId || '',
-            generatorAddress: gen.siteAddress || '',
-            generatorCityStZip: [gen.city, gen.state, gen.zip].filter(Boolean).join(', '),
+            generatorAddress: gen.mailAddress || gen.siteAddress || '',
+            generatorCityStZip: gen.mailCity ? [gen.mailCity, gen.mailState, gen.mailZip].filter(Boolean).join(', ') : [gen.city, gen.state, gen.zip].filter(Boolean).join(', '),
             generatorPhone: gen.phone || '',
+            genSiteAddress: gen.siteAddress || '',
+            genSiteCityStZip: [gen.city, gen.state, gen.zip].filter(Boolean).join(', '),
             emergencyPhone: f.emergencyPhone || ''
           });
         });
@@ -360,9 +362,18 @@
       function handleSave() {
         var payload = Object.assign({}, form);
         var lines = payload.wasteLines || [];
-        payload.wasteLineCount = lines.length;
-        // Auto-calculate page total: page 1 = lines 1-4, continuation pages = 8 lines each
-        var totalPages = lines.length <= 4 ? 1 : Math.ceil((lines.length - 4) / 8) + 1;
+        // Count only waste lines that have actual data (not empty padding)
+        var activeLineCount = 0;
+        for (var ac = 0; ac < lines.length; ac++) {
+          var ln = lines[ac] || {};
+          if ((ln.description && ln.description.trim()) || (ln.wasteCodes && ln.wasteCodes.trim()) || (ln.qty && ln.qty.trim())) {
+            activeLineCount = ac + 1; // highest index with data
+          }
+        }
+        if (activeLineCount < 4) activeLineCount = 4; // minimum 4 lines on main form
+        payload.wasteLineCount = activeLineCount;
+        // Auto-calculate page total: page 1 = lines 1-4, continuation pages = 10 lines each
+        var totalPages = activeLineCount <= 4 ? 1 : Math.ceil((activeLineCount - 4) / 10) + 1;
         payload.pageTotal = String(totalPages);
         if (!payload.pageNum || payload.pageNum === '1') payload.pageNum = '1';
         for (var i = 0; i < lines.length; i++) {
@@ -648,8 +659,17 @@
               function handleContSaveAndPrint() {
                 var payload = Object.assign({}, form);
                 var pLines = payload.wasteLines || [];
-                payload.wasteLineCount = pLines.length;
-                var tp = pLines.length <= 4 ? 1 : Math.ceil((pLines.length - 4) / 10) + 1;
+                // Count only lines with actual data
+                var pActiveCount = 0;
+                for (var pac = 0; pac < pLines.length; pac++) {
+                  var pln = pLines[pac] || {};
+                  if ((pln.description && pln.description.trim()) || (pln.wasteCodes && pln.wasteCodes.trim()) || (pln.qty && pln.qty.trim())) {
+                    pActiveCount = pac + 1;
+                  }
+                }
+                if (pActiveCount < 4) pActiveCount = 4;
+                payload.wasteLineCount = pActiveCount;
+                var tp = pActiveCount <= 4 ? 1 : Math.ceil((pActiveCount - 4) / 10) + 1;
                 payload.pageTotal = String(tp);
                 if (!payload.pageNum) payload.pageNum = '1';
                 for (var si = 0; si < pLines.length; si++) {
