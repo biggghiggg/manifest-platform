@@ -605,7 +605,8 @@
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
               <button className="btn btn-success" onClick={function(){if(onPreview)onPreview(form)}}>Preview</button>
-              {isEdit && manifest && manifest.id ? <button className="btn btn-print" onClick={function(){window.open('/api/print/manifest/'+manifest.id,'_blank')}}>Print</button> : null}
+              {isEdit && manifest && manifest.id ? <button className="btn btn-print" onClick={function(){window.open('/api/print/manifest/'+manifest.id+'?page=1','_blank')}}>Print</button> : null}
+              {isEdit && manifest && manifest.id ? <button className="btn btn-sm" style={{background:'#3b82f6',color:'#fff'}} onClick={function(){window.open('/api/print/manifest/'+manifest.id+'?page=2','_blank')}}>Continuation Page</button> : null}
               <button className="btn btn-primary" onClick={handleSave}>{isEdit ? 'Update' : 'Create'} Manifest</button>
             </div>
           </div>

@@ -1475,13 +1475,16 @@ app.get('/api/print/manifest/:id', function(req, res) {
   var allPages = [page1.join('\n')];
 
   // ===== CONTINUATION PAGES (8700-22A) =====
-  if (wasteLineCount > 4) {
+  // Always generate at least one continuation page (user may need a blank one even for <=4 lines)
+  {
     var contMap = FORM_8700_22A_MAP;
-    var remainingLines = wasteLineCount - 4;
+    var remainingLines = Math.max(0, wasteLineCount - 4);
     var contPageNum = 2;
-    var manifestLineStart = 5; // waste line 5 is first on continuation
+    var manifestLineStart = 5;
+    // At least one continuation page, then more if needed
+    var contPageCount = Math.max(1, Math.ceil(remainingLines / CONT_MAX_WASTE_LINES));
 
-    while (remainingLines > 0) {
+    for (var cpIdx = 0; cpIdx < contPageCount; cpIdx++) {
       var linesOnThisPage = Math.min(remainingLines, CONT_MAX_WASTE_LINES);
       var contPage = createCanvas();
 
@@ -1493,11 +1496,10 @@ app.get('/api/print/manifest/:id', function(req, res) {
       // Box 23 - Manifest Tracking Number
       placeText(contPage, contMap.manifestTrackingNum.row, contMap.manifestTrackingNum.col, manifest.manifestTrackingNum);
 
-      // Waste lines on this continuation page
+      // Waste lines on this continuation page (may be 0 if blank continuation)
       for (var cw = 0; cw < linesOnThisPage; cw++) {
-        var mLineNum = manifestLineStart + cw; // manifest waste line number (5, 6, 7, ...)
+        var mLineNum = manifestLineStart + cw;
         var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
-        // Use same column positions as main form waste1
         placeWasteLine(contPage, mLineNum, contRow,
           MAP.waste1desc.col, MAP.waste1hm.col,
           MAP.waste1containerNum.col, MAP.waste1container.col,
@@ -1505,7 +1507,7 @@ app.get('/api/print/manifest/:id', function(req, res) {
           MAP.waste1wc1.col, 1);
       }
 
-      // Box 33 - Special Handling (same as main form)
+      // Box 33 - Special Handling
       placeText(contPage, contMap.specialHandling.row, contMap.specialHandling.col, sh1);
       placeText(contPage, contMap.specialHandling2.row, contMap.specialHandling2.col, sh2);
       placeText(contPage, contMap.specialHandling3.row, contMap.specialHandling3.col, sh3);
@@ -1517,8 +1519,14 @@ app.get('/api/print/manifest/:id', function(req, res) {
     }
   }
 
-  // Join pages with form feed character
-  var output = allPages.join('\f');
+  // Support ?page=N to print a specific page, or all pages if not specified
+  var requestedPage = parseInt(req.query.page);
+  var output;
+  if (requestedPage && requestedPage >= 1 && requestedPage <= allPages.length) {
+    output = allPages[requestedPage - 1];
+  } else {
+    output = allPages.join('\f');
+  }
   res.set('Content-Type', 'text/plain');
   res.send(output);
 });
