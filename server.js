@@ -1118,97 +1118,35 @@ var CONT_WASTE_ROW_SPACING = 3;
 var CONT_MAX_WASTE_LINES = 10;
 
 // Print manifest - plain text for dot matrix
-// Uses manifest fields directly (as saved by the frontend)
-var BUILD_VERSION = 'v25-2026-03-08';
+// Epson LQ-590II at 12 CPI, tractor feed locked all the way left
+// Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
+// MAP column values already account for the left pinfeed strip offset
+var BUILD_VERSION = 'v26-2026-03-08';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
-// Alignment editor endpoints
+// Alignment system - clean slate for v26
+// colShift: positive moves text RIGHT, negative moves text LEFT (global fine-tune)
 var customAlignment = data.customAlignment || null;
 var previousAlignment = data.previousAlignment || null;
-var colOffset = (typeof data.colOffset === 'number') ? data.colOffset : 0;
-var leftMargin = (typeof data.leftMargin === 'number') ? data.leftMargin : 0;
+var colShift = (typeof data.colShift === 'number') ? data.colShift : 0;
+var rowShift = (typeof data.rowShift === 'number') ? data.rowShift : 0;
 
-// V18 migration: if custom alignment exists from before the +10 offset change, migrate it
-if (customAlignment && !data.migratedToV18) {
-  var cKeys = Object.keys(customAlignment);
-  for (var mi = 0; mi < cKeys.length; mi++) {
-    if (customAlignment[cKeys[mi]] && typeof customAlignment[cKeys[mi]].col === 'number') {
-      customAlignment[cKeys[mi]].col = customAlignment[cKeys[mi]].col + 10;
-    }
-  }
-  data.customAlignment = customAlignment;
-  // Also migrate previous alignment if it exists
-  if (previousAlignment) {
-    var pKeys = Object.keys(previousAlignment);
-    for (var pi = 0; pi < pKeys.length; pi++) {
-      if (previousAlignment[pKeys[pi]] && typeof previousAlignment[pKeys[pi]].col === 'number') {
-        previousAlignment[pKeys[pi]].col = previousAlignment[pKeys[pi]].col + 10;
-      }
-    }
-    data.previousAlignment = previousAlignment;
-  }
-  // Set colOffset to 10 if it was 0
-  if (colOffset === 0) {
-    colOffset = 10;
-    data.colOffset = 10;
-  }
-  data.migratedToV18 = true;
-  saveData(data);
-  console.log('V18 migration: added +10 to all custom alignment column values');
-}
-
-// V20 migration: clear custom alignment so new Box 10-13 defaults take effect
-if (!data.migratedToV20) {
+// V26 migration: complete alignment reset for Epson LQ-590II pinfeed setup
+if (!data.migratedToV26) {
   customAlignment = null;
   delete data.customAlignment;
   previousAlignment = null;
   delete data.previousAlignment;
-  data.migratedToV20 = true;
+  colShift = 0;
+  data.colShift = 0;
+  rowShift = 0;
+  data.rowShift = 0;
+  // Clean up old alignment variables
+  delete data.colOffset;
+  delete data.leftMargin;
+  data.migratedToV26 = true;
   saveData(data);
-  console.log('V20 migration: cleared custom alignment for new Box 10-13 positions');
-}
-
-// V21 migration: switch to 12 CPI positions, clear custom alignment, reset Global Shift to 0
-if (!data.migratedToV21) {
-  customAlignment = null;
-  delete data.customAlignment;
-  previousAlignment = null;
-  delete data.previousAlignment;
-  colOffset = 0;
-  data.colOffset = 0;
-  data.migratedToV21 = true;
-  saveData(data);
-  console.log('V21 migration: switched to 12 CPI positions, Global Shift reset to 0');
-}
-
-// V23 migration: recalibrated for 12 CPI with tractor pin all the way left
-if (!data.migratedToV23) {
-  customAlignment = null;
-  delete data.customAlignment;
-  previousAlignment = null;
-  delete data.previousAlignment;
-  colOffset = 0;
-  data.colOffset = 0;
-  leftMargin = 0;
-  data.leftMargin = 0;
-  data.migratedToV23 = true;
-  saveData(data);
-  console.log('V23 migration: recalibrated for 12 CPI pin-left');
-}
-
-// V24 migration: shift everything 8 columns left to fix "too far right" at 12 CPI pin-left
-if (!data.migratedToV24) {
-  customAlignment = null;
-  delete data.customAlignment;
-  previousAlignment = null;
-  delete data.previousAlignment;
-  colOffset = 8;
-  data.colOffset = 8;
-  leftMargin = 0;
-  data.leftMargin = 0;
-  data.migratedToV24 = true;
-  saveData(data);
-  console.log('V24 migration: Global Shift set to 8 to fix rightward offset');
+  console.log('V26 migration: complete alignment reset for Epson LQ-590II pinfeed');
 }
 
 function getActiveMap() {
@@ -1230,39 +1168,37 @@ app.get('/api/alignment', function(req, res) {
     map: getActiveMap(),
     defaults: FORM_8700_MAP,
     hasPrevious: previousAlignment !== null,
-    colOffset: colOffset,
-    leftMargin: leftMargin
+    colShift: colShift,
+    rowShift: rowShift
   });
 });
 
 app.put('/api/alignment', function(req, res) {
-  // Save current as previous before overwriting
   previousAlignment = customAlignment ? JSON.parse(JSON.stringify(customAlignment)) : null;
   data.previousAlignment = previousAlignment;
   customAlignment = req.body.map || null;
   data.customAlignment = customAlignment;
-  if (typeof req.body.colOffset === 'number') {
-    colOffset = req.body.colOffset;
-    data.colOffset = colOffset;
+  if (typeof req.body.colShift === 'number') {
+    colShift = req.body.colShift;
+    data.colShift = colShift;
   }
-  if (typeof req.body.leftMargin === 'number') {
-    leftMargin = req.body.leftMargin;
-    data.leftMargin = leftMargin;
+  if (typeof req.body.rowShift === 'number') {
+    rowShift = req.body.rowShift;
+    data.rowShift = rowShift;
   }
   saveData(data);
   res.json({ ok: true });
 });
 
 app.post('/api/alignment/reset', function(req, res) {
-  // Save current as previous before resetting
   previousAlignment = customAlignment ? JSON.parse(JSON.stringify(customAlignment)) : null;
   data.previousAlignment = previousAlignment;
   customAlignment = null;
   delete data.customAlignment;
-  colOffset = 0;
-  data.colOffset = 0;
-  leftMargin = 0;
-  data.leftMargin = 0;
+  colShift = 0;
+  data.colShift = 0;
+  rowShift = 0;
+  data.rowShift = 0;
   saveData(data);
   res.json({ ok: true });
 });
@@ -1271,7 +1207,6 @@ app.post('/api/alignment/undo', function(req, res) {
   if (previousAlignment === null) {
     return res.json({ ok: false, message: 'No previous settings to restore' });
   }
-  // Swap current and previous
   var temp = customAlignment ? JSON.parse(JSON.stringify(customAlignment)) : null;
   customAlignment = JSON.parse(JSON.stringify(previousAlignment));
   previousAlignment = temp;
@@ -1279,6 +1214,103 @@ app.post('/api/alignment/undo', function(req, res) {
   data.previousAlignment = previousAlignment;
   saveData(data);
   res.json({ ok: true, map: getActiveMap() });
+});
+
+// Alignment test print - prints a grid pattern to calibrate field positions
+app.get('/api/print/alignment-test', function(req, res) {
+  var pageLines = [];
+  for (var l = 0; l < 66; l++) {
+    var row = '';
+    for (var c = 0; c < 132; c++) { row += ' '; }
+    pageLines.push(row);
+  }
+
+  function testPlace(row, col, text) {
+    if (!text) return;
+    text = String(text);
+    var r = row + rowShift;
+    var c = col + colShift;
+    if (r < 1 || r > 66 || c < 1) return;
+    var line = pageLines[r - 1];
+    var before = line.substring(0, c - 1);
+    var after = line.substring(c - 1 + text.length);
+    pageLines[r - 1] = before + text + after;
+  }
+
+  // Header
+  testPlace(1, 1, 'ALIGNMENT TEST - Epson LQ-590II 12CPI Pinfeed - ' + BUILD_VERSION);
+  testPlace(2, 1, 'ColShift=' + colShift + ' RowShift=' + rowShift);
+
+  // Column ruler every 10 rows
+  var ruler = '';
+  for (var ri = 1; ri <= 100; ri++) {
+    if (ri % 10 === 0) { ruler += String(ri / 10); }
+    else if (ri % 5 === 0) { ruler += '+'; }
+    else { ruler += '.'; }
+  }
+  testPlace(3, 1, 'COL:' + ruler);
+
+  // Show where each field would print using current MAP
+  var MAP = getActiveMap();
+  testPlace(5, 1, '--- FIELD POSITIONS (current MAP) ---');
+  testPlace(MAP.generatorEpaId.row, MAP.generatorEpaId.col, '[BOX1:GenEPAID]');
+  testPlace(MAP.page.row, MAP.page.col, '[B2:Pg]');
+  testPlace(MAP.totalPages.row, MAP.totalPages.col, '[of]');
+  testPlace(MAP.emergencyPhone.row, MAP.emergencyPhone.col, '[BOX3:EmergPh]');
+  testPlace(MAP.generatorName.row, MAP.generatorName.col, '[BOX5:GenName________]');
+  testPlace(MAP.generatorMailAddr.row, MAP.generatorMailAddr.col, '[MailAddr__________]');
+  testPlace(MAP.generatorMailCity.row, MAP.generatorMailCity.col, '[MailCity___]');
+  testPlace(MAP.generatorPhone.row, MAP.generatorPhone.col, '[GenPhone___]');
+  testPlace(MAP.generatorSiteAddr.row, MAP.generatorSiteAddr.col, '[SiteAddr__________]');
+  testPlace(MAP.generatorSiteCity.row, MAP.generatorSiteCity.col, '[SiteCity___]');
+  testPlace(MAP.transporter1Name.row, MAP.transporter1Name.col, '[BOX6:Trans1Name_________]');
+  testPlace(MAP.transporter1EpaId.row, MAP.transporter1EpaId.col, '[Trans1EPAID___]');
+  testPlace(MAP.transporter2Name.row, MAP.transporter2Name.col, '[BOX7:Trans2Name_________]');
+  testPlace(MAP.transporter2EpaId.row, MAP.transporter2EpaId.col, '[Trans2EPAID___]');
+  testPlace(MAP.facilityName.row, MAP.facilityName.col, '[BOX8:FacName___________]');
+  testPlace(MAP.facilityEpaId.row, MAP.facilityEpaId.col, '[FacEPAID______]');
+  testPlace(MAP.facilityAddress.row, MAP.facilityAddress.col, '[FacAddr___________]');
+  testPlace(MAP.facilityPhone.row, MAP.facilityPhone.col, '[FacPh_]');
+  testPlace(MAP.facilityCity.row, MAP.facilityCity.col, '[FacCity____]');
+
+  // Waste line 1 markers
+  testPlace(MAP.waste1hm.row, MAP.waste1hm.col, '[HM]');
+  testPlace(MAP.waste1desc.row, MAP.waste1desc.col, '[BOX9b:WasteDescription1_________________]');
+  testPlace(MAP.waste1containerNum.row, MAP.waste1containerNum.col, '[#Cn]');
+  testPlace(MAP.waste1container.row, MAP.waste1container.col, '[Typ]');
+  testPlace(MAP.waste1qty.row, MAP.waste1qty.col, '[Qty__]');
+  testPlace(MAP.waste1uom.row, MAP.waste1uom.col, '[U]');
+  testPlace(MAP.waste1wc1.row, MAP.waste1wc1.col, '[WC1][WC2][WC3]');
+
+  // Waste line 2 markers
+  testPlace(MAP.waste2hm.row, MAP.waste2hm.col, '[HM]');
+  testPlace(MAP.waste2desc.row, MAP.waste2desc.col, '[BOX9b:WasteDescription2_________________]');
+
+  // Waste line 3 markers
+  testPlace(MAP.waste3hm.row, MAP.waste3hm.col, '[HM]');
+  testPlace(MAP.waste3desc.row, MAP.waste3desc.col, '[BOX9b:WasteDescription3_________________]');
+
+  // Waste line 4 markers
+  testPlace(MAP.waste4hm.row, MAP.waste4hm.col, '[HM]');
+  testPlace(MAP.waste4desc.row, MAP.waste4desc.col, '[BOX9b:WasteDescription4_________________]');
+
+  // Box 14
+  testPlace(MAP.specialHandling.row, MAP.specialHandling.col, '[BOX14:SpecialHandling__________________]');
+  testPlace(MAP.specialHandling2.row, MAP.specialHandling2.col, '[SpecialHandling2____________________]');
+
+  // Box 15
+  testPlace(MAP.generatorCertName.row, MAP.generatorCertName.col, '[BOX15:GenCertName______]');
+
+  // Row numbers on left edge
+  for (var rn = 1; rn <= 66; rn++) {
+    var rnStr = rn < 10 ? ' ' + rn : String(rn);
+    // Place at col 1 (may overlap pinfeed strip - that's fine for test)
+    var line = pageLines[rn - 1];
+    pageLines[rn - 1] = rnStr + line.substring(2);
+  }
+
+  res.set('Content-Type', 'text/plain; charset=utf-8');
+  res.send(pageLines.join('\n'));
 });
 
 app.get('/api/print/manifest/:id', function(req, res) {
@@ -1289,8 +1321,6 @@ app.get('/api/print/manifest/:id', function(req, res) {
   if (!manifest) return res.status(404).send('Manifest not found');
 
   var MAP = getActiveMap();
-  var activeOffset = colOffset || 0;
-  var activeLeftMargin = leftMargin || 0;
 
   // Helper: create blank 66x132 page canvas
   function createCanvas() {
@@ -1304,16 +1334,18 @@ app.get('/api/print/manifest/:id', function(req, res) {
   }
 
   // Helper: place text on a canvas
+  // colShift/rowShift provide global fine-tuning (positive = right/down, negative = left/up)
   function placeText(pageLines, row, col, text) {
     if (!text) return;
     text = String(text);
-    if (row < 1 || row > 66) return;
-    var actualCol = col - activeOffset + activeLeftMargin;
+    var actualRow = row + rowShift;
+    var actualCol = col + colShift;
+    if (actualRow < 1 || actualRow > 66) return;
     if (actualCol < 1) return;
-    var line = pageLines[row - 1];
+    var line = pageLines[actualRow - 1];
     var before = line.substring(0, actualCol - 1);
     var after = line.substring(actualCol - 1 + text.length);
-    pageLines[row - 1] = before + text + after;
+    pageLines[actualRow - 1] = before + text + after;
   }
 
   // Helper: wrap description text
