@@ -1121,7 +1121,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v27-2026-03-08';
+var BUILD_VERSION = 'v28-2026-03-08';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1521,14 +1521,13 @@ app.get('/api/print/manifest/:id', function(req, res) {
   var allPages = [page1.join('\n')];
 
   // ===== CONTINUATION PAGES (8700-22A) =====
-  // Always generate at least one continuation page (user may need a blank one even for <=4 lines)
-  {
+  // Only generate continuation pages when there are more than 4 waste lines
+  if (wasteLineCount > 4) {
     var contMap = FORM_8700_22A_MAP;
-    var remainingLines = Math.max(0, wasteLineCount - 4);
+    var remainingLines = wasteLineCount - 4;
     var contPageNum = 2;
     var manifestLineStart = 5;
-    // At least one continuation page, then more if needed
-    var contPageCount = Math.max(1, Math.ceil(remainingLines / CONT_MAX_WASTE_LINES));
+    var contPageCount = Math.ceil(remainingLines / CONT_MAX_WASTE_LINES);
 
     for (var cpIdx = 0; cpIdx < contPageCount; cpIdx++) {
       var linesOnThisPage = Math.min(remainingLines, CONT_MAX_WASTE_LINES);
