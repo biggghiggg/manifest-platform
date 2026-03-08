@@ -1121,7 +1121,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v31-2026-03-08';
+var BUILD_VERSION = 'v33-2026-03-08';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1309,8 +1309,15 @@ app.get('/api/print/alignment-test', function(req, res) {
     pageLines[rn - 1] = rnStr + line.substring(2);
   }
 
-  res.set('Content-Type', 'text/plain; charset=utf-8');
-  res.send(pageLines.join('\n'));
+  var testOutput = pageLines.join('\n');
+  var testHtml = '<!DOCTYPE html><html><head><title>Alignment Test</title><style>';
+  testHtml += '@media print { @page { margin: 0; size: auto; } html, body { margin: 0; padding: 0; } body { font-family: monospace; font-size: 10pt; line-height: 1; white-space: pre; } }';
+  testHtml += '@media screen { body { font-family: monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 20px; } }';
+  testHtml += '</style></head><body>';
+  testHtml += testOutput.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  testHtml += '</body></html>';
+  res.set('Content-Type', 'text/html');
+  res.send(testHtml);
 });
 
 app.get('/api/print/manifest/:id', function(req, res) {
@@ -1322,10 +1329,13 @@ app.get('/api/print/manifest/:id', function(req, res) {
 
   var MAP = getActiveMap();
 
-  // Helper: create blank 66x132 page canvas
+  // Helper: create page canvas
+  // Use 60 lines instead of 66 to prevent browser print dialog from pushing to a 2nd page
+  // (browser adds headers/footers/margins that eat ~6 lines of space)
+  var CANVAS_ROWS = 60;
   function createCanvas() {
     var pageLines = [];
-    for (var l = 0; l < 66; l++) {
+    for (var l = 0; l < CANVAS_ROWS; l++) {
       var row = '';
       for (var c = 0; c < 132; c++) { row += ' '; }
       pageLines.push(row);
@@ -1340,7 +1350,7 @@ app.get('/api/print/manifest/:id', function(req, res) {
     text = String(text);
     var actualRow = row + rowShift;
     var actualCol = col + colShift;
-    if (actualRow < 1 || actualRow > 66) return;
+    if (actualRow < 1 || actualRow > CANVAS_ROWS) return;
     if (actualCol < 1) return;
     var line = pageLines[actualRow - 1];
     var before = line.substring(0, actualCol - 1);
@@ -1429,17 +1439,21 @@ app.get('/api/print/manifest/:id', function(req, res) {
 
   // Calculate total waste lines and pages
   // Re-count active lines at print time (ignore empty padding from old saves)
+  // A line is "active" only if it has a real description (not just "RQ, " prefix), waste codes, or quantity
   var rawWLC = parseInt(manifest.wasteLineCount) || 4;
-  var wasteLineCount = 4; // minimum
-  for (var wlCheck = 1; wlCheck <= rawWLC; wlCheck++) {
-    var wDesc = manifest['waste' + wlCheck + 'Description'] || '';
-    var wCodes = manifest['waste' + wlCheck + 'WasteCodes'] || '';
-    var wQty = manifest['waste' + wlCheck + 'Qty'] || '';
-    if (wDesc.trim() || wCodes.trim() || wQty.trim()) {
+  var wasteLineCount = 0;
+  for (var wlCheck = 1; wlCheck <= Math.max(rawWLC, 4); wlCheck++) {
+    var wDesc = (manifest['waste' + wlCheck + 'Description'] || '').replace(/^RQ,?\s*/i, '').trim();
+    var wCodes = (manifest['waste' + wlCheck + 'WasteCodes'] || '').trim();
+    var wQty = (manifest['waste' + wlCheck + 'Qty'] || '').trim();
+    if (wDesc || wCodes || wQty) {
       wasteLineCount = wlCheck;
     }
   }
+  if (wasteLineCount < 4) wasteLineCount = 4; // minimum 4 on main form
+  console.log('Print manifest ' + manifest.id + ': rawWLC=' + rawWLC + ', activeLines=' + wasteLineCount);
   var totalPages = wasteLineCount <= 4 ? 1 : Math.ceil((wasteLineCount - 4) / CONT_MAX_WASTE_LINES) + 1;
+  console.log('Print manifest ' + manifest.id + ': totalPages=' + totalPages);
 
   // Build Box 14 auto-populate across ALL waste lines
   var autoLine1 = '';
@@ -1601,8 +1615,34 @@ app.get('/api/print/manifest/:id', function(req, res) {
   } else {
     output = allPages.join('\f');
   }
-  res.set('Content-Type', 'text/plain');
-  res.send(output);
+  // Trim trailing blank lines
+  output = output.replace(/\n\s*$/, '');
+  console.log('Print output: ' + allPages.length + ' page(s), ' + output.split('\n').length + ' lines');
+
+  // If ?raw=1, send plain text (for raw printer drivers)
+  if (req.query.raw === '1') {
+    res.set('Content-Type', 'text/plain');
+    return res.send(output);
+  }
+
+  // Wrap in HTML with print stylesheet to eliminate browser margins/headers/footers
+  // This prevents the browser from pushing content onto a 2nd page
+  var htmlOutput = '<!DOCTYPE html><html><head><title>Manifest Print</title><style>';
+  htmlOutput += '@media print {';
+  htmlOutput += '  @page { margin: 0; size: auto; }';
+  htmlOutput += '  html, body { margin: 0; padding: 0; }';
+  htmlOutput += '  body { font-family: monospace; font-size: 10pt; line-height: 1; white-space: pre; }';
+  htmlOutput += '}';
+  htmlOutput += '@media screen {';
+  htmlOutput += '  body { font-family: monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 20px; }';
+  htmlOutput += '}';
+  htmlOutput += '</style></head><body>';
+  // Escape HTML entities and preserve whitespace
+  var escaped = output.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  htmlOutput += escaped;
+  htmlOutput += '</body></html>';
+  res.set('Content-Type', 'text/html');
+  res.send(htmlOutput);
 });
 
 // Download .prn file
