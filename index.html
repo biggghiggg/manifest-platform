@@ -213,6 +213,8 @@
       var preGen = manifest && manifest._preselectedGen ? manifest._preselectedGen : null;
       var isEdit = !!manifest && !preGen;
       var emptyWaste = { hm: '', description: '', containerNum: '', containerType: '', containerSize: '', qty: '', unit: '', wasteCodes: '' };
+      var contState = useState(false); var showContinuation = contState[0]; var setShowContinuation = contState[1];
+      var savedIdState = useState(isEdit && manifest ? manifest.id : null); var savedId = savedIdState[0]; var setSavedId = savedIdState[1];
 
       var formState = useState(function() {
         if (preGen) {
@@ -605,41 +607,164 @@
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
               <button className="btn btn-success" onClick={function(){if(onPreview)onPreview(form)}}>Preview</button>
-              {isEdit && manifest && manifest.id ? <button className="btn btn-print" onClick={function(){window.open('/api/print/manifest/'+manifest.id+'?page=1','_blank')}}>Print</button> : null}
+              {savedId ? <button className="btn btn-print" onClick={function(){window.open('/api/print/manifest/'+savedId+'?page=1','_blank')}}>Print</button> : null}
               <button className="btn btn-sm" style={{background:'#3b82f6',color:'#fff'}} onClick={function(){
-                function openCont(id){window.open('/api/print/manifest/'+id+'?page=2','_blank')}
-                if(isEdit && manifest && manifest.id){
-                  handleSave();
-                  openCont(manifest.id);
-                } else {
-                  var payload = Object.assign({}, form);
-                  var pLines = payload.wasteLines || [];
-                  payload.wasteLineCount = pLines.length;
-                  var tp = pLines.length <= 4 ? 1 : Math.ceil((pLines.length - 4) / 26) + 1;
-                  payload.pageTotal = String(tp);
-                  if (!payload.pageNum) payload.pageNum = '1';
-                  for (var si = 0; si < pLines.length; si++) {
-                    var sn = si + 1;
-                    var sl = pLines[si] || emptyWaste;
-                    payload['waste' + sn + 'HM'] = sl.hm || '';
-                    payload['waste' + sn + 'Description'] = sl.description || '';
-                    payload['waste' + sn + 'ContainerNum'] = sl.containerNum || '';
-                    payload['waste' + sn + 'ContainerType'] = sl.containerType || '';
-                    payload['waste' + sn + 'ContainerSize'] = sl.containerSize || '';
-                    payload['waste' + sn + 'Qty'] = sl.qty || '';
-                    payload['waste' + sn + 'Unit'] = sl.unit || '';
-                    payload['waste' + sn + 'WasteCodes'] = sl.wasteCodes || '';
-                    payload['waste' + sn + 'ProfileId'] = sl.profileId || '';
-                  }
-                  delete payload.wasteLines;
-                  api.post('/api/manifests', payload).then(function(resp){
-                    reload();
-                    if(resp && resp.id) openCont(resp.id);
-                  });
-                }
+                setShowContinuation(true);
               }}>Continuation Page</button>
               <button className="btn btn-primary" onClick={handleSave}>{isEdit ? 'Update' : 'Create'} Manifest</button>
             </div>
+
+            {showContinuation ? (function(){
+              var contLines = (form.wasteLines || []).slice(4);
+              if (contLines.length === 0) contLines = [Object.assign({}, emptyWaste)];
+              function setContWaste(idx, field, val) {
+                var realIdx = idx + 4;
+                setWaste(realIdx, field, val);
+              }
+              function addContLine() {
+                setForm(function(f) {
+                  var ls = (f.wasteLines || []).slice();
+                  ls.push(Object.assign({}, emptyWaste));
+                  return Object.assign({}, f, { wasteLines: ls });
+                });
+              }
+              function removeContLine(idx) {
+                var realIdx = idx + 4;
+                setForm(function(f) {
+                  var ls = (f.wasteLines || []).slice();
+                  if (ls.length > 5) { ls.splice(realIdx, 1); }
+                  return Object.assign({}, f, { wasteLines: ls });
+                });
+              }
+              function handleContSaveAndPrint() {
+                var payload = Object.assign({}, form);
+                var pLines = payload.wasteLines || [];
+                payload.wasteLineCount = pLines.length;
+                var tp = pLines.length <= 4 ? 1 : Math.ceil((pLines.length - 4) / 26) + 1;
+                payload.pageTotal = String(tp);
+                if (!payload.pageNum) payload.pageNum = '1';
+                for (var si = 0; si < pLines.length; si++) {
+                  var sn = si + 1;
+                  var sl = pLines[si] || emptyWaste;
+                  var lineIsRQ = checkRQ(sl.wasteCodes, sl.qty, sl.unit);
+                  var hasUNNA = (sl.description || '').match(/\b(UN|NA)\d{4,5}\b/i);
+                  payload['waste' + sn + 'HM'] = lineIsRQ ? 'RQ' : (sl.hm || '');
+                  var saveDesc = sl.description || '';
+                  if (hasUNNA && saveDesc.indexOf('RQ') !== 0) saveDesc = 'RQ, ' + saveDesc;
+                  payload['waste' + sn + 'Description'] = saveDesc;
+                  payload['waste' + sn + 'ContainerNum'] = sl.containerNum || '';
+                  payload['waste' + sn + 'ContainerType'] = sl.containerType || '';
+                  payload['waste' + sn + 'ContainerSize'] = sl.containerSize || '';
+                  payload['waste' + sn + 'Qty'] = sl.qty || '';
+                  payload['waste' + sn + 'Unit'] = sl.unit || '';
+                  payload['waste' + sn + 'WasteCodes'] = sl.wasteCodes || '';
+                  payload['waste' + sn + 'ProfileId'] = sl.profileId || '';
+                }
+                delete payload.wasteLines;
+                if (savedId) {
+                  api.put('/api/manifests/' + savedId, payload).then(function() {
+                    window.open('/api/print/manifest/' + savedId + '?page=2', '_blank');
+                  });
+                } else {
+                  api.post('/api/manifests', payload).then(function(resp) {
+                    if (resp && resp.id) {
+                      setSavedId(resp.id);
+                      window.open('/api/print/manifest/' + resp.id + '?page=2', '_blank');
+                    }
+                  });
+                }
+              }
+              return (
+                <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={function(){setShowContinuation(false)}}>
+                  <div style={{background:'#fff',borderRadius:16,padding:0,width:'92%',maxWidth:800,maxHeight:'85vh',overflowY:'auto',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}} onClick={function(e){e.stopPropagation()}}>
+                    <div style={{background:'#3b82f6',color:'#fff',padding:'12px 20px',borderRadius:'16px 16px 0 0',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <span style={{fontWeight:700,fontSize:16}}>EPA Form 8700-22A - Continuation Sheet</span>
+                      <button onClick={function(){setShowContinuation(false)}} style={{background:'none',border:'none',color:'#fff',fontSize:20,cursor:'pointer',fontWeight:700}}>X</button>
+                    </div>
+                    <div style={{padding:20}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                        <div style={{fontSize:13,color:'#666'}}>
+                          <strong>Generator:</strong> {form.generatorName || 'N/A'} &nbsp; | &nbsp;
+                          <strong>EPA ID:</strong> {form.generatorEpaId || 'N/A'} &nbsp; | &nbsp;
+                          <strong>Tracking #:</strong> {form.manifestTrackingNum || 'N/A'}
+                        </div>
+                      </div>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                        <h4>Continuation Waste Lines ({contLines.length} lines)</h4>
+                        <button className="btn btn-sm btn-secondary" type="button" onClick={addContLine}>+ Add Waste Line</button>
+                      </div>
+                      <table className="waste-table">
+                        <thead>
+                          <tr>
+                            <th style={{width:20}}>#</th>
+                            <th style={{width:30}}>HM</th>
+                            <th>US DOT Description</th>
+                            <th style={{width:50}}>Containers</th>
+                            <th style={{width:80}}>Type</th>
+                            <th style={{width:65}}>Size</th>
+                            <th style={{width:60}}>Qty</th>
+                            <th style={{width:70}}>Unit</th>
+                            <th style={{width:120}}>Waste Codes</th>
+                            <th style={{width:100}}>Template</th>
+                            <th style={{width:25}}></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {contLines.map(function(line, ci) {
+                            var globalIdx = ci + 4;
+                            var isRQ = checkRQ(line.wasteCodes, line.qty, line.unit);
+                            return (
+                              <tr key={ci} style={isRQ?{background:'#fffbeb'}:{background:'#f0f7ff'}}>
+                                <td style={{fontWeight:600,color:'#3b82f6'}}>{globalIdx + 1}</td>
+                                <td><input value={isRQ?'RQ':(line.hm||'')} onChange={function(e){setContWaste(ci,'hm',e.target.value)}} maxLength={2} style={isRQ?{background:'#fef3c7',fontWeight:700,color:'#92400e'}:{}} readOnly={isRQ} /></td>
+                                <td><input value={line.description||''} onChange={function(e){setContWaste(ci,'description',e.target.value)}} /></td>
+                                <td><input value={line.containerNum||''} onChange={function(e){setContWaste(ci,'containerNum',e.target.value)}} /></td>
+                                <td>
+                                  <select value={line.containerType||''} onChange={function(e){setContWaste(ci,'containerType',e.target.value)}}>
+                                    <option value="">--</option>
+                                    {CONTAINER_TYPES.map(function(ct){return <option key={ct.code} value={ct.code}>{ct.code}</option>})}
+                                  </select>
+                                </td>
+                                <td>
+                                  <select value={line.containerSize||''} onChange={function(e){setContWaste(ci,'containerSize',e.target.value)}} style={{fontSize:11,padding:'4px 2px'}}>
+                                    <option value="">--</option>
+                                    {CONTAINER_SIZES.map(function(sz){return <option key={sz} value={sz}>{sz}</option>})}
+                                  </select>
+                                </td>
+                                <td><input value={line.qty||''} onChange={function(e){setContWaste(ci,'qty',e.target.value)}} /></td>
+                                <td>
+                                  <select value={line.unit||''} onChange={function(e){setContWaste(ci,'unit',e.target.value)}}>
+                                    <option value="">--</option>
+                                    {UNIT_TYPES.map(function(u){return <option key={u.code} value={u.code}>{u.code}</option>})}
+                                  </select>
+                                </td>
+                                <td><input value={line.wasteCodes||''} onChange={function(e){setContWaste(ci,'wasteCodes',e.target.value)}} placeholder="D001 D002" /></td>
+                                <td>
+                                  <select onChange={function(e){loadWasteStream(e.target.value, globalIdx)}} defaultValue="" style={{fontSize:11,padding:'4px 2px'}}>
+                                    <option value="">Load...</option>
+                                    {data.wasteStreams.map(function(w){return <option key={w.id} value={w.id}>{w.name}</option>})}
+                                  </select>
+                                </td>
+                                <td>{contLines.length > 1 ? <button type="button" onClick={function(){removeContLine(ci)}} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontWeight:700,fontSize:14}} title="Remove line">X</button> : null}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      <div className="modal-actions" style={{marginTop:16}}>
+                        <button className="btn btn-secondary" onClick={function(){setShowContinuation(false)}}>Back to Main</button>
+                        <button className="btn btn-print" onClick={handleContSaveAndPrint}>Save &amp; Print Continuation</button>
+                        <button className="btn btn-primary" onClick={function(){
+                          handleSave();
+                          setShowContinuation(false);
+                        }}>Save All &amp; Close</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })() : null}
+
           </div>
         </div>
       );
