@@ -1101,7 +1101,7 @@ var FORM_8700_22A_MAP = {
 // Using same column positions as main form
 var CONT_WASTE_START_ROW = 5;
 var CONT_WASTE_ROW_SPACING = 2;
-var CONT_MAX_WASTE_LINES = 26;
+var CONT_MAX_WASTE_LINES = 10;
 
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)

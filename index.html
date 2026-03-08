@@ -615,8 +615,17 @@
             </div>
 
             {showContinuation ? (function(){
+              // Ensure wasteLines has at least 14 (4 main + 10 continuation) when opening continuation
+              if ((form.wasteLines || []).length < 14) {
+                var needed = 14 - (form.wasteLines || []).length;
+                if (needed > 0) {
+                  var padded = (form.wasteLines || []).slice();
+                  for (var pi = 0; pi < needed; pi++) padded.push(Object.assign({}, emptyWaste));
+                  setForm(function(f) { return Object.assign({}, f, { wasteLines: padded }); });
+                }
+              }
               var contLines = (form.wasteLines || []).slice(4);
-              if (contLines.length === 0) contLines = [Object.assign({}, emptyWaste)];
+              while (contLines.length < 10) contLines.push(Object.assign({}, emptyWaste));
               function setContWaste(idx, field, val) {
                 var realIdx = idx + 4;
                 setWaste(realIdx, field, val);
