@@ -1121,7 +1121,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v33-2026-03-08';
+var BUILD_VERSION = 'v34-2026-03-08';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1309,15 +1309,8 @@ app.get('/api/print/alignment-test', function(req, res) {
     pageLines[rn - 1] = rnStr + line.substring(2);
   }
 
-  var testOutput = pageLines.join('\n');
-  var testHtml = '<!DOCTYPE html><html><head><title>Alignment Test</title><style>';
-  testHtml += '@media print { @page { margin: 0; size: auto; } html, body { margin: 0; padding: 0; } body { font-family: monospace; font-size: 10pt; line-height: 1; white-space: pre; } }';
-  testHtml += '@media screen { body { font-family: monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 20px; } }';
-  testHtml += '</style></head><body>';
-  testHtml += testOutput.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  testHtml += '</body></html>';
-  res.set('Content-Type', 'text/html');
-  res.send(testHtml);
+  res.set('Content-Type', 'text/plain; charset=utf-8');
+  res.send(pageLines.join('\n'));
 });
 
 app.get('/api/print/manifest/:id', function(req, res) {
@@ -1329,10 +1322,8 @@ app.get('/api/print/manifest/:id', function(req, res) {
 
   var MAP = getActiveMap();
 
-  // Helper: create page canvas
-  // Use 60 lines instead of 66 to prevent browser print dialog from pushing to a 2nd page
-  // (browser adds headers/footers/margins that eat ~6 lines of space)
-  var CANVAS_ROWS = 60;
+  // Helper: create page canvas (66 lines = 11" at 6 LPI)
+  var CANVAS_ROWS = 66;
   function createCanvas() {
     var pageLines = [];
     for (var l = 0; l < CANVAS_ROWS; l++) {
@@ -1619,30 +1610,8 @@ app.get('/api/print/manifest/:id', function(req, res) {
   output = output.replace(/\n\s*$/, '');
   console.log('Print output: ' + allPages.length + ' page(s), ' + output.split('\n').length + ' lines');
 
-  // If ?raw=1, send plain text (for raw printer drivers)
-  if (req.query.raw === '1') {
-    res.set('Content-Type', 'text/plain');
-    return res.send(output);
-  }
-
-  // Wrap in HTML with print stylesheet to eliminate browser margins/headers/footers
-  // This prevents the browser from pushing content onto a 2nd page
-  var htmlOutput = '<!DOCTYPE html><html><head><title>Manifest Print</title><style>';
-  htmlOutput += '@media print {';
-  htmlOutput += '  @page { margin: 0; size: auto; }';
-  htmlOutput += '  html, body { margin: 0; padding: 0; }';
-  htmlOutput += '  body { font-family: monospace; font-size: 10pt; line-height: 1; white-space: pre; }';
-  htmlOutput += '}';
-  htmlOutput += '@media screen {';
-  htmlOutput += '  body { font-family: monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 20px; }';
-  htmlOutput += '}';
-  htmlOutput += '</style></head><body>';
-  // Escape HTML entities and preserve whitespace
-  var escaped = output.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  htmlOutput += escaped;
-  htmlOutput += '</body></html>';
-  res.set('Content-Type', 'text/html');
-  res.send(htmlOutput);
+  res.set('Content-Type', 'text/plain');
+  res.send(output);
 });
 
 // Download .prn file
