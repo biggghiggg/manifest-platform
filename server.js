@@ -1466,8 +1466,8 @@ app.get('/api/print/manifest/:id', function(req, res) {
   // Box 5 - Generator
   placeText(page1, MAP.generatorName.row, MAP.generatorName.col, manifest.generatorName);
   placeText(page1, MAP.generatorPhone.row, MAP.generatorPhone.col, manifest.generatorPhone);
-  placeText(page1, MAP.generatorMailAddr.row, MAP.generatorMailAddr.col, manifest.generatorMailAddress);
-  placeText(page1, MAP.generatorMailCity.row, MAP.generatorMailCity.col, manifest.generatorMailCityStZip);
+  placeText(page1, MAP.generatorMailAddr.row, MAP.generatorMailAddr.col, manifest.generatorAddress);
+  placeText(page1, MAP.generatorMailCity.row, MAP.generatorMailCity.col, manifest.generatorCityStZip);
   placeText(page1, MAP.generatorSiteAddr.row, MAP.generatorSiteAddr.col, manifest.genSiteAddress);
   placeText(page1, MAP.generatorSiteCity.row, MAP.generatorSiteCity.col, manifest.genSiteCityStZip);
   // Box 6 - Transporter 1
