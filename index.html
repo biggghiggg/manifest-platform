@@ -723,26 +723,42 @@
                       </div>
 
                       {/* Box 25 - Transporter Company Name */}
-                      <div style={Object.assign({}, contBoxStyle, {display:'grid',gridTemplateColumns:'1fr 200px',gap:12})}>
-                        <div className="form-group">
-                          <label style={contLblStyle}>25. Transporter ___ Company Name</label>
-                          <input value={form.contTransporterName || form.transporter1Name || ''} onChange={function(e){set('contTransporterName',e.target.value)}} />
+                      <div style={contBoxStyle}>
+                        <div style={{marginBottom:8}}>
+                          <select onChange={function(e){var t=data.transporters.find(function(x){return x.id===e.target.value});if(t){set('contTransporterName',t.name||'');set('contTransporterEpaId',t.epaId||'')}}} defaultValue="" style={{fontSize:12,padding:'4px 8px'}}>
+                            <option value="">-- Load from saved transporter --</option>
+                            {data.transporters.map(function(t){return <option key={t.id} value={t.id}>{t.name}</option>})}
+                          </select>
                         </div>
-                        <div className="form-group">
-                          <label style={contLblStyle}>US EPA ID Number</label>
-                          <input value={form.contTransporterEpaId || form.transporter1EpaId || ''} onChange={function(e){set('contTransporterEpaId',e.target.value)}} />
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 200px',gap:12}}>
+                          <div className="form-group">
+                            <label style={contLblStyle}>25. Transporter ___ Company Name</label>
+                            <input value={form.contTransporterName || form.transporter1Name || ''} onChange={function(e){set('contTransporterName',e.target.value)}} />
+                          </div>
+                          <div className="form-group">
+                            <label style={contLblStyle}>US EPA ID Number</label>
+                            <input value={form.contTransporterEpaId || form.transporter1EpaId || ''} onChange={function(e){set('contTransporterEpaId',e.target.value)}} />
+                          </div>
                         </div>
                       </div>
 
                       {/* Box 26 - Transporter Company Name (2nd) */}
-                      <div style={Object.assign({}, contBoxStyle, {display:'grid',gridTemplateColumns:'1fr 200px',gap:12})}>
-                        <div className="form-group">
-                          <label style={contLblStyle}>26. Transporter ___ Company Name</label>
-                          <input value={form.contTransporter2Name || ''} onChange={function(e){set('contTransporter2Name',e.target.value)}} />
+                      <div style={contBoxStyle}>
+                        <div style={{marginBottom:8}}>
+                          <select onChange={function(e){var t=data.transporters.find(function(x){return x.id===e.target.value});if(t){set('contTransporter2Name',t.name||'');set('contTransporter2EpaId',t.epaId||'')}}} defaultValue="" style={{fontSize:12,padding:'4px 8px'}}>
+                            <option value="">-- Load from saved transporter --</option>
+                            {data.transporters.map(function(t){return <option key={t.id} value={t.id}>{t.name}</option>})}
+                          </select>
                         </div>
-                        <div className="form-group">
-                          <label style={contLblStyle}>US EPA ID Number</label>
-                          <input value={form.contTransporter2EpaId || ''} onChange={function(e){set('contTransporter2EpaId',e.target.value)}} />
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 200px',gap:12}}>
+                          <div className="form-group">
+                            <label style={contLblStyle}>26. Transporter ___ Company Name</label>
+                            <input value={form.contTransporter2Name || ''} onChange={function(e){set('contTransporter2Name',e.target.value)}} />
+                          </div>
+                          <div className="form-group">
+                            <label style={contLblStyle}>US EPA ID Number</label>
+                            <input value={form.contTransporter2EpaId || ''} onChange={function(e){set('contTransporter2EpaId',e.target.value)}} />
+                          </div>
                         </div>
                       </div>
 
