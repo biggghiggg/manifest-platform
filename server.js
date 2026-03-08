@@ -1402,9 +1402,9 @@ app.get('/api/print/manifest/:id', function(req, res) {
       if (pid14) entry += pid14;
       if (csize14) entry += (entry ? ' ' : '') + csize14;
       if (ctype14) entry += (entry ? ' ' : '') + ctype14;
-      if (entry) parts14.push(b14 + ') ' + entry);
+      if (entry) parts14.push('9b.' + b14 + '= ' + entry);
     }
-    autoLine1 = parts14.join('  ');
+    autoLine1 = parts14.join(', ');
   }
   placeText(MAP.specialHandling.row, MAP.specialHandling.col, manifest.specialHandling || autoLine1);
   placeText(MAP.specialHandling2.row, MAP.specialHandling2.col, manifest.specialHandling2);

@@ -735,7 +735,7 @@
               {/* Box 14: Special Handling */}
               <div style={Object.assign({},bx,{marginTop:-1,background:'#fff8f8'})}>
                 <div style={lbl}>{Box('14','Special Handling Instructions and Additional Information')}</div>
-                <div style={{fontSize:12,fontWeight:500}}>{d.specialHandling || (function(){var p14=[];for(var b14i=0;b14i<lines.length;b14i++){var ln14=lines[b14i];if(!ln14.description&&!ln14.profileId)continue;var e14='';if(ln14.profileId)e14+=ln14.profileId;if(ln14.containerSize)e14+=(e14?' ':'')+ln14.containerSize;if(ln14.containerType)e14+=(e14?' ':'')+ln14.containerType;if(e14)p14.push((b14i+1)+') '+e14)}return p14.join('  ')})()}</div>
+                <div style={{fontSize:12,fontWeight:500}}>{d.specialHandling || (function(){var p14=[];for(var b14i=0;b14i<lines.length;b14i++){var ln14=lines[b14i];if(!ln14.description&&!ln14.profileId)continue;var e14='';if(ln14.profileId)e14+=ln14.profileId;if(ln14.containerSize)e14+=(e14?' ':'')+ln14.containerSize;if(ln14.containerType)e14+=(e14?' ':'')+ln14.containerType;if(e14)p14.push('9b.'+(b14i+1)+'= '+e14)}return p14.join(', ')})()}</div>
                 {d.specialHandling2 ? <div style={{fontSize:12}}>{d.specialHandling2}</div> : null}
                 {d.specialHandling3 ? <div style={{fontSize:12,fontStyle:'italic'}}>{d.specialHandling3}</div> : null}
               </div>
