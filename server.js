@@ -1121,7 +1121,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v30-2026-03-08';
+var BUILD_VERSION = 'v31-2026-03-08';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1428,7 +1428,17 @@ app.get('/api/print/manifest/:id', function(req, res) {
   }
 
   // Calculate total waste lines and pages
-  var wasteLineCount = parseInt(manifest.wasteLineCount) || 4;
+  // Re-count active lines at print time (ignore empty padding from old saves)
+  var rawWLC = parseInt(manifest.wasteLineCount) || 4;
+  var wasteLineCount = 4; // minimum
+  for (var wlCheck = 1; wlCheck <= rawWLC; wlCheck++) {
+    var wDesc = manifest['waste' + wlCheck + 'Description'] || '';
+    var wCodes = manifest['waste' + wlCheck + 'WasteCodes'] || '';
+    var wQty = manifest['waste' + wlCheck + 'Qty'] || '';
+    if (wDesc.trim() || wCodes.trim() || wQty.trim()) {
+      wasteLineCount = wlCheck;
+    }
+  }
   var totalPages = wasteLineCount <= 4 ? 1 : Math.ceil((wasteLineCount - 4) / CONT_MAX_WASTE_LINES) + 1;
 
   // Build Box 14 auto-populate across ALL waste lines
