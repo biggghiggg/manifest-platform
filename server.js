@@ -1085,22 +1085,36 @@ var FORM_8700_MAP = {
 // Estimated positions - to be calibrated with actual form
 var FORM_8700_22A_MAP = {
   // Box 21 - Generator's US EPA ID Number
-  generatorEpaId:       { row: 2, col: 18 },
+  generatorEpaId:           { row: 2, col: 18 },
   // Box 22 - Page __ of __
-  page:                 { row: 2, col: 40 },
-  totalPages:           { row: 2, col: 43 },
+  page:                     { row: 2, col: 40 },
+  totalPages:               { row: 2, col: 43 },
   // Box 23 - Manifest Tracking Number
-  manifestTrackingNum:  { row: 2, col: 55 },
-  // Box 33 - Special Handling
-  specialHandling:      { row: 56, col: 8 },
-  specialHandling2:     { row: 57, col: 8 },
-  specialHandling3:     { row: 58, col: 8 }
+  manifestTrackingNum:      { row: 2, col: 55 },
+  // Box 24 - Generator's Name
+  generatorName:            { row: 4, col: 8 },
+  // Box 25 - Transporter Company Name & EPA ID
+  contTransporterName:      { row: 6, col: 8 },
+  contTransporterEpaId:     { row: 6, col: 62 },
+  // Box 26 - Transporter 2 Company Name & EPA ID
+  contTransporter2Name:     { row: 8, col: 8 },
+  contTransporter2EpaId:    { row: 8, col: 62 },
+  // Box 32 - Special Handling Instructions
+  specialHandling:          { row: 50, col: 8 },
+  specialHandling2:         { row: 51, col: 8 },
+  specialHandling3:         { row: 52, col: 8 },
+  // Box 33 - Transporter Acknowledgment of Receipt
+  contTransporterPrintName: { row: 54, col: 8 },
+  contTransporterDate:      { row: 54, col: 62 },
+  // Box 34 - Transporter 2 Acknowledgment
+  contTransporter2PrintName:{ row: 56, col: 8 },
+  contTransporter2Date:     { row: 56, col: 62 },
+  // Box 35 - Discrepancy
+  contDiscrepancyInfo:      { row: 58, col: 8 }
 };
-// Continuation sheet waste lines: up to 26 lines, starting row 5, 2 rows apart
-// Each line has: hm, desc, containerNum, container, qty, uom, wc1-wc6
-// Using same column positions as main form
-var CONT_WASTE_START_ROW = 5;
-var CONT_WASTE_ROW_SPACING = 2;
+// Continuation sheet waste lines: 10 lines, starting row 11, 3 rows apart
+var CONT_WASTE_START_ROW = 11;
+var CONT_WASTE_ROW_SPACING = 3;
 var CONT_MAX_WASTE_LINES = 10;
 
 // Print manifest - plain text for dot matrix
@@ -1491,12 +1505,20 @@ app.get('/api/print/manifest/:id', function(req, res) {
       // Box 21 - Generator EPA ID
       placeText(contPage, contMap.generatorEpaId.row, contMap.generatorEpaId.col, manifest.generatorEpaId);
       // Box 22 - Page
-      placeText(contPage, contMap.page.row, contMap.page.col, String(contPageNum));
+      placeText(contPage, contMap.page.row, contMap.page.col, manifest.contPageNum || String(contPageNum));
       placeText(contPage, contMap.totalPages.row, contMap.totalPages.col, String(totalPages));
       // Box 23 - Manifest Tracking Number
       placeText(contPage, contMap.manifestTrackingNum.row, contMap.manifestTrackingNum.col, manifest.manifestTrackingNum);
+      // Box 24 - Generator Name
+      placeText(contPage, contMap.generatorName.row, contMap.generatorName.col, manifest.generatorName);
+      // Box 25 - Transporter
+      placeText(contPage, contMap.contTransporterName.row, contMap.contTransporterName.col, manifest.contTransporterName || manifest.transporter1Name);
+      placeText(contPage, contMap.contTransporterEpaId.row, contMap.contTransporterEpaId.col, manifest.contTransporterEpaId || manifest.transporter1EpaId);
+      // Box 26 - Transporter 2
+      placeText(contPage, contMap.contTransporter2Name.row, contMap.contTransporter2Name.col, manifest.contTransporter2Name);
+      placeText(contPage, contMap.contTransporter2EpaId.row, contMap.contTransporter2EpaId.col, manifest.contTransporter2EpaId);
 
-      // Waste lines on this continuation page (may be 0 if blank continuation)
+      // Box 27-31 - Waste lines on this continuation page
       for (var cw = 0; cw < linesOnThisPage; cw++) {
         var mLineNum = manifestLineStart + cw;
         var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
@@ -1507,10 +1529,21 @@ app.get('/api/print/manifest/:id', function(req, res) {
           MAP.waste1wc1.col, 1);
       }
 
-      // Box 33 - Special Handling
-      placeText(contPage, contMap.specialHandling.row, contMap.specialHandling.col, sh1);
-      placeText(contPage, contMap.specialHandling2.row, contMap.specialHandling2.col, sh2);
-      placeText(contPage, contMap.specialHandling3.row, contMap.specialHandling3.col, sh3);
+      // Box 32 - Special Handling
+      var contSh1 = manifest.contSpecialHandling || sh1;
+      var contSh2 = manifest.contSpecialHandling2 || sh2;
+      var contSh3 = manifest.contSpecialHandling3 || sh3;
+      placeText(contPage, contMap.specialHandling.row, contMap.specialHandling.col, contSh1);
+      placeText(contPage, contMap.specialHandling2.row, contMap.specialHandling2.col, contSh2);
+      placeText(contPage, contMap.specialHandling3.row, contMap.specialHandling3.col, contSh3);
+      // Box 33 - Transporter Acknowledgment
+      placeText(contPage, contMap.contTransporterPrintName.row, contMap.contTransporterPrintName.col, manifest.contTransporterPrintName);
+      placeText(contPage, contMap.contTransporterDate.row, contMap.contTransporterDate.col, manifest.contTransporterDate);
+      // Box 34 - Transporter 2 Acknowledgment
+      placeText(contPage, contMap.contTransporter2PrintName.row, contMap.contTransporter2PrintName.col, manifest.contTransporter2PrintName);
+      placeText(contPage, contMap.contTransporter2Date.row, contMap.contTransporter2Date.col, manifest.contTransporter2Date);
+      // Box 35 - Discrepancy
+      placeText(contPage, contMap.contDiscrepancyInfo.row, contMap.contDiscrepancyInfo.col, manifest.contDiscrepancyInfo);
 
       allPages.push(contPage.join('\n'));
       remainingLines -= linesOnThisPage;

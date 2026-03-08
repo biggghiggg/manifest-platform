@@ -649,7 +649,7 @@
                 var payload = Object.assign({}, form);
                 var pLines = payload.wasteLines || [];
                 payload.wasteLineCount = pLines.length;
-                var tp = pLines.length <= 4 ? 1 : Math.ceil((pLines.length - 4) / 26) + 1;
+                var tp = pLines.length <= 4 ? 1 : Math.ceil((pLines.length - 4) / 10) + 1;
                 payload.pageTotal = String(tp);
                 if (!payload.pageNum) payload.pageNum = '1';
                 for (var si = 0; si < pLines.length; si++) {
@@ -683,83 +683,209 @@
                   });
                 }
               }
+              var contBoxStyle = {background:'#f9fafb',padding:16,marginBottom:16,borderRadius:8,border:'1px solid #e5e7eb'};
+              var contLblStyle = {fontSize:11,fontWeight:600,color:'#374151',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4};
               return (
                 <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={function(){setShowContinuation(false)}}>
-                  <div style={{background:'#fff',borderRadius:16,padding:0,width:'92%',maxWidth:800,maxHeight:'85vh',overflowY:'auto',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}} onClick={function(e){e.stopPropagation()}}>
+                  <div style={{background:'#fff',borderRadius:16,padding:0,width:'95%',maxWidth:900,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}} onClick={function(e){e.stopPropagation()}}>
                     <div style={{background:'#3b82f6',color:'#fff',padding:'12px 20px',borderRadius:'16px 16px 0 0',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                      <span style={{fontWeight:700,fontSize:16}}>EPA Form 8700-22A - Continuation Sheet</span>
+                      <span style={{fontWeight:700,fontSize:16}}>EPA Form 8700-22A - Uniform Hazardous Waste Manifest Continuation Sheet</span>
                       <button onClick={function(){setShowContinuation(false)}} style={{background:'none',border:'none',color:'#fff',fontSize:20,cursor:'pointer',fontWeight:700}}>X</button>
                     </div>
                     <div style={{padding:20}}>
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-                        <div style={{fontSize:13,color:'#666'}}>
-                          <strong>Generator:</strong> {form.generatorName || 'N/A'} &nbsp; | &nbsp;
-                          <strong>EPA ID:</strong> {form.generatorEpaId || 'N/A'} &nbsp; | &nbsp;
-                          <strong>Tracking #:</strong> {form.manifestTrackingNum || 'N/A'}
+
+                      {/* Box 21, 22, 23 - Header row */}
+                      <div style={Object.assign({}, contBoxStyle, {display:'grid',gridTemplateColumns:'1fr 120px 1fr',gap:12})}>
+                        <div className="form-group">
+                          <label style={contLblStyle}>21. Generator's US EPA ID No.</label>
+                          <input value={form.generatorEpaId || ''} readOnly style={{background:'#e5e7eb'}} />
+                        </div>
+                        <div className="form-group">
+                          <label style={contLblStyle}>22. Page __ of __</label>
+                          <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                            <input value={form.contPageNum || '2'} onChange={function(e){set('contPageNum',e.target.value)}} style={{width:40,textAlign:'center'}} />
+                            <span>of</span>
+                            <input value={form.pageTotal || '2'} readOnly style={{width:40,textAlign:'center',background:'#e5e7eb'}} />
+                          </div>
+                        </div>
+                        <div className="form-group">
+                          <label style={contLblStyle}>23. Manifest Tracking Number</label>
+                          <input value={form.manifestTrackingNum || ''} readOnly style={{background:'#e5e7eb'}} />
                         </div>
                       </div>
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                        <h4>Continuation Waste Lines ({contLines.length} lines)</h4>
-                        <button className="btn btn-sm btn-secondary" type="button" onClick={addContLine}>+ Add Waste Line</button>
+
+                      {/* Box 24 - Generator Name */}
+                      <div style={contBoxStyle}>
+                        <div className="form-group">
+                          <label style={contLblStyle}>24. Generator's Name</label>
+                          <input value={form.generatorName || ''} readOnly style={{background:'#e5e7eb'}} />
+                        </div>
                       </div>
-                      <table className="waste-table">
-                        <thead>
-                          <tr>
-                            <th style={{width:20}}>#</th>
-                            <th style={{width:30}}>HM</th>
-                            <th>US DOT Description</th>
-                            <th style={{width:50}}>Containers</th>
-                            <th style={{width:80}}>Type</th>
-                            <th style={{width:65}}>Size</th>
-                            <th style={{width:60}}>Qty</th>
-                            <th style={{width:70}}>Unit</th>
-                            <th style={{width:120}}>Waste Codes</th>
-                            <th style={{width:100}}>Template</th>
-                            <th style={{width:25}}></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {contLines.map(function(line, ci) {
-                            var globalIdx = ci + 4;
-                            var isRQ = checkRQ(line.wasteCodes, line.qty, line.unit);
-                            return (
-                              <tr key={ci} style={isRQ?{background:'#fffbeb'}:{background:'#f0f7ff'}}>
-                                <td style={{fontWeight:600,color:'#3b82f6'}}>{globalIdx + 1}</td>
-                                <td><input value={isRQ?'RQ':(line.hm||'')} onChange={function(e){setContWaste(ci,'hm',e.target.value)}} maxLength={2} style={isRQ?{background:'#fef3c7',fontWeight:700,color:'#92400e'}:{}} readOnly={isRQ} /></td>
-                                <td><input value={line.description||''} onChange={function(e){setContWaste(ci,'description',e.target.value)}} /></td>
-                                <td><input value={line.containerNum||''} onChange={function(e){setContWaste(ci,'containerNum',e.target.value)}} /></td>
-                                <td>
-                                  <select value={line.containerType||''} onChange={function(e){setContWaste(ci,'containerType',e.target.value)}}>
-                                    <option value="">--</option>
-                                    {CONTAINER_TYPES.map(function(ct){return <option key={ct.code} value={ct.code}>{ct.code}</option>})}
-                                  </select>
-                                </td>
-                                <td>
-                                  <select value={line.containerSize||''} onChange={function(e){setContWaste(ci,'containerSize',e.target.value)}} style={{fontSize:11,padding:'4px 2px'}}>
-                                    <option value="">--</option>
-                                    {CONTAINER_SIZES.map(function(sz){return <option key={sz} value={sz}>{sz}</option>})}
-                                  </select>
-                                </td>
-                                <td><input value={line.qty||''} onChange={function(e){setContWaste(ci,'qty',e.target.value)}} /></td>
-                                <td>
-                                  <select value={line.unit||''} onChange={function(e){setContWaste(ci,'unit',e.target.value)}}>
-                                    <option value="">--</option>
-                                    {UNIT_TYPES.map(function(u){return <option key={u.code} value={u.code}>{u.code}</option>})}
-                                  </select>
-                                </td>
-                                <td><input value={line.wasteCodes||''} onChange={function(e){setContWaste(ci,'wasteCodes',e.target.value)}} placeholder="D001 D002" /></td>
-                                <td>
-                                  <select onChange={function(e){loadWasteStream(e.target.value, globalIdx)}} defaultValue="" style={{fontSize:11,padding:'4px 2px'}}>
-                                    <option value="">Load...</option>
-                                    {data.wasteStreams.map(function(w){return <option key={w.id} value={w.id}>{w.name}</option>})}
-                                  </select>
-                                </td>
-                                <td>{contLines.length > 1 ? <button type="button" onClick={function(){removeContLine(ci)}} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontWeight:700,fontSize:14}} title="Remove line">X</button> : null}</td>
-                              </tr>
-                            );
+
+                      {/* Box 25 - Transporter Company Name */}
+                      <div style={Object.assign({}, contBoxStyle, {display:'grid',gridTemplateColumns:'1fr 200px',gap:12})}>
+                        <div className="form-group">
+                          <label style={contLblStyle}>25. Transporter ___ Company Name</label>
+                          <input value={form.contTransporterName || form.transporter1Name || ''} onChange={function(e){set('contTransporterName',e.target.value)}} />
+                        </div>
+                        <div className="form-group">
+                          <label style={contLblStyle}>US EPA ID Number</label>
+                          <input value={form.contTransporterEpaId || form.transporter1EpaId || ''} onChange={function(e){set('contTransporterEpaId',e.target.value)}} />
+                        </div>
+                      </div>
+
+                      {/* Box 26 - Transporter Company Name (2nd) */}
+                      <div style={Object.assign({}, contBoxStyle, {display:'grid',gridTemplateColumns:'1fr 200px',gap:12})}>
+                        <div className="form-group">
+                          <label style={contLblStyle}>26. Transporter ___ Company Name</label>
+                          <input value={form.contTransporter2Name || ''} onChange={function(e){set('contTransporter2Name',e.target.value)}} />
+                        </div>
+                        <div className="form-group">
+                          <label style={contLblStyle}>US EPA ID Number</label>
+                          <input value={form.contTransporter2EpaId || ''} onChange={function(e){set('contTransporter2EpaId',e.target.value)}} />
+                        </div>
+                      </div>
+
+                      {/* Box 27-31 - Waste Lines */}
+                      <div style={Object.assign({}, contBoxStyle, {padding:12})}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                          <label style={Object.assign({}, contLblStyle, {margin:0})}>27-31. US DOT Description, Containers, Quantity, Waste Codes</label>
+                          <button className="btn btn-sm btn-secondary" type="button" onClick={addContLine}>+ Add Line</button>
+                        </div>
+                        <table className="waste-table">
+                          <thead>
+                            <tr>
+                              <th style={{width:20}}>#</th>
+                              <th style={{width:30}}>27a. HM</th>
+                              <th>27b. US DOT Description</th>
+                              <th style={{width:50}}>28. No.</th>
+                              <th style={{width:80}}>Type</th>
+                              <th style={{width:65}}>Size</th>
+                              <th style={{width:60}}>29. Qty</th>
+                              <th style={{width:70}}>30. Unit</th>
+                              <th style={{width:120}}>31. Waste Codes</th>
+                              <th style={{width:100}}>Template</th>
+                              <th style={{width:25}}></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {contLines.map(function(line, ci) {
+                              var globalIdx = ci + 4;
+                              var isRQ = checkRQ(line.wasteCodes, line.qty, line.unit);
+                              return (
+                                <tr key={ci} style={isRQ?{background:'#fffbeb'}:{background:'#f0f7ff'}}>
+                                  <td style={{fontWeight:600,color:'#3b82f6'}}>{globalIdx + 1}</td>
+                                  <td><input value={isRQ?'RQ':(line.hm||'')} onChange={function(e){setContWaste(ci,'hm',e.target.value)}} maxLength={2} style={isRQ?{background:'#fef3c7',fontWeight:700,color:'#92400e'}:{}} readOnly={isRQ} /></td>
+                                  <td><input value={line.description||''} onChange={function(e){setContWaste(ci,'description',e.target.value)}} /></td>
+                                  <td><input value={line.containerNum||''} onChange={function(e){setContWaste(ci,'containerNum',e.target.value)}} /></td>
+                                  <td>
+                                    <select value={line.containerType||''} onChange={function(e){setContWaste(ci,'containerType',e.target.value)}}>
+                                      <option value="">--</option>
+                                      {CONTAINER_TYPES.map(function(ct){return <option key={ct.code} value={ct.code}>{ct.code}</option>})}
+                                    </select>
+                                  </td>
+                                  <td>
+                                    <select value={line.containerSize||''} onChange={function(e){setContWaste(ci,'containerSize',e.target.value)}} style={{fontSize:11,padding:'4px 2px'}}>
+                                      <option value="">--</option>
+                                      {CONTAINER_SIZES.map(function(sz){return <option key={sz} value={sz}>{sz}</option>})}
+                                    </select>
+                                  </td>
+                                  <td><input value={line.qty||''} onChange={function(e){setContWaste(ci,'qty',e.target.value)}} /></td>
+                                  <td>
+                                    <select value={line.unit||''} onChange={function(e){setContWaste(ci,'unit',e.target.value)}}>
+                                      <option value="">--</option>
+                                      {UNIT_TYPES.map(function(u){return <option key={u.code} value={u.code}>{u.code}</option>})}
+                                    </select>
+                                  </td>
+                                  <td><input value={line.wasteCodes||''} onChange={function(e){setContWaste(ci,'wasteCodes',e.target.value)}} placeholder="D001 D002" /></td>
+                                  <td>
+                                    <select onChange={function(e){loadWasteStream(e.target.value, globalIdx)}} defaultValue="" style={{fontSize:11,padding:'4px 2px'}}>
+                                      <option value="">Load...</option>
+                                      {data.wasteStreams.map(function(w){return <option key={w.id} value={w.id}>{w.name}</option>})}
+                                    </select>
+                                  </td>
+                                  <td>{contLines.length > 1 ? <button type="button" onClick={function(){removeContLine(ci)}} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontWeight:700,fontSize:14}} title="Remove line">X</button> : null}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Box 32 - Special Handling Instructions */}
+                      <div style={contBoxStyle}>
+                        <div className="form-group full-width">
+                          <label style={contLblStyle}>32. Special Handling Instructions and Additional Information</label>
+                          <input value={form.contSpecialHandling || form.specialHandling || ''} onChange={function(e){set('contSpecialHandling',e.target.value)}} />
+                        </div>
+                        <div className="form-group full-width" style={{marginTop:8}}>
+                          <label style={contLblStyle}>Special Handling Line 2</label>
+                          <input value={form.contSpecialHandling2 || form.specialHandling2 || ''} onChange={function(e){set('contSpecialHandling2',e.target.value)}} />
+                        </div>
+                        <div className="form-group full-width" style={{marginTop:8}}>
+                          <label style={contLblStyle}>Special Handling Line 3</label>
+                          <input value={form.contSpecialHandling3 || form.specialHandling3 || ''} onChange={function(e){set('contSpecialHandling3',e.target.value)}} />
+                        </div>
+                      </div>
+
+                      {/* Box 33 - Transporter Acknowledgment of Receipt */}
+                      <div style={Object.assign({}, contBoxStyle, {display:'grid',gridTemplateColumns:'1fr 160px',gap:12})}>
+                        <div className="form-group">
+                          <label style={contLblStyle}>33. Transporter ___ Acknowledgment of Receipt of Materials</label>
+                          <input value={form.contTransporterPrintName || ''} onChange={function(e){set('contTransporterPrintName',e.target.value)}} placeholder="Printed/Typed Name" />
+                        </div>
+                        <div className="form-group">
+                          <label style={contLblStyle}>Date</label>
+                          <input value={form.contTransporterDate || ''} onChange={function(e){set('contTransporterDate',e.target.value)}} placeholder="MM/DD/YYYY" />
+                        </div>
+                      </div>
+
+                      {/* Box 34 - Transporter 2 Acknowledgment (if applicable) */}
+                      <div style={Object.assign({}, contBoxStyle, {display:'grid',gridTemplateColumns:'1fr 160px',gap:12})}>
+                        <div className="form-group">
+                          <label style={contLblStyle}>34. Transporter ___ Acknowledgment of Receipt of Materials</label>
+                          <input value={form.contTransporter2PrintName || ''} onChange={function(e){set('contTransporter2PrintName',e.target.value)}} placeholder="Printed/Typed Name" />
+                        </div>
+                        <div className="form-group">
+                          <label style={contLblStyle}>Date</label>
+                          <input value={form.contTransporter2Date || ''} onChange={function(e){set('contTransporter2Date',e.target.value)}} placeholder="MM/DD/YYYY" />
+                        </div>
+                      </div>
+
+                      {/* Box 35 - Discrepancy */}
+                      <div style={contBoxStyle}>
+                        <div className="form-group full-width">
+                          <label style={contLblStyle}>35. Discrepancy</label>
+                          <div style={{display:'flex',gap:12,marginBottom:8}}>
+                            <label style={{fontSize:12,display:'flex',alignItems:'center',gap:4}}>
+                              <input type="checkbox" checked={form.contDiscrepancyManifest || false} onChange={function(e){set('contDiscrepancyManifest', e.target.checked)}} /> Manifest
+                            </label>
+                            <label style={{fontSize:12,display:'flex',alignItems:'center',gap:4}}>
+                              <input type="checkbox" checked={form.contDiscrepancySignificant || false} onChange={function(e){set('contDiscrepancySignificant', e.target.checked)}} /> Significant
+                            </label>
+                            <label style={{fontSize:12,display:'flex',alignItems:'center',gap:4}}>
+                              <input type="checkbox" checked={form.contDiscrepancyRejection || false} onChange={function(e){set('contDiscrepancyRejection', e.target.checked)}} /> Rejection
+                            </label>
+                          </div>
+                          <textarea value={form.contDiscrepancyInfo || ''} onChange={function(e){set('contDiscrepancyInfo',e.target.value)}} placeholder="Discrepancy indication space" rows={2} style={{width:'100%',padding:'8px 12px',border:'1px solid #ddd',borderRadius:6,fontSize:14}} />
+                        </div>
+                      </div>
+
+                      {/* Box 36 - Hazardous Waste Report Management Method Codes */}
+                      <div style={contBoxStyle}>
+                        <label style={contLblStyle}>36. Hazardous Waste Report Management Method Codes (facility only)</label>
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(10, 1fr)',gap:4,marginTop:4}}>
+                          {[0,1,2,3,4,5,6,7,8,9].map(function(mi){
+                            return <input key={mi} value={(form.contMgmtCodes || [])[mi] || ''} onChange={function(e){
+                              var codes = (form.contMgmtCodes || []).slice();
+                              while (codes.length <= mi) codes.push('');
+                              codes[mi] = e.target.value;
+                              set('contMgmtCodes', codes);
+                            }} style={{textAlign:'center',fontSize:11,padding:4}} maxLength={4} placeholder={'L' + (mi+1)} />;
                           })}
-                        </tbody>
-                      </table>
+                        </div>
+                      </div>
+
                       <div className="modal-actions" style={{marginTop:16}}>
                         <button className="btn btn-secondary" onClick={function(){setShowContinuation(false)}}>Back to Main</button>
                         <button className="btn btn-print" onClick={handleContSaveAndPrint}>Save &amp; Print Continuation</button>
