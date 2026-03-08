@@ -1105,7 +1105,7 @@ var CONT_MAX_WASTE_LINES = 26;
 
 // Print manifest - plain text for dot matrix
 // Uses manifest fields directly (as saved by the frontend)
-var BUILD_VERSION = 'v24-2026-03-06';
+var BUILD_VERSION = 'v25-2026-03-08';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment editor endpoints
