@@ -1122,7 +1122,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v45-2026-03-09';
+var BUILD_VERSION = 'v46-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1690,30 +1690,30 @@ var RAW_MAP = {
   waste2uom:          { row: 24, col: 73 },
   waste3uom:          { row: 27, col: 73 },
   waste4uom:          { row: 30, col: 73 },
-  waste1wc1:          { row: 21, col: 76 },
-  waste1wc2:          { row: 21, col: 81 },
-  waste1wc3:          { row: 21, col: 86 },
-  waste1wc4:          { row: 22, col: 76 },
-  waste1wc5:          { row: 22, col: 81 },
-  waste1wc6:          { row: 22, col: 86 },
-  waste2wc1:          { row: 24, col: 76 },
-  waste2wc2:          { row: 24, col: 81 },
-  waste2wc3:          { row: 24, col: 86 },
-  waste2wc4:          { row: 25, col: 76 },
-  waste2wc5:          { row: 25, col: 81 },
-  waste2wc6:          { row: 25, col: 86 },
-  waste3wc1:          { row: 27, col: 76 },
-  waste3wc2:          { row: 27, col: 81 },
-  waste3wc3:          { row: 27, col: 86 },
-  waste3wc4:          { row: 28, col: 76 },
-  waste3wc5:          { row: 28, col: 81 },
-  waste3wc6:          { row: 28, col: 86 },
-  waste4wc1:          { row: 30, col: 76 },
-  waste4wc2:          { row: 30, col: 81 },
-  waste4wc3:          { row: 30, col: 86 },
-  waste4wc4:          { row: 31, col: 76 },
-  waste4wc5:          { row: 31, col: 81 },
-  waste4wc6:          { row: 31, col: 86 },
+  waste1wc1:          { row: 21, col: 79 },
+  waste1wc2:          { row: 21, col: 84 },
+  waste1wc3:          { row: 21, col: 89 },
+  waste1wc4:          { row: 22, col: 79 },
+  waste1wc5:          { row: 22, col: 84 },
+  waste1wc6:          { row: 22, col: 89 },
+  waste2wc1:          { row: 24, col: 79 },
+  waste2wc2:          { row: 24, col: 84 },
+  waste2wc3:          { row: 24, col: 89 },
+  waste2wc4:          { row: 25, col: 79 },
+  waste2wc5:          { row: 25, col: 84 },
+  waste2wc6:          { row: 25, col: 89 },
+  waste3wc1:          { row: 27, col: 79 },
+  waste3wc2:          { row: 27, col: 84 },
+  waste3wc3:          { row: 27, col: 89 },
+  waste3wc4:          { row: 28, col: 79 },
+  waste3wc5:          { row: 28, col: 84 },
+  waste3wc6:          { row: 28, col: 89 },
+  waste4wc1:          { row: 30, col: 79 },
+  waste4wc2:          { row: 30, col: 84 },
+  waste4wc3:          { row: 30, col: 89 },
+  waste4wc4:          { row: 31, col: 79 },
+  waste4wc5:          { row: 31, col: 84 },
+  waste4wc6:          { row: 31, col: 89 },
   specialHandling:    { row: 33, col: 8 },
   specialHandling2:   { row: 34, col: 8 },
   specialHandling3:   { row: 35, col: 8 },
@@ -2238,7 +2238,7 @@ app.get('/api/print/direct/:id', function(req, res) {
   // Fine-tune via query params: ?rowOffset=0.1&colOffset=-0.1
   var CPI = 12;  // column grid (form layout units, NOT printer CPI)
   var LPI = 6;   // lines per inch
-  var BASE_TOP_OFFSET = 0.5;   // inches - shift down for form header
+  var BASE_TOP_OFFSET = 0.35;  // inches - shift down for form header
   var BASE_LEFT_OFFSET = 0.0;  // inches - left adjustment
   var colOffsetIn = BASE_LEFT_OFFSET + (parseFloat(req.query.colOffset) || 0);
   var rowOffsetIn = BASE_TOP_OFFSET + (parseFloat(req.query.rowOffset) || 0);
