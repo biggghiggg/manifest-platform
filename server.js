@@ -899,8 +899,26 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
 
       // Build the waste stream template
       var profileId = '';
-      var pidMatch = fullText.match(/Profile\s*ID[:\s]+(\d+)/i);
-      if (pidMatch) profileId = pidMatch[1];
+      // Try "PROFILE #: 070128303- 13048" format (Republic) - capture full compound ID
+      var pidMatchFull = fullText.match(/PROFILE\s*#[:\s]+([\d]+[\s\-]*[\d]*)/i);
+      if (pidMatchFull) {
+        profileId = pidMatchFull[1].replace(/[\s\-]+/g, '-').replace(/-$/, '');
+      }
+      // Fallback: try "Profile ID: 1234567"
+      if (!profileId) {
+        var pidMatch = fullText.match(/Profile\s*ID[:\s]+(\d[\d\s\-]*\d)/i);
+        if (pidMatch) profileId = pidMatch[1].replace(/[\s]+/g, '').trim();
+      }
+      // Fallback: try "Profile #" or "Profile No" or "Profile Number" patterns
+      if (!profileId) {
+        var pidMatch2 = fullText.match(/Profile\s*(?:#|No\.?|Number)[:\s]*([\d][\d\s\-]*[\d])/i);
+        if (pidMatch2) profileId = pidMatch2[1].replace(/[\s]+/g, '').trim();
+      }
+      // Fallback: try "Approval #" or "Approval Number" (some Republic profiles use this)
+      if (!profileId) {
+        var pidMatch3 = fullText.match(/Approval\s*(?:#|No\.?|Number)[:\s]*([\d][\d\s\-]*[\d])/i);
+        if (pidMatch3) profileId = pidMatch3[1].replace(/[\s]+/g, '').trim();
+      }
 
       // Extract generator name from Section A / A.1
       var repGenName = '';
@@ -1122,7 +1140,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v58-2026-03-09';
+var BUILD_VERSION = 'v60-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26

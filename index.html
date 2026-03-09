@@ -213,7 +213,7 @@
       var onPreview = props.onPreview;
       var preGen = manifest && manifest._preselectedGen ? manifest._preselectedGen : null;
       var isEdit = !!manifest && !preGen;
-      var emptyWaste = { hm: '', description: '', containerNum: '', containerType: '', containerSize: '', qty: '', unit: '', wasteCodes: '' };
+      var emptyWaste = { hm: '', description: '', containerNum: '', containerType: '', containerSize: '', qty: '', unit: '', wasteCodes: '', profileId: '' };
       var contState = useState(false); var showContinuation = contState[0]; var setShowContinuation = contState[1];
       var savedIdState = useState(isEdit && manifest ? manifest.id : null); var savedId = savedIdState[0]; var setSavedId = savedIdState[1];
 
