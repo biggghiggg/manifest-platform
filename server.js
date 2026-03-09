@@ -1122,7 +1122,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v52-2026-03-09';
+var BUILD_VERSION = 'v54-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -2134,6 +2134,9 @@ app.get('/api/print/direct/:id', function(req, res) {
   // Extract UN/NA number from description and look up ERG guide
   function getErgNumber(text) {
     if (!text) return '';
+    // Non RCRA always gets ERG # 171
+    if (/non[\s\-]*rcra/i.test(text)) return '171';
+    // Look up UN/NA number
     var match = text.match(/(?:UN|NA)\s*(\d{4})/i);
     if (match && ERG_LOOKUP[match[1]]) {
       return ERG_LOOKUP[match[1]];
@@ -2145,8 +2148,12 @@ app.get('/api/print/direct/:id', function(req, res) {
   // n.o.s. = lowercase, PG/UN/NA/RQ = uppercase, everything else = Title Case
   function formatShipDesc(text) {
     if (!text) return '';
+    // Collapse all extra whitespace first
+    var result = text.replace(/\s+/g, ' ').trim();
+    // Clean up spacing around commas: remove space before comma, ensure single space after
+    result = result.replace(/\s*,\s*/g, ', ');
     // First lowercase everything, then title-case each word
-    var result = text.toLowerCase().replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+    result = result.toLowerCase().replace(/\b\w/g, function(c) { return c.toUpperCase(); });
     // Fix exceptions: n.o.s. should be all lowercase
     result = result.replace(/N\.O\.S\./gi, 'n.o.s.');
     result = result.replace(/\bNos\b/gi, 'n.o.s.');
@@ -2158,6 +2165,10 @@ app.get('/api/print/direct/:id', function(req, res) {
     // RQ should be uppercase
     result = result.replace(/\bRq,/g, 'RQ,');
     result = result.replace(/\bRq\b/g, 'RQ');
+    // RCRA should be uppercase
+    result = result.replace(/\bRcra\b/g, 'RCRA');
+    // ERG should be uppercase (in case it gets title-cased)
+    result = result.replace(/\bErg\b/g, 'ERG');
     return result;
   }
 
@@ -2168,12 +2179,12 @@ app.get('/api/print/direct/:id', function(req, res) {
     var descKey = 'waste' + w + 'desc';
     var baseRow = M[hmKey].row;
     placeAt(M[hmKey].row, M[hmKey].col, manifest['waste' + w + 'HM']);
-    var rawDesc = manifest['waste' + w + 'Description'] || '';
+    var rawDesc = (manifest['waste' + w + 'Description'] || '').replace(/\s+/g, ' ').trim();
     var ergNum = getErgNumber(rawDesc);
     var descText = formatShipDesc(rawDesc);
     if (ergNum && descText.indexOf('ERG') === -1) descText += ', ERG # ' + ergNum;
-    var descMaxFirst = M['waste' + w + 'containerNum'].col - M[descKey].col - 1;
-    var descLines = wrapDesc(descText, descMaxFirst, 55);
+    var descMaxWidth = M['waste' + w + 'containerNum'].col - M[descKey].col - 1;
+    var descLines = wrapDesc(descText, descMaxWidth, descMaxWidth);
     for (var dl = 0; dl < descLines.length && dl < 2; dl++) {
       placeAt(baseRow + dl, M[descKey].col, descLines[dl]);
     }
@@ -2245,11 +2256,11 @@ app.get('/api/print/direct/:id', function(req, res) {
       for (var cw = 0; cw < linesOnThisPage; cw++) {
         var mLineNum = manifestLineStart + cw;
         var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
-        var cwRawDesc = manifest['waste' + mLineNum + 'Description'] || '';
+        var cwRawDesc = (manifest['waste' + mLineNum + 'Description'] || '').replace(/\s+/g, ' ').trim();
         var cwErgNum = getErgNumber(cwRawDesc);
         var cwDesc = formatShipDesc(cwRawDesc);
         if (cwErgNum && cwDesc.indexOf('ERG') === -1) cwDesc += ', ERG # ' + cwErgNum;
-        var cwDescLines = wrapDesc(cwDesc, 45, 55);
+        var cwDescLines = wrapDesc(cwDesc, 45, 45);
         for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
           placeAt(contRow + cdl, M.waste1desc.col, cwDescLines[cdl], pg);
         }
