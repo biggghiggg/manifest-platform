@@ -1122,7 +1122,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v42-2026-03-09';
+var BUILD_VERSION = 'v43-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -2005,6 +2005,282 @@ app.get('/api/print/escp2/:id', function(req, res) {
   res.set('Content-Type', 'application/octet-stream');
   res.set('Content-Disposition', 'attachment; filename="' + filename + '"');
   res.send(output);
+});
+
+// === Direct Print - HTML with CSS absolute positioning ===
+// Opens in new tab, user selects Epson printer and clicks Print. No file download needed.
+app.get('/api/print/direct/:id', function(req, res) {
+  var manifest = null;
+  for (var i = 0; i < data.manifests.length; i++) {
+    if (data.manifests[i].id === req.params.id) { manifest = data.manifests[i]; break; }
+  }
+  if (!manifest) return res.status(404).send('Manifest not found');
+
+  var M = RAW_MAP;
+
+  // Collect all text placements: [{row, col, text, page}]
+  var placements = [];
+  function placeAt(row, col, text, pg) {
+    if (!text) return;
+    placements.push({ row: row, col: col, text: String(text), page: pg || 1 });
+  }
+
+  // Reuse word wrap
+  function wrapDesc(text, maxFirst, maxCont) {
+    if (!text) return [];
+    var remaining = String(text);
+    if (remaining.length <= maxFirst) return [remaining];
+    var result = [];
+    var cut = remaining.lastIndexOf(' ', maxFirst);
+    if (cut <= 0) cut = maxFirst;
+    result.push(remaining.substring(0, cut));
+    remaining = remaining.substring(cut).replace(/^\s+/, '');
+    while (remaining.length > 0) {
+      if (remaining.length <= maxCont) { result.push(remaining); break; }
+      cut = remaining.lastIndexOf(' ', maxCont);
+      if (cut <= 0) cut = maxCont;
+      result.push(remaining.substring(0, cut));
+      remaining = remaining.substring(cut).replace(/^\s+/, '');
+    }
+    return result;
+  }
+
+  // Smart parse waste codes
+  function parseWC(allCodes) {
+    if (!allCodes) return [];
+    var codeArr = allCodes.split(/[\s,]+/).filter(function(c) { return c.length > 0; });
+    var needsSmart = false;
+    for (var sc = 0; sc < codeArr.length; sc++) {
+      if (codeArr[sc].length > 4) { needsSmart = true; break; }
+    }
+    if (needsSmart) {
+      var smartCodes = [];
+      var joined = allCodes.replace(/[\s,]+/g, '');
+      var letterRe = /[A-Za-z]\d{3}/g;
+      var lm;
+      var positions = [];
+      while ((lm = letterRe.exec(joined)) !== null) {
+        positions.push({start: lm.index, end: lm.index + lm[0].length, code: lm[0]});
+      }
+      var lastEnd = 0;
+      for (var pi = 0; pi < positions.length; pi++) {
+        var gap = joined.substring(lastEnd, positions[pi].start);
+        if (gap.length > 0) {
+          var gapNums = gap.match(/\d{3}/g);
+          if (gapNums) { for (var gi = 0; gi < gapNums.length; gi++) smartCodes.push(gapNums[gi]); }
+        }
+        smartCodes.push(positions[pi].code);
+        lastEnd = positions[pi].end;
+      }
+      var trail = joined.substring(lastEnd);
+      if (trail.length > 0) {
+        var trailNums = trail.match(/\d{3}/g);
+        if (trailNums) { for (var ti = 0; ti < trailNums.length; ti++) smartCodes.push(trailNums[ti]); }
+      }
+      if (smartCodes.length > 1) codeArr = smartCodes;
+    }
+    return codeArr;
+  }
+
+  // Count active waste lines
+  var rawWLC = parseInt(manifest.wasteLineCount) || 4;
+  var wasteLineCount = 0;
+  for (var wlc = 1; wlc <= Math.max(rawWLC, 4); wlc++) {
+    var wd = (manifest['waste' + wlc + 'Description'] || '').replace(/^RQ,?\s*/i, '').trim();
+    var wco = (manifest['waste' + wlc + 'WasteCodes'] || '').trim();
+    var wq = (manifest['waste' + wlc + 'Qty'] || '').trim();
+    if (wd || wco || wq) wasteLineCount = wlc;
+  }
+  if (wasteLineCount < 4) wasteLineCount = 4;
+  var totalPages = wasteLineCount <= 4 ? 1 : Math.ceil((wasteLineCount - 4) / CONT_MAX_WASTE_LINES) + 1;
+
+  // === Page 1 - Main Form (8700-22) ===
+  placeAt(M.generatorEpaId.row, M.generatorEpaId.col, manifest.generatorEpaId);
+  if (manifest.pageNum) placeAt(M.page.row, M.page.col, manifest.pageNum);
+  if (manifest.pageTotal) placeAt(M.totalPages.row, M.totalPages.col, manifest.pageTotal);
+  placeAt(M.emergencyPhone.row, M.emergencyPhone.col, manifest.emergencyPhone);
+  placeAt(M.generatorName.row, M.generatorName.col, manifest.generatorName);
+  placeAt(M.generatorPhone.row, M.generatorPhone.col, manifest.generatorPhone);
+  placeAt(M.generatorMailAddr.row, M.generatorMailAddr.col, manifest.generatorAddress);
+  placeAt(M.generatorMailCity.row, M.generatorMailCity.col, manifest.generatorCityStZip);
+  placeAt(M.generatorSiteAddr.row, M.generatorSiteAddr.col, manifest.genSiteAddress);
+  placeAt(M.generatorSiteCity.row, M.generatorSiteCity.col, manifest.genSiteCityStZip);
+  placeAt(M.transporter1Name.row, M.transporter1Name.col, manifest.transporter1Name);
+  placeAt(M.transporter1EpaId.row, M.transporter1EpaId.col, manifest.transporter1EpaId);
+  placeAt(M.transporter2Name.row, M.transporter2Name.col, manifest.transporter2Name);
+  placeAt(M.transporter2EpaId.row, M.transporter2EpaId.col, manifest.transporter2EpaId);
+  placeAt(M.facilityName.row, M.facilityName.col, manifest.facilityName);
+  placeAt(M.facilityEpaId.row, M.facilityEpaId.col, manifest.facilityEpaId);
+  placeAt(M.facilityAddress.row, M.facilityAddress.col, manifest.facilityAddress);
+  placeAt(M.facilityPhone.row, M.facilityPhone.col, manifest.facilityPhone);
+  placeAt(M.facilityCity.row, M.facilityCity.col, manifest.facilityCityStZip);
+
+  // Waste Lines 1-4
+  var maxOnPage1 = Math.min(wasteLineCount, 4);
+  for (var w = 1; w <= maxOnPage1; w++) {
+    var hmKey = 'waste' + w + 'hm';
+    var descKey = 'waste' + w + 'desc';
+    var baseRow = M[hmKey].row;
+    placeAt(M[hmKey].row, M[hmKey].col, manifest['waste' + w + 'HM']);
+    var descText = manifest['waste' + w + 'Description'] || '';
+    var descMaxFirst = M['waste' + w + 'containerNum'].col - M[descKey].col - 1;
+    var descLines = wrapDesc(descText, descMaxFirst, 55);
+    for (var dl = 0; dl < descLines.length && dl < 2; dl++) {
+      placeAt(baseRow + dl, M[descKey].col, descLines[dl]);
+    }
+    placeAt(baseRow, M['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
+    placeAt(baseRow, M['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
+    placeAt(baseRow, M['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
+    placeAt(baseRow, M['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
+    var wcKey = 'waste' + w + 'wc';
+    var codes = parseWC((manifest['waste' + w + 'WasteCodes'] || '').trim());
+    for (var ci = 0; ci < 6 && ci < codes.length; ci++) {
+      var wcField = wcKey + (ci + 1);
+      if (M[wcField]) {
+        placeAt(M[wcField].row, M[wcField].col, codes[ci]);
+      }
+    }
+  }
+
+  // Box 14 - Special Handling
+  var sh1 = manifest.specialHandling || '';
+  var sh2 = manifest.specialHandling2 || '';
+  var sh3 = manifest.specialHandling3 || '';
+  if (!sh1 && !sh2) {
+    var parts14 = [];
+    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+      var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
+      var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
+      var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
+      var desc14 = manifest['waste' + b14 + 'Description'] || '';
+      if (!desc14 && !pid14) continue;
+      var label14 = '9b.' + b14 + '= ';
+      if (pid14) label14 += pid14;
+      if (csize14) label14 += ' ' + csize14;
+      if (ctype14) label14 += ' ' + ctype14;
+      parts14.push(label14.trim());
+    }
+    var autoText = parts14.join(', ');
+    if (autoText.length > 75) {
+      sh1 = autoText.substring(0, 75);
+      var rest14 = autoText.substring(75);
+      sh2 = rest14.length > 75 ? rest14.substring(0, 75) : rest14;
+    } else {
+      sh1 = autoText;
+    }
+  }
+  placeAt(M.specialHandling.row, M.specialHandling.col, sh1);
+  placeAt(M.specialHandling2.row, M.specialHandling2.col, sh2);
+  placeAt(M.specialHandling3.row, M.specialHandling3.col, sh3);
+  placeAt(M.generatorCertName.row, M.generatorCertName.col, manifest.generatorPrintName);
+
+  // === Continuation Pages ===
+  if (wasteLineCount > 4) {
+    var contMap = FORM_8700_22A_MAP;
+    var remainingLines = wasteLineCount - 4;
+    var contPageNum = 2;
+    var manifestLineStart = 5;
+    var contPageCount = Math.ceil(remainingLines / CONT_MAX_WASTE_LINES);
+    for (var cpIdx = 0; cpIdx < contPageCount; cpIdx++) {
+      var pg = cpIdx + 2;
+      var linesOnThisPage = Math.min(remainingLines, CONT_MAX_WASTE_LINES);
+      placeAt(contMap.generatorEpaId.row, contMap.generatorEpaId.col, manifest.generatorEpaId, pg);
+      placeAt(contMap.page.row, contMap.page.col, manifest.contPageNum || String(contPageNum), pg);
+      placeAt(contMap.totalPages.row, contMap.totalPages.col, String(totalPages), pg);
+      placeAt(contMap.manifestTrackingNum.row, contMap.manifestTrackingNum.col, manifest.manifestTrackingNum, pg);
+      placeAt(contMap.generatorName.row, contMap.generatorName.col, manifest.generatorName, pg);
+      placeAt(contMap.contTransporterName.row, contMap.contTransporterName.col, manifest.contTransporterName || manifest.transporter1Name, pg);
+      placeAt(contMap.contTransporterEpaId.row, contMap.contTransporterEpaId.col, manifest.contTransporterEpaId || manifest.transporter1EpaId, pg);
+      placeAt(contMap.contTransporter2Name.row, contMap.contTransporter2Name.col, manifest.contTransporter2Name, pg);
+      placeAt(contMap.contTransporter2EpaId.row, contMap.contTransporter2EpaId.col, manifest.contTransporter2EpaId, pg);
+      for (var cw = 0; cw < linesOnThisPage; cw++) {
+        var mLineNum = manifestLineStart + cw;
+        var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
+        var cwDesc = manifest['waste' + mLineNum + 'Description'] || '';
+        var cwDescLines = wrapDesc(cwDesc, 45, 55);
+        for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
+          placeAt(contRow + cdl, M.waste1desc.col, cwDescLines[cdl], pg);
+        }
+        placeAt(contRow, M.waste1hm.col, manifest['waste' + mLineNum + 'HM'], pg);
+        placeAt(contRow, M.waste1containerNum.col, manifest['waste' + mLineNum + 'ContainerNum'], pg);
+        placeAt(contRow, M.waste1container.col, manifest['waste' + mLineNum + 'ContainerType'], pg);
+        placeAt(contRow, M.waste1qty.col, manifest['waste' + mLineNum + 'Qty'], pg);
+        placeAt(contRow, M.waste1uom.col, manifest['waste' + mLineNum + 'Unit'], pg);
+        var cwCodes = parseWC((manifest['waste' + mLineNum + 'WasteCodes'] || '').trim());
+        for (var cci = 0; cci < 6 && cci < cwCodes.length; cci++) {
+          var cwRow2 = contRow + (cci >= 3 ? 1 : 0);
+          var cwColOff = (cci % 3) * 5;
+          placeAt(cwRow2, M.waste1wc1.col + cwColOff, cwCodes[cci], pg);
+        }
+      }
+      var cSh1 = manifest.contSpecialHandling || sh1;
+      var cSh2 = manifest.contSpecialHandling2 || sh2;
+      var cSh3 = manifest.contSpecialHandling3 || sh3;
+      placeAt(contMap.specialHandling.row, contMap.specialHandling.col, cSh1, pg);
+      placeAt(contMap.specialHandling2.row, contMap.specialHandling2.col, cSh2, pg);
+      placeAt(contMap.specialHandling3.row, contMap.specialHandling3.col, cSh3, pg);
+      placeAt(contMap.contTransporterPrintName.row, contMap.contTransporterPrintName.col, manifest.contTransporterPrintName, pg);
+      placeAt(contMap.contTransporterDate.row, contMap.contTransporterDate.col, manifest.contTransporterDate, pg);
+      placeAt(contMap.contTransporter2PrintName.row, contMap.contTransporter2PrintName.col, manifest.contTransporter2PrintName, pg);
+      placeAt(contMap.contTransporter2Date.row, contMap.contTransporter2Date.col, manifest.contTransporter2Date, pg);
+      placeAt(contMap.contDiscrepancyInfo.row, contMap.contDiscrepancyInfo.col, manifest.contDiscrepancyInfo, pg);
+      remainingLines -= linesOnThisPage;
+      manifestLineStart += linesOnThisPage;
+      contPageNum++;
+    }
+  }
+
+  // === Build HTML with CSS absolute positioning ===
+  // At 12 CPI: 1 col = 1/12 inch. At 6 LPI: 1 row = 1/6 inch.
+  // Alignment offsets (adjustable) - in inches, added to all positions
+  var colOffsetIn = parseFloat(req.query.colOffset) || 0;
+  var rowOffsetIn = parseFloat(req.query.rowOffset) || 0;
+
+  var html = '<!DOCTYPE html><html><head><title>Print Manifest</title><style>';
+  html += '@page { margin: 0; size: 8.5in 11in; }';
+  html += '@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } }';
+  html += 'body { margin: 0; padding: 0; }';
+  html += '.page { position: relative; width: 8.5in; height: 11in; overflow: hidden; page-break-after: always; }';
+  html += '.page:last-child { page-break-after: auto; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
+  html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
+  html += '.toolbar .print-btn { background: #7c3aed; color: white; border: none; border-radius: 4px; }';
+  html += '.toolbar .close-btn { background: #6b7280; color: white; border: none; border-radius: 4px; }';
+  html += '.toolbar label { margin: 0 8px; font-size: 13px; }';
+  html += '.toolbar input[type=number] { width: 60px; padding: 2px 4px; }';
+  html += '</style></head><body>';
+
+  // Toolbar (hidden when printing)
+  html += '<div class="no-print toolbar">';
+  html += '<button class="print-btn" onclick="window.print()">Print Manifest</button>';
+  html += '<button class="close-btn" onclick="window.close()">Close</button>';
+  html += '<span style="margin-left:20px;font-size:12px;color:#666">Select your Epson LQ-590II in the print dialog. Set margins to None.</span>';
+  html += '</div>';
+
+  // Group placements by page
+  var maxPage = 1;
+  for (var pi = 0; pi < placements.length; pi++) {
+    if (placements[pi].page > maxPage) maxPage = placements[pi].page;
+  }
+
+  for (var pg = 1; pg <= maxPage; pg++) {
+    html += '<div class="page">';
+    for (var fi = 0; fi < placements.length; fi++) {
+      var p = placements[fi];
+      if (p.page !== pg) continue;
+      // Convert row/col to inches: col 1 = 0in from left, row 1 = 0in from top
+      var leftIn = ((p.col - 1) / 12) + colOffsetIn;
+      var topIn = ((p.row - 1) / 6) + rowOffsetIn;
+      // Escape HTML
+      var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
+    }
+    html += '</div>';
+  }
+
+  html += '</body></html>';
+  res.type('html').send(html);
 });
 
 // Serve static files
