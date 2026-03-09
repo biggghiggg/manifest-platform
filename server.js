@@ -1122,7 +1122,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v44-2026-03-09';
+var BUILD_VERSION = 'v45-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -2231,11 +2231,15 @@ app.get('/api/print/direct/:id', function(req, res) {
   }
 
   // === Build HTML with CSS absolute positioning ===
-  // At 12 CPI: 1 col = 1/12 inch. At 6 LPI: 1 row = 1/6 inch.
-  // Base offsets account for the pre-printed form header and margins.
-  // These can be fine-tuned via query params: ?rowOffset=1.2&colOffset=0.1
-  var BASE_TOP_OFFSET = 1.0;   // inches - push everything down to account for form header
-  var BASE_LEFT_OFFSET = 0.0;  // inches - left adjustment if needed
+  // Printer: Epson LQ-590II at 15 CPI, 6 LPI
+  // Column positions in RAW_MAP are on a 12-col-per-inch grid (form layout).
+  // Font at 8pt Courier New ≈ 15 CPI to match printer character width.
+  // Base offsets account for pre-printed form header area.
+  // Fine-tune via query params: ?rowOffset=0.1&colOffset=-0.1
+  var CPI = 12;  // column grid (form layout units, NOT printer CPI)
+  var LPI = 6;   // lines per inch
+  var BASE_TOP_OFFSET = 0.5;   // inches - shift down for form header
+  var BASE_LEFT_OFFSET = 0.0;  // inches - left adjustment
   var colOffsetIn = BASE_LEFT_OFFSET + (parseFloat(req.query.colOffset) || 0);
   var rowOffsetIn = BASE_TOP_OFFSET + (parseFloat(req.query.rowOffset) || 0);
 
@@ -2273,8 +2277,8 @@ app.get('/api/print/direct/:id', function(req, res) {
       var p = placements[fi];
       if (p.page !== pg) continue;
       // Convert row/col to inches: col 1 = 0in from left, row 1 = 0in from top
-      var leftIn = ((p.col - 1) / 12) + colOffsetIn;
-      var topIn = ((p.row - 1) / 6) + rowOffsetIn;
+      var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
+      var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
       // Escape HTML
       var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
