@@ -988,97 +988,98 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
 // ============================================================
 var FORM_8700_MAP = {
   // Epson LQ-590II, 12 CPI, tractor feed locked left, pinfeed manifests
-  // All columns shifted -10 from original to match actual print positions
+  // Output wrapped in HTML with @page margin:0 to eliminate browser print margins
+  // Column positions are absolute printer positions from left edge
   // Box 1 - Generator's US EPA ID Number
-  generatorEpaId:     { row: 4, col: 8 },
+  generatorEpaId:     { row: 4, col: 12 },
   // Box 2 - Page __ of __
-  page:               { row: 4, col: 30 },
-  totalPages:         { row: 4, col: 33 },
+  page:               { row: 4, col: 34 },
+  totalPages:         { row: 4, col: 37 },
   // Box 3 - Emergency Response Phone
-  emergencyPhone:     { row: 4, col: 37 },
+  emergencyPhone:     { row: 4, col: 41 },
   // Box 5 - Generator
-  generatorName:      { row: 6, col: 6 },
+  generatorName:      { row: 6, col: 10 },
   // Mailing Address (LEFT side of Box 5)
-  generatorMailAddr:  { row: 7, col: 6 },
-  generatorMailCity:  { row: 8, col: 6 },
-  generatorPhone:     { row: 8, col: 24 },
+  generatorMailAddr:  { row: 7, col: 10 },
+  generatorMailCity:  { row: 8, col: 10 },
+  generatorPhone:     { row: 8, col: 28 },
   // Site Address (RIGHT side of Box 5)
-  generatorSiteAddr:  { row: 7, col: 38 },
-  generatorSiteCity:  { row: 8, col: 38 },
+  generatorSiteAddr:  { row: 7, col: 42 },
+  generatorSiteCity:  { row: 8, col: 42 },
   // Box 6 - Transporter 1
-  transporter1Name:   { row: 10, col: 1 },
-  transporter1EpaId:  { row: 10, col: 52 },
+  transporter1Name:   { row: 10, col: 2 },
+  transporter1EpaId:  { row: 10, col: 56 },
   // Box 7 - Transporter 2
-  transporter2Name:   { row: 12, col: 1 },
-  transporter2EpaId:  { row: 12, col: 52 },
+  transporter2Name:   { row: 12, col: 2 },
+  transporter2EpaId:  { row: 12, col: 56 },
   // Box 8 - Designated Facility
-  facilityName:       { row: 14, col: 1 },
-  facilityEpaId:      { row: 14, col: 52 },
-  facilityAddress:    { row: 15, col: 1 },
-  facilityPhone:      { row: 16, col: 1 },
-  facilityCity:       { row: 16, col: 14 },
-  facilityState:      { row: 16, col: 28 },
-  facilityZip:        { row: 16, col: 32 },
+  facilityName:       { row: 14, col: 2 },
+  facilityEpaId:      { row: 14, col: 56 },
+  facilityAddress:    { row: 15, col: 2 },
+  facilityPhone:      { row: 16, col: 2 },
+  facilityCity:       { row: 16, col: 18 },
+  facilityState:      { row: 16, col: 32 },
+  facilityZip:        { row: 16, col: 36 },
   // Box 9a - HM
   waste1hm:           { row: 21, col: 1 },
   waste2hm:           { row: 24, col: 1 },
   waste3hm:           { row: 27, col: 1 },
   waste4hm:           { row: 30, col: 1 },
   // Box 9b - Description
-  waste1desc:         { row: 21, col: 3 },
-  waste2desc:         { row: 24, col: 3 },
-  waste3desc:         { row: 27, col: 3 },
-  waste4desc:         { row: 30, col: 3 },
+  waste1desc:         { row: 21, col: 4 },
+  waste2desc:         { row: 24, col: 4 },
+  waste3desc:         { row: 27, col: 4 },
+  waste4desc:         { row: 30, col: 4 },
   // Box 10 - Containers (number + type)
-  waste1containerNum: { row: 21, col: 46 },
-  waste1container:    { row: 21, col: 51 },
-  waste2containerNum: { row: 24, col: 46 },
-  waste2container:    { row: 24, col: 51 },
-  waste3containerNum: { row: 27, col: 46 },
-  waste3container:    { row: 27, col: 51 },
-  waste4containerNum: { row: 30, col: 46 },
-  waste4container:    { row: 30, col: 51 },
+  waste1containerNum: { row: 21, col: 50 },
+  waste1container:    { row: 21, col: 55 },
+  waste2containerNum: { row: 24, col: 50 },
+  waste2container:    { row: 24, col: 55 },
+  waste3containerNum: { row: 27, col: 50 },
+  waste3container:    { row: 27, col: 55 },
+  waste4containerNum: { row: 30, col: 50 },
+  waste4container:    { row: 30, col: 55 },
   // Box 11 - Quantity
-  waste1qty:          { row: 21, col: 56 },
-  waste2qty:          { row: 24, col: 56 },
-  waste3qty:          { row: 27, col: 56 },
-  waste4qty:          { row: 30, col: 56 },
+  waste1qty:          { row: 21, col: 60 },
+  waste2qty:          { row: 24, col: 60 },
+  waste3qty:          { row: 27, col: 60 },
+  waste4qty:          { row: 30, col: 60 },
   // Box 12 - Unit
-  waste1uom:          { row: 21, col: 63 },
-  waste2uom:          { row: 24, col: 63 },
-  waste3uom:          { row: 27, col: 63 },
-  waste4uom:          { row: 30, col: 63 },
+  waste1uom:          { row: 21, col: 67 },
+  waste2uom:          { row: 24, col: 67 },
+  waste3uom:          { row: 27, col: 67 },
+  waste4uom:          { row: 30, col: 67 },
   // Box 13 - Waste Codes (6 per line: 3 on row 1, 3 on row 2)
-  waste1wc1:          { row: 21, col: 66 },
-  waste1wc2:          { row: 21, col: 71 },
-  waste1wc3:          { row: 21, col: 76 },
-  waste1wc4:          { row: 22, col: 66 },
-  waste1wc5:          { row: 22, col: 71 },
-  waste1wc6:          { row: 22, col: 76 },
-  waste2wc1:          { row: 24, col: 66 },
-  waste2wc2:          { row: 24, col: 71 },
-  waste2wc3:          { row: 24, col: 76 },
-  waste2wc4:          { row: 25, col: 66 },
-  waste2wc5:          { row: 25, col: 71 },
-  waste2wc6:          { row: 25, col: 76 },
-  waste3wc1:          { row: 27, col: 66 },
-  waste3wc2:          { row: 27, col: 71 },
-  waste3wc3:          { row: 27, col: 76 },
-  waste3wc4:          { row: 28, col: 66 },
-  waste3wc5:          { row: 28, col: 71 },
-  waste3wc6:          { row: 28, col: 76 },
-  waste4wc1:          { row: 30, col: 66 },
-  waste4wc2:          { row: 30, col: 71 },
-  waste4wc3:          { row: 30, col: 76 },
-  waste4wc4:          { row: 31, col: 66 },
-  waste4wc5:          { row: 31, col: 71 },
-  waste4wc6:          { row: 31, col: 76 },
+  waste1wc1:          { row: 21, col: 70 },
+  waste1wc2:          { row: 21, col: 75 },
+  waste1wc3:          { row: 21, col: 80 },
+  waste1wc4:          { row: 22, col: 70 },
+  waste1wc5:          { row: 22, col: 75 },
+  waste1wc6:          { row: 22, col: 80 },
+  waste2wc1:          { row: 24, col: 70 },
+  waste2wc2:          { row: 24, col: 75 },
+  waste2wc3:          { row: 24, col: 80 },
+  waste2wc4:          { row: 25, col: 70 },
+  waste2wc5:          { row: 25, col: 75 },
+  waste2wc6:          { row: 25, col: 80 },
+  waste3wc1:          { row: 27, col: 70 },
+  waste3wc2:          { row: 27, col: 75 },
+  waste3wc3:          { row: 27, col: 80 },
+  waste3wc4:          { row: 28, col: 70 },
+  waste3wc5:          { row: 28, col: 75 },
+  waste3wc6:          { row: 28, col: 80 },
+  waste4wc1:          { row: 30, col: 70 },
+  waste4wc2:          { row: 30, col: 75 },
+  waste4wc3:          { row: 30, col: 80 },
+  waste4wc4:          { row: 31, col: 70 },
+  waste4wc5:          { row: 31, col: 75 },
+  waste4wc6:          { row: 31, col: 80 },
   // Box 14 - Special Handling (3 lines, MIS permanent on line 3)
-  specialHandling:    { row: 33, col: 1 },
-  specialHandling2:   { row: 34, col: 1 },
-  specialHandling3:   { row: 35, col: 1 },
+  specialHandling:    { row: 33, col: 2 },
+  specialHandling2:   { row: 34, col: 2 },
+  specialHandling3:   { row: 35, col: 2 },
   // Box 15 - Generator Certification
-  generatorCertName:  { row: 38, col: 1 }
+  generatorCertName:  { row: 38, col: 2 }
 };
 
 // EPA Form 8700-22A Continuation Sheet MAP
@@ -1122,7 +1123,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v38-2026-03-09';
+var BUILD_VERSION = 'v40-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1326,8 +1327,12 @@ app.get('/api/print/alignment-test', function(req, res) {
     pageLines[rn - 1] = rnStr + line.substring(2);
   }
 
-  res.set('Content-Type', 'text/plain; charset=utf-8');
-  res.send(pageLines.join('\n'));
+  var testOut = pageLines.join('\n');
+  var testHtml = '<!DOCTYPE html><html><head><title>Alignment Test</title>';
+  testHtml += '<style>@media print { @page { margin: 0; } } body { margin: 0; padding: 0; }</style>';
+  testHtml += '</head><body><pre>' + testOut.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></body></html>';
+  res.set('Content-Type', 'text/html');
+  res.send(testHtml);
 });
 
 app.get('/api/print/manifest/:id', function(req, res) {
@@ -1637,8 +1642,13 @@ app.get('/api/print/manifest/:id', function(req, res) {
   output = output.replace(/\n\s*$/, '');
   console.log('Print output: ' + allPages.length + ' page(s), ' + output.split('\n').length + ' lines');
 
-  res.set('Content-Type', 'text/plain');
-  res.send(output);
+  // Wrap in HTML with zero print margins so col 1 reaches the left edge of the paper
+  // Using <pre> with NO font-size or line-height changes - browser defaults match plain text
+  var html = '<!DOCTYPE html><html><head><title>Print</title>';
+  html += '<style>@media print { @page { margin: 0; } } body { margin: 0; padding: 0; }</style>';
+  html += '</head><body><pre>' + output.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></body></html>';
+  res.set('Content-Type', 'text/html');
+  res.send(html);
 });
 
 // Download .prn file
