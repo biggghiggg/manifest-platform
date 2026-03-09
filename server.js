@@ -1122,7 +1122,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v43-2026-03-09';
+var BUILD_VERSION = 'v44-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -2232,9 +2232,12 @@ app.get('/api/print/direct/:id', function(req, res) {
 
   // === Build HTML with CSS absolute positioning ===
   // At 12 CPI: 1 col = 1/12 inch. At 6 LPI: 1 row = 1/6 inch.
-  // Alignment offsets (adjustable) - in inches, added to all positions
-  var colOffsetIn = parseFloat(req.query.colOffset) || 0;
-  var rowOffsetIn = parseFloat(req.query.rowOffset) || 0;
+  // Base offsets account for the pre-printed form header and margins.
+  // These can be fine-tuned via query params: ?rowOffset=1.2&colOffset=0.1
+  var BASE_TOP_OFFSET = 1.0;   // inches - push everything down to account for form header
+  var BASE_LEFT_OFFSET = 0.0;  // inches - left adjustment if needed
+  var colOffsetIn = BASE_LEFT_OFFSET + (parseFloat(req.query.colOffset) || 0);
+  var rowOffsetIn = BASE_TOP_OFFSET + (parseFloat(req.query.rowOffset) || 0);
 
   var html = '<!DOCTYPE html><html><head><title>Print Manifest</title><style>';
   html += '@page { margin: 0; size: 8.5in 11in; }';
