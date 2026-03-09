@@ -1122,7 +1122,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v55-2026-03-09';
+var BUILD_VERSION = 'v56-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1671,10 +1671,10 @@ var RAW_MAP = {
   waste2hm:           { row: 23, col: 3 },
   waste3hm:           { row: 26, col: 3 },
   waste4hm:           { row: 29, col: 3 },
-  waste1desc:         { row: 20, col: 9 },
-  waste2desc:         { row: 23, col: 9 },
-  waste3desc:         { row: 26, col: 9 },
-  waste4desc:         { row: 29, col: 9 },
+  waste1desc:         { row: 20, col: 7 },
+  waste2desc:         { row: 23, col: 7 },
+  waste3desc:         { row: 26, col: 7 },
+  waste4desc:         { row: 29, col: 7 },
   waste1containerNum: { row: 20, col: 56 },
   waste1container:    { row: 20, col: 61 },
   waste2containerNum: { row: 23, col: 56 },
@@ -2315,7 +2315,7 @@ app.get('/api/print/direct/:id', function(req, res) {
   html += 'body { margin: 0; padding: 0; }';
   html += '.page { position: relative; width: 8.5in; height: 11in; overflow: hidden; page-break-after: always; }';
   html += '.page:last-child { page-break-after: auto; }';
-  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 8pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
   html += '.toolbar .print-btn { background: #7c3aed; color: white; border: none; border-radius: 4px; }';
