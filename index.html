@@ -557,7 +557,7 @@
                             })()}
                           </select>
                         </td>
-                        <td>{i >= 4 ? <button type="button" onClick={function(){var idx=i;setForm(function(f){var ls=(f.wasteLines||[]).slice();ls.splice(idx,1);return Object.assign({},f,{wasteLines:ls})})}} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontWeight:700,fontSize:14}} title="Remove line">X</button> : null}</td>
+                        <td>{i >= 4 ? <button type="button" onClick={function(){var idx=i;setForm(function(f){var ls=(f.wasteLines||[]).slice();ls.splice(idx,1);return Object.assign({},f,{wasteLines:ls})})}} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontWeight:700,fontSize:14}} title="Remove line">X</button> : <button type="button" onClick={function(){var idx=i;setForm(function(f){var ls=(f.wasteLines||[]).slice();ls[idx]=Object.assign({},emptyWaste);return Object.assign({},f,{wasteLines:ls})})}} style={{background:'none',border:'none',color:'#f59e0b',cursor:'pointer',fontWeight:700,fontSize:13}} title="Clear this waste line">Clear</button>}</td>
                       </tr>
                     );
                   })}
