@@ -1122,7 +1122,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v50-2026-03-09';
+var BUILD_VERSION = 'v51-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -2115,6 +2115,31 @@ app.get('/api/print/direct/:id', function(req, res) {
   placeAt(M.facilityPhone.row, M.facilityPhone.col, manifest.facilityPhone);
   placeAt(M.facilityCity.row, M.facilityCity.col, manifest.facilityCityStZip);
 
+  // DOT ERG (Emergency Response Guidebook) lookup by UN/NA number
+  var ERG_LOOKUP = {
+    '1005': '125', '1017': '124', '1049': '115', '1072': '122', '1075': '115',
+    '1090': '127', '1170': '127', '1202': '128', '1203': '128', '1219': '129',
+    '1230': '131', '1263': '128', '1268': '128', '1270': '128', '1381': '136',
+    '1402': '138', '1547': '153', '1593': '160', '1760': '154', '1789': '157',
+    '1805': '154', '1824': '154', '1830': '137', '1831': '137', '1863': '128',
+    '1950': '126', '1978': '115', '1992': '131', '1993': '128', '1999': '130',
+    '2014': '140', '2031': '157', '2078': '156', '2312': '153', '2672': '154',
+    '2794': '154', '2795': '154', '2809': '172', '2810': '153', '2920': '132',
+    '2924': '132', '3077': '171', '3082': '171', '3175': '133', '3257': '171',
+    '3258': '171', '3264': '154', '3266': '154', '3291': '158', '3334': '171',
+    '3335': '171'
+  };
+
+  // Extract UN/NA number from description and look up ERG guide
+  function getErgNumber(text) {
+    if (!text) return '';
+    var match = text.match(/(?:UN|NA)\s*(\d{4})/i);
+    if (match && ERG_LOOKUP[match[1]]) {
+      return ERG_LOOKUP[match[1]];
+    }
+    return '';
+  }
+
   // Format shipping description: Title Case with exceptions
   // n.o.s. = lowercase, PG/UN/NA/RQ = uppercase, everything else = Title Case
   function formatShipDesc(text) {
@@ -2142,7 +2167,10 @@ app.get('/api/print/direct/:id', function(req, res) {
     var descKey = 'waste' + w + 'desc';
     var baseRow = M[hmKey].row;
     placeAt(M[hmKey].row, M[hmKey].col, manifest['waste' + w + 'HM']);
-    var descText = formatShipDesc(manifest['waste' + w + 'Description'] || '');
+    var rawDesc = manifest['waste' + w + 'Description'] || '';
+    var ergNum = getErgNumber(rawDesc);
+    var descText = formatShipDesc(rawDesc);
+    if (ergNum && descText.indexOf('ERG') === -1) descText += ', ERG # ' + ergNum;
     var descMaxFirst = M['waste' + w + 'containerNum'].col - M[descKey].col - 1;
     var descLines = wrapDesc(descText, descMaxFirst, 55);
     for (var dl = 0; dl < descLines.length && dl < 2; dl++) {
@@ -2216,7 +2244,10 @@ app.get('/api/print/direct/:id', function(req, res) {
       for (var cw = 0; cw < linesOnThisPage; cw++) {
         var mLineNum = manifestLineStart + cw;
         var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
-        var cwDesc = formatShipDesc(manifest['waste' + mLineNum + 'Description'] || '');
+        var cwRawDesc = manifest['waste' + mLineNum + 'Description'] || '';
+        var cwErgNum = getErgNumber(cwRawDesc);
+        var cwDesc = formatShipDesc(cwRawDesc);
+        if (cwErgNum && cwDesc.indexOf('ERG') === -1) cwDesc += ', ERG # ' + cwErgNum;
         var cwDescLines = wrapDesc(cwDesc, 45, 55);
         for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
           placeAt(contRow + cdl, M.waste1desc.col, cwDescLines[cdl], pg);
