@@ -584,7 +584,30 @@
 
             <div className="form-grid" style={{marginBottom:16}}>
               <div className="form-group full-width">
-                <label>Special Handling Instructions (Box 14)</label>
+                <label>Special Handling Instructions (Box 14)
+                  <button type="button" className="btn btn-sm" style={{marginLeft:8,background:'#8b5cf6',color:'#fff',fontSize:11,padding:'2px 8px'}} onClick={function(){
+                    var lines14 = form.wasteLines || [];
+                    var parts14 = [];
+                    for (var g14 = 0; g14 < lines14.length; g14++) {
+                      var ln14 = lines14[g14] || {};
+                      if (!ln14.description && !ln14.profileId) continue;
+                      var e14 = '9b.' + (g14 + 1) + '= ';
+                      if (ln14.profileId) e14 += ln14.profileId;
+                      if (ln14.containerSize) e14 += ' ' + ln14.containerSize;
+                      if (ln14.containerType) e14 += ' ' + ln14.containerType;
+                      parts14.push(e14.trim());
+                    }
+                    var full14 = parts14.join(', ');
+                    var line1 = ''; var line2 = '';
+                    if (full14.length > 75) {
+                      var cut14 = full14.lastIndexOf(', ', 75);
+                      if (cut14 <= 0) cut14 = 75;
+                      line1 = full14.substring(0, cut14);
+                      line2 = full14.substring(cut14).replace(/^,?\s*/, '');
+                    } else { line1 = full14; }
+                    setForm(function(f){ return Object.assign({}, f, { specialHandling: line1, specialHandling2: line2 }); });
+                  }}>Generate from Waste Lines</button>
+                </label>
                 <input value={form.specialHandling || ''} onChange={function(e){set('specialHandling',e.target.value)}} />
               </div>
               <div className="form-group full-width">
