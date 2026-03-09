@@ -987,97 +987,98 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
 // Box 5: Mailing address LEFT side, Site address RIGHT side
 // ============================================================
 var FORM_8700_MAP = {
-  // 12 CPI with tractor pin all the way left
+  // Epson LQ-590II, 12 CPI, tractor feed locked left, pinfeed manifests
+  // All columns shifted -10 from original to match actual print positions
   // Box 1 - Generator's US EPA ID Number
-  generatorEpaId:     { row: 4, col: 18 },
+  generatorEpaId:     { row: 4, col: 8 },
   // Box 2 - Page __ of __
-  page:               { row: 4, col: 40 },
-  totalPages:         { row: 4, col: 43 },
+  page:               { row: 4, col: 30 },
+  totalPages:         { row: 4, col: 33 },
   // Box 3 - Emergency Response Phone
-  emergencyPhone:     { row: 4, col: 47 },
+  emergencyPhone:     { row: 4, col: 37 },
   // Box 5 - Generator
-  generatorName:      { row: 6, col: 16 },
+  generatorName:      { row: 6, col: 6 },
   // Mailing Address (LEFT side of Box 5)
-  generatorMailAddr:  { row: 7, col: 16 },
-  generatorMailCity:  { row: 8, col: 16 },
-  generatorPhone:     { row: 8, col: 34 },
+  generatorMailAddr:  { row: 7, col: 6 },
+  generatorMailCity:  { row: 8, col: 6 },
+  generatorPhone:     { row: 8, col: 24 },
   // Site Address (RIGHT side of Box 5)
-  generatorSiteAddr:  { row: 7, col: 48 },
-  generatorSiteCity:  { row: 8, col: 48 },
+  generatorSiteAddr:  { row: 7, col: 38 },
+  generatorSiteCity:  { row: 8, col: 38 },
   // Box 6 - Transporter 1
-  transporter1Name:   { row: 10, col: 8 },
-  transporter1EpaId:  { row: 10, col: 62 },
+  transporter1Name:   { row: 10, col: 1 },
+  transporter1EpaId:  { row: 10, col: 52 },
   // Box 7 - Transporter 2
-  transporter2Name:   { row: 12, col: 8 },
-  transporter2EpaId:  { row: 12, col: 62 },
+  transporter2Name:   { row: 12, col: 1 },
+  transporter2EpaId:  { row: 12, col: 52 },
   // Box 8 - Designated Facility
-  facilityName:       { row: 14, col: 8 },
-  facilityEpaId:      { row: 14, col: 62 },
-  facilityAddress:    { row: 15, col: 8 },
-  facilityPhone:      { row: 16, col: 8 },
-  facilityCity:       { row: 16, col: 24 },
-  facilityState:      { row: 16, col: 38 },
-  facilityZip:        { row: 16, col: 42 },
+  facilityName:       { row: 14, col: 1 },
+  facilityEpaId:      { row: 14, col: 52 },
+  facilityAddress:    { row: 15, col: 1 },
+  facilityPhone:      { row: 16, col: 1 },
+  facilityCity:       { row: 16, col: 14 },
+  facilityState:      { row: 16, col: 28 },
+  facilityZip:        { row: 16, col: 32 },
   // Box 9a - HM
-  waste1hm:           { row: 21, col: 4 },
-  waste2hm:           { row: 24, col: 4 },
-  waste3hm:           { row: 27, col: 4 },
-  waste4hm:           { row: 30, col: 4 },
+  waste1hm:           { row: 21, col: 1 },
+  waste2hm:           { row: 24, col: 1 },
+  waste3hm:           { row: 27, col: 1 },
+  waste4hm:           { row: 30, col: 1 },
   // Box 9b - Description
-  waste1desc:         { row: 21, col: 9 },
-  waste2desc:         { row: 24, col: 9 },
-  waste3desc:         { row: 27, col: 9 },
-  waste4desc:         { row: 30, col: 9 },
+  waste1desc:         { row: 21, col: 3 },
+  waste2desc:         { row: 24, col: 3 },
+  waste3desc:         { row: 27, col: 3 },
+  waste4desc:         { row: 30, col: 3 },
   // Box 10 - Containers (number + type)
-  waste1containerNum: { row: 21, col: 56 },
-  waste1container:    { row: 21, col: 61 },
-  waste2containerNum: { row: 24, col: 56 },
-  waste2container:    { row: 24, col: 61 },
-  waste3containerNum: { row: 27, col: 56 },
-  waste3container:    { row: 27, col: 61 },
-  waste4containerNum: { row: 30, col: 56 },
-  waste4container:    { row: 30, col: 61 },
+  waste1containerNum: { row: 21, col: 46 },
+  waste1container:    { row: 21, col: 51 },
+  waste2containerNum: { row: 24, col: 46 },
+  waste2container:    { row: 24, col: 51 },
+  waste3containerNum: { row: 27, col: 46 },
+  waste3container:    { row: 27, col: 51 },
+  waste4containerNum: { row: 30, col: 46 },
+  waste4container:    { row: 30, col: 51 },
   // Box 11 - Quantity
-  waste1qty:          { row: 21, col: 66 },
-  waste2qty:          { row: 24, col: 66 },
-  waste3qty:          { row: 27, col: 66 },
-  waste4qty:          { row: 30, col: 66 },
+  waste1qty:          { row: 21, col: 56 },
+  waste2qty:          { row: 24, col: 56 },
+  waste3qty:          { row: 27, col: 56 },
+  waste4qty:          { row: 30, col: 56 },
   // Box 12 - Unit
-  waste1uom:          { row: 21, col: 73 },
-  waste2uom:          { row: 24, col: 73 },
-  waste3uom:          { row: 27, col: 73 },
-  waste4uom:          { row: 30, col: 73 },
+  waste1uom:          { row: 21, col: 63 },
+  waste2uom:          { row: 24, col: 63 },
+  waste3uom:          { row: 27, col: 63 },
+  waste4uom:          { row: 30, col: 63 },
   // Box 13 - Waste Codes (6 per line: 3 on row 1, 3 on row 2)
-  waste1wc1:          { row: 21, col: 76 },
-  waste1wc2:          { row: 21, col: 81 },
-  waste1wc3:          { row: 21, col: 86 },
-  waste1wc4:          { row: 22, col: 76 },
-  waste1wc5:          { row: 22, col: 81 },
-  waste1wc6:          { row: 22, col: 86 },
-  waste2wc1:          { row: 24, col: 76 },
-  waste2wc2:          { row: 24, col: 81 },
-  waste2wc3:          { row: 24, col: 86 },
-  waste2wc4:          { row: 25, col: 76 },
-  waste2wc5:          { row: 25, col: 81 },
-  waste2wc6:          { row: 25, col: 86 },
-  waste3wc1:          { row: 27, col: 76 },
-  waste3wc2:          { row: 27, col: 81 },
-  waste3wc3:          { row: 27, col: 86 },
-  waste3wc4:          { row: 28, col: 76 },
-  waste3wc5:          { row: 28, col: 81 },
-  waste3wc6:          { row: 28, col: 86 },
-  waste4wc1:          { row: 30, col: 76 },
-  waste4wc2:          { row: 30, col: 81 },
-  waste4wc3:          { row: 30, col: 86 },
-  waste4wc4:          { row: 31, col: 76 },
-  waste4wc5:          { row: 31, col: 81 },
-  waste4wc6:          { row: 31, col: 86 },
+  waste1wc1:          { row: 21, col: 66 },
+  waste1wc2:          { row: 21, col: 71 },
+  waste1wc3:          { row: 21, col: 76 },
+  waste1wc4:          { row: 22, col: 66 },
+  waste1wc5:          { row: 22, col: 71 },
+  waste1wc6:          { row: 22, col: 76 },
+  waste2wc1:          { row: 24, col: 66 },
+  waste2wc2:          { row: 24, col: 71 },
+  waste2wc3:          { row: 24, col: 76 },
+  waste2wc4:          { row: 25, col: 66 },
+  waste2wc5:          { row: 25, col: 71 },
+  waste2wc6:          { row: 25, col: 76 },
+  waste3wc1:          { row: 27, col: 66 },
+  waste3wc2:          { row: 27, col: 71 },
+  waste3wc3:          { row: 27, col: 76 },
+  waste3wc4:          { row: 28, col: 66 },
+  waste3wc5:          { row: 28, col: 71 },
+  waste3wc6:          { row: 28, col: 76 },
+  waste4wc1:          { row: 30, col: 66 },
+  waste4wc2:          { row: 30, col: 71 },
+  waste4wc3:          { row: 30, col: 76 },
+  waste4wc4:          { row: 31, col: 66 },
+  waste4wc5:          { row: 31, col: 71 },
+  waste4wc6:          { row: 31, col: 76 },
   // Box 14 - Special Handling (3 lines, MIS permanent on line 3)
-  specialHandling:    { row: 33, col: 8 },
-  specialHandling2:   { row: 34, col: 8 },
-  specialHandling3:   { row: 35, col: 8 },
+  specialHandling:    { row: 33, col: 1 },
+  specialHandling2:   { row: 34, col: 1 },
+  specialHandling3:   { row: 35, col: 1 },
   // Box 15 - Generator Certification
-  generatorCertName:  { row: 38, col: 8 }
+  generatorCertName:  { row: 38, col: 1 }
 };
 
 // EPA Form 8700-22A Continuation Sheet MAP
@@ -1121,7 +1122,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v36-2026-03-09';
+var BUILD_VERSION = 'v38-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1147,6 +1148,21 @@ if (!data.migratedToV26) {
   data.migratedToV26 = true;
   saveData(data);
   console.log('V26 migration: complete alignment reset for Epson LQ-590II pinfeed');
+}
+
+// V38 migration: MAP columns shifted -10, reset colShift to 0
+if (!data.migratedToV38) {
+  customAlignment = null;
+  delete data.customAlignment;
+  previousAlignment = null;
+  delete data.previousAlignment;
+  colShift = 0;
+  data.colShift = 0;
+  rowShift = 0;
+  data.rowShift = 0;
+  data.migratedToV38 = true;
+  saveData(data);
+  console.log('V38 migration: MAP columns shifted -10, reset shifts to 0');
 }
 
 function getActiveMap() {
@@ -1230,7 +1246,8 @@ app.get('/api/print/alignment-test', function(req, res) {
     text = String(text);
     var r = row + rowShift;
     var c = col + colShift;
-    if (r < 1 || r > 66 || c < 1) return;
+    if (r < 1 || r > 66) return;
+    if (c < 1) c = 1;
     var line = pageLines[r - 1];
     var before = line.substring(0, c - 1);
     var after = line.substring(c - 1 + text.length);
@@ -1335,14 +1352,15 @@ app.get('/api/print/manifest/:id', function(req, res) {
   }
 
   // Helper: place text on a canvas
-  // colShift/rowShift provide global fine-tuning (positive = right/down, negative = left/up)
+  // colShift/rowShift provide small fine-tuning (positive = right/down, negative = left/up)
+  // MAP positions already account for printer/paper setup, so colShift should stay near 0
   function placeText(pageLines, row, col, text) {
     if (!text) return;
     text = String(text);
     var actualRow = row + rowShift;
     var actualCol = col + colShift;
     if (actualRow < 1 || actualRow > CANVAS_ROWS) return;
-    if (actualCol < 1) return;
+    if (actualCol < 1) actualCol = 1; // safety: print at col 1 instead of skipping
     var line = pageLines[actualRow - 1];
     var before = line.substring(0, actualCol - 1);
     var after = line.substring(actualCol - 1 + text.length);
