@@ -1122,7 +1122,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v49-2026-03-09';
+var BUILD_VERSION = 'v50-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1662,10 +1662,10 @@ var RAW_MAP = {
   facilityName:       { row: 14, col: 8 },
   facilityEpaId:      { row: 14, col: 66 },
   facilityAddress:    { row: 15, col: 8 },
-  facilityPhone:      { row: 16, col: 8 },
-  facilityCity:       { row: 16, col: 24 },
-  facilityState:      { row: 16, col: 38 },
-  facilityZip:        { row: 16, col: 42 },
+  facilityCity:       { row: 16, col: 8 },
+  facilityState:      { row: 16, col: 24 },
+  facilityZip:        { row: 16, col: 28 },
+  facilityPhone:      { row: 16, col: 38 },
   waste1hm:           { row: 20, col: 4 },
   waste2hm:           { row: 23, col: 4 },
   waste3hm:           { row: 26, col: 4 },
@@ -2115,6 +2115,26 @@ app.get('/api/print/direct/:id', function(req, res) {
   placeAt(M.facilityPhone.row, M.facilityPhone.col, manifest.facilityPhone);
   placeAt(M.facilityCity.row, M.facilityCity.col, manifest.facilityCityStZip);
 
+  // Format shipping description: Title Case with exceptions
+  // n.o.s. = lowercase, PG/UN/NA/RQ = uppercase, everything else = Title Case
+  function formatShipDesc(text) {
+    if (!text) return '';
+    // First lowercase everything, then title-case each word
+    var result = text.toLowerCase().replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+    // Fix exceptions: n.o.s. should be all lowercase
+    result = result.replace(/N\.O\.S\./gi, 'n.o.s.');
+    result = result.replace(/\bNos\b/gi, 'n.o.s.');
+    // PG should be uppercase
+    result = result.replace(/\bPg\b/g, 'PG');
+    // UN and NA (hazmat ID prefixes) should be uppercase
+    result = result.replace(/\bUn(\d)/g, 'UN$1');
+    result = result.replace(/\bNa(\d)/g, 'NA$1');
+    // RQ should be uppercase
+    result = result.replace(/\bRq,/g, 'RQ,');
+    result = result.replace(/\bRq\b/g, 'RQ');
+    return result;
+  }
+
   // Waste Lines 1-4
   var maxOnPage1 = Math.min(wasteLineCount, 4);
   for (var w = 1; w <= maxOnPage1; w++) {
@@ -2122,7 +2142,7 @@ app.get('/api/print/direct/:id', function(req, res) {
     var descKey = 'waste' + w + 'desc';
     var baseRow = M[hmKey].row;
     placeAt(M[hmKey].row, M[hmKey].col, manifest['waste' + w + 'HM']);
-    var descText = manifest['waste' + w + 'Description'] || '';
+    var descText = formatShipDesc(manifest['waste' + w + 'Description'] || '');
     var descMaxFirst = M['waste' + w + 'containerNum'].col - M[descKey].col - 1;
     var descLines = wrapDesc(descText, descMaxFirst, 55);
     for (var dl = 0; dl < descLines.length && dl < 2; dl++) {
@@ -2196,7 +2216,7 @@ app.get('/api/print/direct/:id', function(req, res) {
       for (var cw = 0; cw < linesOnThisPage; cw++) {
         var mLineNum = manifestLineStart + cw;
         var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
-        var cwDesc = manifest['waste' + mLineNum + 'Description'] || '';
+        var cwDesc = formatShipDesc(manifest['waste' + mLineNum + 'Description'] || '');
         var cwDescLines = wrapDesc(cwDesc, 45, 55);
         for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
           placeAt(contRow + cdl, M.waste1desc.col, cwDescLines[cdl], pg);
