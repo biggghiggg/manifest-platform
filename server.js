@@ -1122,7 +1122,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v54-2026-03-09';
+var BUILD_VERSION = 'v55-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1667,10 +1667,10 @@ var RAW_MAP = {
   facilityState:      { row: 16, col: 24 },
   facilityZip:        { row: 16, col: 28 },
   facilityPhone:      { row: 16, col: 38 },
-  waste1hm:           { row: 20, col: 4 },
-  waste2hm:           { row: 23, col: 4 },
-  waste3hm:           { row: 26, col: 4 },
-  waste4hm:           { row: 29, col: 4 },
+  waste1hm:           { row: 20, col: 3 },
+  waste2hm:           { row: 23, col: 3 },
+  waste3hm:           { row: 26, col: 3 },
+  waste4hm:           { row: 29, col: 3 },
   waste1desc:         { row: 20, col: 9 },
   waste2desc:         { row: 23, col: 9 },
   waste3desc:         { row: 26, col: 9 },
