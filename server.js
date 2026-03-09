@@ -1121,7 +1121,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v35-2026-03-09';
+var BUILD_VERSION = 'v36-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1473,9 +1473,9 @@ app.get('/api/print/manifest/:id', function(req, res) {
 
   // Box 1 - Generator EPA ID
   placeText(page1, MAP.generatorEpaId.row, MAP.generatorEpaId.col, manifest.generatorEpaId);
-  // Box 2 - Page
-  placeText(page1, MAP.page.row, MAP.page.col, '1');
-  placeText(page1, MAP.totalPages.row, MAP.totalPages.col, String(totalPages));
+  // Box 2 - Page (only print if user manually entered values)
+  if (manifest.pageNum) placeText(page1, MAP.page.row, MAP.page.col, manifest.pageNum);
+  if (manifest.pageTotal) placeText(page1, MAP.totalPages.row, MAP.totalPages.col, manifest.pageTotal);
   // Box 3 - Emergency Response Phone
   placeText(page1, MAP.emergencyPhone.row, MAP.emergencyPhone.col, manifest.emergencyPhone);
   // Box 5 - Generator

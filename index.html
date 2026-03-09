@@ -231,7 +231,7 @@
             wasteLines: [Object.assign({},emptyWaste), Object.assign({},emptyWaste), Object.assign({},emptyWaste), Object.assign({},emptyWaste)],
             specialHandling: '', specialHandling2: '', specialHandling3: 'ER Contract # MIS9933011',
             generatorPrintName: '', generatorDate: new Date().toLocaleDateString('en-US'),
-            pageNum: '1', pageTotal: '1',
+            pageNum: '', pageTotal: '',
             status: 'draft'
           };
         }
@@ -258,7 +258,7 @@
           wasteLines: [Object.assign({},emptyWaste), Object.assign({},emptyWaste), Object.assign({},emptyWaste), Object.assign({},emptyWaste)],
           specialHandling: '', specialHandling2: '', specialHandling3: 'ER Contract # MIS9933011',
           generatorPrintName: '', generatorDate: new Date().toLocaleDateString('en-US'),
-          pageNum: '1', pageTotal: '1',
+          pageNum: '', pageTotal: '',
           status: 'draft'
         };
       });
@@ -372,10 +372,7 @@
         }
         if (activeLineCount < 4) activeLineCount = 4; // minimum 4 lines on main form
         payload.wasteLineCount = activeLineCount;
-        // Auto-calculate page total: page 1 = lines 1-4, continuation pages = 10 lines each
-        var totalPages = activeLineCount <= 4 ? 1 : Math.ceil((activeLineCount - 4) / 10) + 1;
-        payload.pageTotal = String(totalPages);
-        if (!payload.pageNum || payload.pageNum === '1') payload.pageNum = '1';
+        // Don't auto-fill page number fields - let user fill them manually
         for (var i = 0; i < lines.length; i++) {
           var n = i + 1;
           var line = lines[i] || emptyWaste;
@@ -416,9 +413,9 @@
               <div className="form-group">
                 <label>Page ___ of ___</label>
                 <div style={{display:'flex',gap:8}}>
-                  <input value={form.pageNum || '1'} onChange={function(e){set('pageNum',e.target.value)}} style={{width:50}} />
+                  <input value={form.pageNum || ''} onChange={function(e){set('pageNum',e.target.value)}} style={{width:50}} placeholder="#" />
                   <span style={{alignSelf:'center'}}>of</span>
-                  <input value={form.pageTotal || '1'} onChange={function(e){set('pageTotal',e.target.value)}} style={{width:50}} />
+                  <input value={form.pageTotal || ''} onChange={function(e){set('pageTotal',e.target.value)}} style={{width:50}} placeholder="#" />
                 </div>
               </div>
               <div className="form-group">
@@ -669,9 +666,6 @@
                 }
                 if (pActiveCount < 4) pActiveCount = 4;
                 payload.wasteLineCount = pActiveCount;
-                var tp = pActiveCount <= 4 ? 1 : Math.ceil((pActiveCount - 4) / 10) + 1;
-                payload.pageTotal = String(tp);
-                if (!payload.pageNum) payload.pageNum = '1';
                 for (var si = 0; si < pLines.length; si++) {
                   var sn = si + 1;
                   var sl = pLines[si] || emptyWaste;
@@ -974,7 +968,7 @@
                 </div>
                 <div style={bx}>
                   <div style={lbl}>{Box('2','Page 1 of')}</div>
-                  <div style={{fontSize:13}}>{(d.pageNum||'1') + ' of ' + (d.pageTotal||'1')}</div>
+                  <div style={{fontSize:13}}>{(d.pageNum||'') + (d.pageTotal ? ' of ' + d.pageTotal : '')}</div>
                 </div>
                 <div style={bx}>
                   <div style={lbl}>{Box('4','Manifest Tracking Number')}</div>
