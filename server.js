@@ -1122,7 +1122,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v56-2026-03-09';
+var BUILD_VERSION = 'v58-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -2136,10 +2136,17 @@ app.get('/api/print/direct/:id', function(req, res) {
     if (!text) return '';
     // Non RCRA always gets ERG # 171
     if (/non[\s\-]*rcra/i.test(text)) return '171';
-    // Look up UN/NA number
+    // Look up UN/NA number (with or without UN/NA prefix)
     var match = text.match(/(?:UN|NA)\s*(\d{4})/i);
     if (match && ERG_LOOKUP[match[1]]) {
       return ERG_LOOKUP[match[1]];
+    }
+    // Fallback: try to find a bare 4-digit number that matches the lookup
+    var bareMatch = text.match(/\b(\d{4})\b/g);
+    if (bareMatch) {
+      for (var bi = 0; bi < bareMatch.length; bi++) {
+        if (ERG_LOOKUP[bareMatch[bi]]) return ERG_LOOKUP[bareMatch[bi]];
+      }
     }
     return '';
   }
@@ -2315,7 +2322,7 @@ app.get('/api/print/direct/:id', function(req, res) {
   html += 'body { margin: 0; padding: 0; }';
   html += '.page { position: relative; width: 8.5in; height: 11in; overflow: hidden; page-break-after: always; }';
   html += '.page:last-child { page-break-after: auto; }';
-  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 8pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 9pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
   html += '.toolbar .print-btn { background: #7c3aed; color: white; border: none; border-radius: 4px; }';
