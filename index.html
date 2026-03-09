@@ -194,6 +194,7 @@
                   React.createElement('button',{className:'btn btn-sm btn-success',onClick:function(){handlePreview(m)}},'Preview'),
                   React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){handlePrint(m.id)}},'Print'),
                   React.createElement('button',{className:'btn btn-sm',style:{background:'#7c3aed',color:'#fff'},onClick:function(){window.open('/api/print/direct/'+m.id,'_blank')}},'Epson'),
+                  React.createElement('button',{className:'btn btn-sm',style:{background:'#6d28d9',color:'#fff'},onClick:function(){window.open('/api/print/direct/'+m.id+'?page=2','_blank')}},'Cont.'),
                   React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){handleDelete(m.id)}},'X')
                 )
               )})
@@ -641,6 +642,7 @@
               <button className="btn btn-success" onClick={function(){if(onPreview)onPreview(form)}}>Preview</button>
               {savedId ? <button className="btn btn-print" onClick={function(){window.open('/api/print/manifest/'+savedId+'?page=1','_blank')}}>Print</button> : null}
               {savedId ? <button className="btn btn-sm" style={{background:'#7c3aed',color:'#fff',marginLeft:4}} onClick={function(){window.open('/api/print/direct/'+savedId,'_blank')}}>Print to Epson</button> : null}
+              {savedId ? <button className="btn btn-sm" style={{background:'#6d28d9',color:'#fff',marginLeft:4}} onClick={function(){window.open('/api/print/direct/'+savedId+'?page=2','_blank')}}>Epson Cont.</button> : null}
               <button className="btn btn-sm" style={{background:'#3b82f6',color:'#fff'}} onClick={function(){
                 setShowContinuation(true);
               }}>Continuation Page</button>

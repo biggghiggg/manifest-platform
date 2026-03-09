@@ -1136,11 +1136,43 @@ var CONT_WASTE_START_ROW = 11;
 var CONT_WASTE_ROW_SPACING = 3;
 var CONT_MAX_WASTE_LINES = 10;
 
+// RAW 22A MAP for Epson direct print (calibrated separately from browser print)
+var RAW_22A_MAP = {
+  // Box 21 - Generator's US EPA ID Number
+  generatorEpaId:           { row: 2, col: 18 },
+  // Box 22 - Page __ of __
+  page:                     { row: 2, col: 40 },
+  totalPages:               { row: 2, col: 43 },
+  // Box 23 - Manifest Tracking Number
+  manifestTrackingNum:      { row: 2, col: 55 },
+  // Box 24 - Generator's Name & EPA ID
+  generatorName:            { row: 4, col: 8 },
+  generatorEpaId2:          { row: 4, col: 62 },
+  // Box 25 - Transporter Company Name & EPA ID
+  contTransporterName:      { row: 6, col: 8 },
+  contTransporterEpaId:     { row: 6, col: 62 },
+  // Box 26 - Transporter 2 Company Name & EPA ID
+  contTransporter2Name:     { row: 8, col: 8 },
+  contTransporter2EpaId:    { row: 8, col: 62 },
+  // Box 32 - Special Handling Instructions (after 10 waste lines ending at row ~41)
+  specialHandling:          { row: 43, col: 8 },
+  specialHandling2:         { row: 44, col: 8 },
+  specialHandling3:         { row: 45, col: 8 },
+  // Box 33 - Transporter Acknowledgment of Receipt
+  contTransporterPrintName: { row: 47, col: 8 },
+  contTransporterDate:      { row: 47, col: 62 },
+  // Box 34 - Transporter 2 Acknowledgment
+  contTransporter2PrintName:{ row: 49, col: 8 },
+  contTransporter2Date:     { row: 49, col: 62 },
+  // Box 35 - Discrepancy
+  contDiscrepancyInfo:      { row: 51, col: 8 }
+};
+
 // Print manifest - plain text for dot matrix
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v60-2026-03-09';
+var BUILD_VERSION = 'v61-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1499,10 +1531,19 @@ app.get('/api/print/manifest/:id', function(req, res) {
       if (ctype14) entry += (entry ? ' ' : '') + ctype14;
       if (entry) parts14.push('9b.' + b14 + '= ' + entry);
     }
-    autoLine1 = parts14.join(', ');
+    var autoText14 = parts14.join(', ');
+    if (autoText14.length > 75) {
+      var cut14b = autoText14.lastIndexOf(', ', 75);
+      if (cut14b <= 0) cut14b = 75;
+      autoLine1 = autoText14.substring(0, cut14b);
+      var autoRest14 = autoText14.substring(cut14b).replace(/^,?\s*/, '');
+      manifest._autoLine2 = autoRest14;
+    } else {
+      autoLine1 = autoText14;
+    }
   }
   var sh1 = manifest.specialHandling || autoLine1;
-  var sh2 = manifest.specialHandling2 || '';
+  var sh2 = manifest.specialHandling2 || manifest._autoLine2 || '';
   var sh3 = manifest.specialHandling3 || '';
 
   // ===== PAGE 1: Main Form (8700-22) =====
@@ -2184,6 +2225,9 @@ app.get('/api/print/direct/:id', function(req, res) {
     result = result.replace(/\bNos\b/gi, 'n.o.s.');
     // PG should be uppercase
     result = result.replace(/\bPg\b/g, 'PG');
+    // Fix packing group Roman numerals: Iii -> III, Ii -> II (after PG or standalone)
+    result = result.replace(/\bIii\b/g, 'III');
+    result = result.replace(/\bIi\b/g, 'II');
     // UN and NA (hazmat ID prefixes) should be uppercase
     result = result.replace(/\bUn(\d)/g, 'UN$1');
     result = result.replace(/\bNa(\d)/g, 'NA$1');
@@ -2247,9 +2291,21 @@ app.get('/api/print/direct/:id', function(req, res) {
     }
     var autoText = parts14.join(', ');
     if (autoText.length > 75) {
-      sh1 = autoText.substring(0, 75);
-      var rest14 = autoText.substring(75);
-      sh2 = rest14.length > 75 ? rest14.substring(0, 75) : rest14;
+      var cut14 = autoText.lastIndexOf(', ', 75);
+      if (cut14 <= 0) cut14 = 75;
+      sh1 = autoText.substring(0, cut14);
+      var rest14 = autoText.substring(cut14).replace(/^,?\s*/, '');
+      if (rest14.length > 75) {
+        var cut14b = rest14.lastIndexOf(', ', 75);
+        if (cut14b <= 0) cut14b = 75;
+        sh2 = rest14.substring(0, cut14b);
+        // Overflow to sh3 only if sh3 is not already set (contract number)
+        if (!sh3) {
+          sh3 = rest14.substring(cut14b).replace(/^,?\s*/, '');
+        }
+      } else {
+        sh2 = rest14;
+      }
     } else {
       sh1 = autoText;
     }
@@ -2261,7 +2317,7 @@ app.get('/api/print/direct/:id', function(req, res) {
 
   // === Continuation Pages ===
   if (wasteLineCount > 4) {
-    var contMap = FORM_8700_22A_MAP;
+    var contMap = RAW_22A_MAP;
     var remainingLines = wasteLineCount - 4;
     var contPageNum = 2;
     var manifestLineStart = 5;
@@ -2362,7 +2418,12 @@ app.get('/api/print/direct/:id', function(req, res) {
     if (placements[pi].page > maxPage) maxPage = placements[pi].page;
   }
 
+  // Support ?page=N to print only a specific page
+  var requestedPage = parseInt(req.query.page) || 0;
+
   for (var pg = 1; pg <= maxPage; pg++) {
+    // Skip pages that weren't requested (if a specific page was requested)
+    if (requestedPage > 0 && pg !== requestedPage) continue;
     html += '<div class="page">';
     for (var fi = 0; fi < placements.length; fi++) {
       var p = placements[fi];
