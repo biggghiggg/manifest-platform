@@ -988,98 +988,97 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
 // ============================================================
 var FORM_8700_MAP = {
   // Epson LQ-590II, 12 CPI, tractor feed locked left, pinfeed manifests
-  // Output wrapped in HTML with @page margin:0 to eliminate browser print margins
-  // Column positions are absolute printer positions from left edge
+  // Plain text output (browser adds ~5 char left margin when printing)
   // Box 1 - Generator's US EPA ID Number
-  generatorEpaId:     { row: 4, col: 12 },
+  generatorEpaId:     { row: 4, col: 13 },
   // Box 2 - Page __ of __
-  page:               { row: 4, col: 34 },
-  totalPages:         { row: 4, col: 37 },
+  page:               { row: 4, col: 35 },
+  totalPages:         { row: 4, col: 38 },
   // Box 3 - Emergency Response Phone
-  emergencyPhone:     { row: 4, col: 41 },
+  emergencyPhone:     { row: 4, col: 42 },
   // Box 5 - Generator
-  generatorName:      { row: 6, col: 10 },
+  generatorName:      { row: 6, col: 11 },
   // Mailing Address (LEFT side of Box 5)
-  generatorMailAddr:  { row: 7, col: 10 },
-  generatorMailCity:  { row: 8, col: 10 },
-  generatorPhone:     { row: 8, col: 28 },
+  generatorMailAddr:  { row: 7, col: 11 },
+  generatorMailCity:  { row: 8, col: 11 },
+  generatorPhone:     { row: 8, col: 29 },
   // Site Address (RIGHT side of Box 5)
-  generatorSiteAddr:  { row: 7, col: 42 },
-  generatorSiteCity:  { row: 8, col: 42 },
+  generatorSiteAddr:  { row: 7, col: 43 },
+  generatorSiteCity:  { row: 8, col: 43 },
   // Box 6 - Transporter 1
-  transporter1Name:   { row: 10, col: 2 },
-  transporter1EpaId:  { row: 10, col: 56 },
+  transporter1Name:   { row: 10, col: 3 },
+  transporter1EpaId:  { row: 10, col: 57 },
   // Box 7 - Transporter 2
-  transporter2Name:   { row: 12, col: 2 },
-  transporter2EpaId:  { row: 12, col: 56 },
+  transporter2Name:   { row: 12, col: 3 },
+  transporter2EpaId:  { row: 12, col: 57 },
   // Box 8 - Designated Facility
-  facilityName:       { row: 14, col: 2 },
-  facilityEpaId:      { row: 14, col: 56 },
-  facilityAddress:    { row: 15, col: 2 },
-  facilityPhone:      { row: 16, col: 2 },
-  facilityCity:       { row: 16, col: 18 },
-  facilityState:      { row: 16, col: 32 },
-  facilityZip:        { row: 16, col: 36 },
-  // Box 9a - HM
+  facilityName:       { row: 14, col: 3 },
+  facilityEpaId:      { row: 14, col: 57 },
+  facilityAddress:    { row: 15, col: 3 },
+  facilityPhone:      { row: 16, col: 3 },
+  facilityCity:       { row: 16, col: 19 },
+  facilityState:      { row: 16, col: 33 },
+  facilityZip:        { row: 16, col: 37 },
+  // Box 9a - HM (col 1 = leftmost printable position, browser margin pushes it right ~5 chars)
   waste1hm:           { row: 21, col: 1 },
   waste2hm:           { row: 24, col: 1 },
   waste3hm:           { row: 27, col: 1 },
   waste4hm:           { row: 30, col: 1 },
   // Box 9b - Description
-  waste1desc:         { row: 21, col: 4 },
-  waste2desc:         { row: 24, col: 4 },
-  waste3desc:         { row: 27, col: 4 },
-  waste4desc:         { row: 30, col: 4 },
+  waste1desc:         { row: 21, col: 5 },
+  waste2desc:         { row: 24, col: 5 },
+  waste3desc:         { row: 27, col: 5 },
+  waste4desc:         { row: 30, col: 5 },
   // Box 10 - Containers (number + type)
-  waste1containerNum: { row: 21, col: 50 },
-  waste1container:    { row: 21, col: 55 },
-  waste2containerNum: { row: 24, col: 50 },
-  waste2container:    { row: 24, col: 55 },
-  waste3containerNum: { row: 27, col: 50 },
-  waste3container:    { row: 27, col: 55 },
-  waste4containerNum: { row: 30, col: 50 },
-  waste4container:    { row: 30, col: 55 },
+  waste1containerNum: { row: 21, col: 51 },
+  waste1container:    { row: 21, col: 56 },
+  waste2containerNum: { row: 24, col: 51 },
+  waste2container:    { row: 24, col: 56 },
+  waste3containerNum: { row: 27, col: 51 },
+  waste3container:    { row: 27, col: 56 },
+  waste4containerNum: { row: 30, col: 51 },
+  waste4container:    { row: 30, col: 56 },
   // Box 11 - Quantity
-  waste1qty:          { row: 21, col: 60 },
-  waste2qty:          { row: 24, col: 60 },
-  waste3qty:          { row: 27, col: 60 },
-  waste4qty:          { row: 30, col: 60 },
+  waste1qty:          { row: 21, col: 61 },
+  waste2qty:          { row: 24, col: 61 },
+  waste3qty:          { row: 27, col: 61 },
+  waste4qty:          { row: 30, col: 61 },
   // Box 12 - Unit
-  waste1uom:          { row: 21, col: 67 },
-  waste2uom:          { row: 24, col: 67 },
-  waste3uom:          { row: 27, col: 67 },
-  waste4uom:          { row: 30, col: 67 },
+  waste1uom:          { row: 21, col: 68 },
+  waste2uom:          { row: 24, col: 68 },
+  waste3uom:          { row: 27, col: 68 },
+  waste4uom:          { row: 30, col: 68 },
   // Box 13 - Waste Codes (6 per line: 3 on row 1, 3 on row 2)
-  waste1wc1:          { row: 21, col: 70 },
-  waste1wc2:          { row: 21, col: 75 },
-  waste1wc3:          { row: 21, col: 80 },
-  waste1wc4:          { row: 22, col: 70 },
-  waste1wc5:          { row: 22, col: 75 },
-  waste1wc6:          { row: 22, col: 80 },
-  waste2wc1:          { row: 24, col: 70 },
-  waste2wc2:          { row: 24, col: 75 },
-  waste2wc3:          { row: 24, col: 80 },
-  waste2wc4:          { row: 25, col: 70 },
-  waste2wc5:          { row: 25, col: 75 },
-  waste2wc6:          { row: 25, col: 80 },
-  waste3wc1:          { row: 27, col: 70 },
-  waste3wc2:          { row: 27, col: 75 },
-  waste3wc3:          { row: 27, col: 80 },
-  waste3wc4:          { row: 28, col: 70 },
-  waste3wc5:          { row: 28, col: 75 },
-  waste3wc6:          { row: 28, col: 80 },
-  waste4wc1:          { row: 30, col: 70 },
-  waste4wc2:          { row: 30, col: 75 },
-  waste4wc3:          { row: 30, col: 80 },
-  waste4wc4:          { row: 31, col: 70 },
-  waste4wc5:          { row: 31, col: 75 },
-  waste4wc6:          { row: 31, col: 80 },
+  waste1wc1:          { row: 21, col: 71 },
+  waste1wc2:          { row: 21, col: 76 },
+  waste1wc3:          { row: 21, col: 81 },
+  waste1wc4:          { row: 22, col: 71 },
+  waste1wc5:          { row: 22, col: 76 },
+  waste1wc6:          { row: 22, col: 81 },
+  waste2wc1:          { row: 24, col: 71 },
+  waste2wc2:          { row: 24, col: 76 },
+  waste2wc3:          { row: 24, col: 81 },
+  waste2wc4:          { row: 25, col: 71 },
+  waste2wc5:          { row: 25, col: 76 },
+  waste2wc6:          { row: 25, col: 81 },
+  waste3wc1:          { row: 27, col: 71 },
+  waste3wc2:          { row: 27, col: 76 },
+  waste3wc3:          { row: 27, col: 81 },
+  waste3wc4:          { row: 28, col: 71 },
+  waste3wc5:          { row: 28, col: 76 },
+  waste3wc6:          { row: 28, col: 81 },
+  waste4wc1:          { row: 30, col: 71 },
+  waste4wc2:          { row: 30, col: 76 },
+  waste4wc3:          { row: 30, col: 81 },
+  waste4wc4:          { row: 31, col: 71 },
+  waste4wc5:          { row: 31, col: 76 },
+  waste4wc6:          { row: 31, col: 81 },
   // Box 14 - Special Handling (3 lines, MIS permanent on line 3)
-  specialHandling:    { row: 33, col: 2 },
-  specialHandling2:   { row: 34, col: 2 },
-  specialHandling3:   { row: 35, col: 2 },
+  specialHandling:    { row: 33, col: 3 },
+  specialHandling2:   { row: 34, col: 3 },
+  specialHandling3:   { row: 35, col: 3 },
   // Box 15 - Generator Certification
-  generatorCertName:  { row: 38, col: 2 }
+  generatorCertName:  { row: 38, col: 3 }
 };
 
 // EPA Form 8700-22A Continuation Sheet MAP
@@ -1123,7 +1122,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v40-2026-03-09';
+var BUILD_VERSION = 'v42-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1327,12 +1326,8 @@ app.get('/api/print/alignment-test', function(req, res) {
     pageLines[rn - 1] = rnStr + line.substring(2);
   }
 
-  var testOut = pageLines.join('\n');
-  var testHtml = '<!DOCTYPE html><html><head><title>Alignment Test</title>';
-  testHtml += '<style>@media print { @page { margin: 0; } } body { margin: 0; padding: 0; }</style>';
-  testHtml += '</head><body><pre>' + testOut.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></body></html>';
-  res.set('Content-Type', 'text/html');
-  res.send(testHtml);
+  res.set('Content-Type', 'text/plain; charset=utf-8');
+  res.send(pageLines.join('\n'));
 });
 
 app.get('/api/print/manifest/:id', function(req, res) {
@@ -1642,23 +1637,374 @@ app.get('/api/print/manifest/:id', function(req, res) {
   output = output.replace(/\n\s*$/, '');
   console.log('Print output: ' + allPages.length + ' page(s), ' + output.split('\n').length + ' lines');
 
-  // Wrap in HTML with zero print margins so col 1 reaches the left edge of the paper
-  // Using <pre> with NO font-size or line-height changes - browser defaults match plain text
-  var html = '<!DOCTYPE html><html><head><title>Print</title>';
-  html += '<style>@media print { @page { margin: 0; } } body { margin: 0; padding: 0; }</style>';
-  html += '</head><body><pre>' + output.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></body></html>';
-  res.set('Content-Type', 'text/html');
-  res.send(html);
+  res.set('Content-Type', 'text/plain');
+  res.send(output);
 });
 
-// Download .prn file
-app.get('/api/print/raw/:id', function(req, res) {
+// ESC/P2 raw print - generates .prn file for direct Epson LQ-590II printing
+// Bypasses browser entirely - no margins, precise positioning
+var RAW_MAP = {
+  // Original 12 CPI positions for direct printer output (no browser margin)
+  generatorEpaId:     { row: 4, col: 18 },
+  page:               { row: 4, col: 40 },
+  totalPages:         { row: 4, col: 43 },
+  emergencyPhone:     { row: 4, col: 47 },
+  generatorName:      { row: 6, col: 16 },
+  generatorMailAddr:  { row: 7, col: 16 },
+  generatorMailCity:  { row: 8, col: 16 },
+  generatorPhone:     { row: 8, col: 34 },
+  generatorSiteAddr:  { row: 7, col: 48 },
+  generatorSiteCity:  { row: 8, col: 48 },
+  transporter1Name:   { row: 10, col: 8 },
+  transporter1EpaId:  { row: 10, col: 62 },
+  transporter2Name:   { row: 12, col: 8 },
+  transporter2EpaId:  { row: 12, col: 62 },
+  facilityName:       { row: 14, col: 8 },
+  facilityEpaId:      { row: 14, col: 62 },
+  facilityAddress:    { row: 15, col: 8 },
+  facilityPhone:      { row: 16, col: 8 },
+  facilityCity:       { row: 16, col: 24 },
+  facilityState:      { row: 16, col: 38 },
+  facilityZip:        { row: 16, col: 42 },
+  waste1hm:           { row: 21, col: 4 },
+  waste2hm:           { row: 24, col: 4 },
+  waste3hm:           { row: 27, col: 4 },
+  waste4hm:           { row: 30, col: 4 },
+  waste1desc:         { row: 21, col: 9 },
+  waste2desc:         { row: 24, col: 9 },
+  waste3desc:         { row: 27, col: 9 },
+  waste4desc:         { row: 30, col: 9 },
+  waste1containerNum: { row: 21, col: 56 },
+  waste1container:    { row: 21, col: 61 },
+  waste2containerNum: { row: 24, col: 56 },
+  waste2container:    { row: 24, col: 61 },
+  waste3containerNum: { row: 27, col: 56 },
+  waste3container:    { row: 27, col: 61 },
+  waste4containerNum: { row: 30, col: 56 },
+  waste4container:    { row: 30, col: 61 },
+  waste1qty:          { row: 21, col: 66 },
+  waste2qty:          { row: 24, col: 66 },
+  waste3qty:          { row: 27, col: 66 },
+  waste4qty:          { row: 30, col: 66 },
+  waste1uom:          { row: 21, col: 73 },
+  waste2uom:          { row: 24, col: 73 },
+  waste3uom:          { row: 27, col: 73 },
+  waste4uom:          { row: 30, col: 73 },
+  waste1wc1:          { row: 21, col: 76 },
+  waste1wc2:          { row: 21, col: 81 },
+  waste1wc3:          { row: 21, col: 86 },
+  waste1wc4:          { row: 22, col: 76 },
+  waste1wc5:          { row: 22, col: 81 },
+  waste1wc6:          { row: 22, col: 86 },
+  waste2wc1:          { row: 24, col: 76 },
+  waste2wc2:          { row: 24, col: 81 },
+  waste2wc3:          { row: 24, col: 86 },
+  waste2wc4:          { row: 25, col: 76 },
+  waste2wc5:          { row: 25, col: 81 },
+  waste2wc6:          { row: 25, col: 86 },
+  waste3wc1:          { row: 27, col: 76 },
+  waste3wc2:          { row: 27, col: 81 },
+  waste3wc3:          { row: 27, col: 86 },
+  waste3wc4:          { row: 28, col: 76 },
+  waste3wc5:          { row: 28, col: 81 },
+  waste3wc6:          { row: 28, col: 86 },
+  waste4wc1:          { row: 30, col: 76 },
+  waste4wc2:          { row: 30, col: 81 },
+  waste4wc3:          { row: 30, col: 86 },
+  waste4wc4:          { row: 31, col: 76 },
+  waste4wc5:          { row: 31, col: 81 },
+  waste4wc6:          { row: 31, col: 86 },
+  specialHandling:    { row: 33, col: 8 },
+  specialHandling2:   { row: 34, col: 8 },
+  specialHandling3:   { row: 35, col: 8 },
+  generatorCertName:  { row: 38, col: 8 }
+};
+
+app.get('/api/print/escp2/:id', function(req, res) {
   var manifest = null;
   for (var i = 0; i < data.manifests.length; i++) {
     if (data.manifests[i].id === req.params.id) { manifest = data.manifests[i]; break; }
   }
   if (!manifest) return res.status(404).send('Manifest not found');
-  res.redirect('/api/print/manifest/' + req.params.id);
+
+  var M = RAW_MAP;
+  var commands = [];
+
+  function addBytes(arr) { commands.push(Buffer.from(arr)); }
+  function addText(text) { commands.push(Buffer.from(text, 'ascii')); }
+
+  // Position print head and print text
+  // Row/col are 1-based. Horizontal: (col-1)*5 in 1/60" units. Vertical: (row-1)*60 in 1/360" units.
+  function printAt(row, col, text) {
+    if (!text) return;
+    text = String(text);
+    // ESC ( V 2 0 mL mH - absolute vertical position in 1/360"
+    var vPos = (row - 1) * 60;
+    var mL = vPos & 0xFF;
+    var mH = (vPos >> 8) & 0xFF;
+    addBytes([0x1B, 0x28, 0x56, 0x02, 0x00, mL, mH]);
+    // ESC $ nL nH - absolute horizontal position in 1/60"
+    var hPos = (col - 1) * 5;
+    var nL = hPos & 0xFF;
+    var nH = (hPos >> 8) & 0xFF;
+    addBytes([0x1B, 0x24, nL, nH]);
+    // Print the text
+    addText(text);
+  }
+
+  // Smart parse waste codes (reuse existing logic)
+  function parseWC(allCodes) {
+    if (!allCodes) return [];
+    var codeArr = allCodes.split(/[\s,]+/).filter(function(c) { return c.length > 0; });
+    var needsSmart = false;
+    for (var sc = 0; sc < codeArr.length; sc++) {
+      if (codeArr[sc].length > 4) { needsSmart = true; break; }
+    }
+    if (needsSmart) {
+      var smartCodes = [];
+      var joined = allCodes.replace(/[\s,]+/g, '');
+      var letterRe = /[A-Za-z]\d{3}/g;
+      var lm;
+      var positions = [];
+      while ((lm = letterRe.exec(joined)) !== null) {
+        positions.push({start: lm.index, end: lm.index + lm[0].length, code: lm[0]});
+      }
+      var lastEnd = 0;
+      for (var pi = 0; pi < positions.length; pi++) {
+        var gap = joined.substring(lastEnd, positions[pi].start);
+        if (gap.length > 0) {
+          var gapNums = gap.match(/\d{3}/g);
+          if (gapNums) { for (var gi = 0; gi < gapNums.length; gi++) smartCodes.push(gapNums[gi]); }
+        }
+        smartCodes.push(positions[pi].code);
+        lastEnd = positions[pi].end;
+      }
+      var trail = joined.substring(lastEnd);
+      if (trail.length > 0) {
+        var trailNums = trail.match(/\d{3}/g);
+        if (trailNums) { for (var ti = 0; ti < trailNums.length; ti++) smartCodes.push(trailNums[ti]); }
+      }
+      if (smartCodes.length > 1) codeArr = smartCodes;
+    }
+    return codeArr;
+  }
+
+  // Wrap description text
+  function wrapDesc(text, maxFirst, maxCont) {
+    if (!text) return [];
+    var remaining = String(text);
+    if (remaining.length <= maxFirst) return [remaining];
+    var result = [];
+    var cut = remaining.lastIndexOf(' ', maxFirst);
+    if (cut <= 0) cut = maxFirst;
+    result.push(remaining.substring(0, cut));
+    remaining = remaining.substring(cut).replace(/^\s+/, '');
+    while (remaining.length > 0) {
+      if (remaining.length <= maxCont) { result.push(remaining); break; }
+      cut = remaining.lastIndexOf(' ', maxCont);
+      if (cut <= 0) cut = maxCont;
+      result.push(remaining.substring(0, cut));
+      remaining = remaining.substring(cut).replace(/^\s+/, '');
+    }
+    return result;
+  }
+
+  // === Initialize printer ===
+  addBytes([0x1B, 0x40]); // ESC @ - Initialize/reset
+  addBytes([0x1B, 0x4D]); // ESC M - Select 12 CPI (Elite)
+  addBytes([0x1B, 0x32]); // ESC 2 - Set 1/6" line spacing (6 LPI)
+
+  // === Page 1 - Main Form (8700-22) ===
+
+  // Count active waste lines
+  var rawWLC = parseInt(manifest.wasteLineCount) || 4;
+  var wasteLineCount = 0;
+  for (var wlc = 1; wlc <= Math.max(rawWLC, 4); wlc++) {
+    var wd = (manifest['waste' + wlc + 'Description'] || '').replace(/^RQ,?\s*/i, '').trim();
+    var wco = (manifest['waste' + wlc + 'WasteCodes'] || '').trim();
+    var wq = (manifest['waste' + wlc + 'Qty'] || '').trim();
+    if (wd || wco || wq) wasteLineCount = wlc;
+  }
+  if (wasteLineCount < 4) wasteLineCount = 4;
+  var totalPages = wasteLineCount <= 4 ? 1 : Math.ceil((wasteLineCount - 4) / CONT_MAX_WASTE_LINES) + 1;
+
+  // Box 1 - Generator EPA ID
+  printAt(M.generatorEpaId.row, M.generatorEpaId.col, manifest.generatorEpaId);
+  // Box 2 - Page (only if user filled it in)
+  if (manifest.pageNum) printAt(M.page.row, M.page.col, manifest.pageNum);
+  if (manifest.pageTotal) printAt(M.totalPages.row, M.totalPages.col, manifest.pageTotal);
+  // Box 3 - Emergency Response Phone
+  printAt(M.emergencyPhone.row, M.emergencyPhone.col, manifest.emergencyPhone);
+  // Box 5 - Generator
+  printAt(M.generatorName.row, M.generatorName.col, manifest.generatorName);
+  printAt(M.generatorPhone.row, M.generatorPhone.col, manifest.generatorPhone);
+  printAt(M.generatorMailAddr.row, M.generatorMailAddr.col, manifest.generatorAddress);
+  printAt(M.generatorMailCity.row, M.generatorMailCity.col, manifest.generatorCityStZip);
+  printAt(M.generatorSiteAddr.row, M.generatorSiteAddr.col, manifest.genSiteAddress);
+  printAt(M.generatorSiteCity.row, M.generatorSiteCity.col, manifest.genSiteCityStZip);
+  // Box 6 - Transporter 1
+  printAt(M.transporter1Name.row, M.transporter1Name.col, manifest.transporter1Name);
+  printAt(M.transporter1EpaId.row, M.transporter1EpaId.col, manifest.transporter1EpaId);
+  // Box 7 - Transporter 2
+  printAt(M.transporter2Name.row, M.transporter2Name.col, manifest.transporter2Name);
+  printAt(M.transporter2EpaId.row, M.transporter2EpaId.col, manifest.transporter2EpaId);
+  // Box 8 - Designated Facility
+  printAt(M.facilityName.row, M.facilityName.col, manifest.facilityName);
+  printAt(M.facilityEpaId.row, M.facilityEpaId.col, manifest.facilityEpaId);
+  printAt(M.facilityAddress.row, M.facilityAddress.col, manifest.facilityAddress);
+  printAt(M.facilityPhone.row, M.facilityPhone.col, manifest.facilityPhone);
+  printAt(M.facilityCity.row, M.facilityCity.col, manifest.facilityCityStZip);
+
+  // Boxes 9-13 - Waste Lines (1-4 on main form)
+  var maxOnPage1 = Math.min(wasteLineCount, 4);
+  for (var w = 1; w <= maxOnPage1; w++) {
+    var hmKey = 'waste' + w + 'hm';
+    var descKey = 'waste' + w + 'desc';
+    var baseRow = M[hmKey].row;
+
+    // Box 9a - HM
+    printAt(M[hmKey].row, M[hmKey].col, manifest['waste' + w + 'HM']);
+    // Box 9b - Description (with word wrap)
+    var descText = manifest['waste' + w + 'Description'] || '';
+    var descMaxFirst = M['waste' + w + 'containerNum'].col - M[descKey].col - 1;
+    var descLines = wrapDesc(descText, descMaxFirst, 55);
+    for (var dl = 0; dl < descLines.length && dl < 2; dl++) {
+      printAt(baseRow + dl, M[descKey].col, descLines[dl]);
+    }
+    // Box 10 - Containers
+    printAt(baseRow, M['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
+    printAt(baseRow, M['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
+    // Box 11 - Qty
+    printAt(baseRow, M['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
+    // Box 12 - Unit
+    printAt(baseRow, M['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
+    // Box 13 - Waste Codes
+    var wcKey = 'waste' + w + 'wc';
+    var codes = parseWC((manifest['waste' + w + 'WasteCodes'] || '').trim());
+    for (var ci = 0; ci < 6 && ci < codes.length; ci++) {
+      var wcField = wcKey + (ci + 1);
+      if (M[wcField]) {
+        printAt(M[wcField].row, M[wcField].col, codes[ci]);
+      }
+    }
+  }
+
+  // Box 14 - Special Handling / Box 14 auto-populate
+  var sh1 = manifest.specialHandling || '';
+  var sh2 = manifest.specialHandling2 || '';
+  var sh3 = manifest.specialHandling3 || '';
+  if (!sh1 && !sh2) {
+    // Auto-populate from waste lines
+    var parts14 = [];
+    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+      var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
+      var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
+      var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
+      var desc14 = manifest['waste' + b14 + 'Description'] || '';
+      if (!desc14 && !pid14) continue;
+      var label14 = '9b.' + b14 + '= ';
+      if (pid14) label14 += pid14;
+      if (csize14) label14 += ' ' + csize14;
+      if (ctype14) label14 += ' ' + ctype14;
+      parts14.push(label14.trim());
+    }
+    var autoText = parts14.join(', ');
+    if (autoText.length > 75) {
+      sh1 = autoText.substring(0, 75);
+      var rest = autoText.substring(75);
+      if (rest.length > 75) {
+        sh2 = rest.substring(0, 75);
+      } else {
+        sh2 = rest;
+      }
+    } else {
+      sh1 = autoText;
+    }
+  }
+  printAt(M.specialHandling.row, M.specialHandling.col, sh1);
+  printAt(M.specialHandling2.row, M.specialHandling2.col, sh2);
+  printAt(M.specialHandling3.row, M.specialHandling3.col, sh3);
+
+  // Box 15 - Generator Certification
+  printAt(M.generatorCertName.row, M.generatorCertName.col, manifest.generatorPrintName);
+
+  // Form feed to eject page 1
+  addBytes([0x0C]);
+
+  // === Continuation Pages (8700-22A) - if needed ===
+  if (wasteLineCount > 4) {
+    var contMap = FORM_8700_22A_MAP;
+    var remainingLines = wasteLineCount - 4;
+    var contPageNum = 2;
+    var manifestLineStart = 5;
+    var contPageCount = Math.ceil(remainingLines / CONT_MAX_WASTE_LINES);
+
+    for (var cpIdx = 0; cpIdx < contPageCount; cpIdx++) {
+      var linesOnThisPage = Math.min(remainingLines, CONT_MAX_WASTE_LINES);
+
+      // Re-initialize for new page
+      addBytes([0x1B, 0x40]); // ESC @ reset
+      addBytes([0x1B, 0x4D]); // 12 CPI
+      addBytes([0x1B, 0x32]); // 6 LPI
+
+      printAt(contMap.generatorEpaId.row, contMap.generatorEpaId.col, manifest.generatorEpaId);
+      printAt(contMap.page.row, contMap.page.col, manifest.contPageNum || String(contPageNum));
+      printAt(contMap.totalPages.row, contMap.totalPages.col, String(totalPages));
+      printAt(contMap.manifestTrackingNum.row, contMap.manifestTrackingNum.col, manifest.manifestTrackingNum);
+      printAt(contMap.generatorName.row, contMap.generatorName.col, manifest.generatorName);
+      printAt(contMap.contTransporterName.row, contMap.contTransporterName.col, manifest.contTransporterName || manifest.transporter1Name);
+      printAt(contMap.contTransporterEpaId.row, contMap.contTransporterEpaId.col, manifest.contTransporterEpaId || manifest.transporter1EpaId);
+      printAt(contMap.contTransporter2Name.row, contMap.contTransporter2Name.col, manifest.contTransporter2Name);
+      printAt(contMap.contTransporter2EpaId.row, contMap.contTransporter2EpaId.col, manifest.contTransporter2EpaId);
+
+      // Waste lines on continuation page
+      for (var cw = 0; cw < linesOnThisPage; cw++) {
+        var mLineNum = manifestLineStart + cw;
+        var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
+        var cwDesc = manifest['waste' + mLineNum + 'Description'] || '';
+        var cwDescLines = wrapDesc(cwDesc, 45, 55);
+        for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
+          printAt(contRow + cdl, M.waste1desc.col, cwDescLines[cdl]);
+        }
+        printAt(contRow, M.waste1hm.col, manifest['waste' + mLineNum + 'HM']);
+        printAt(contRow, M.waste1containerNum.col, manifest['waste' + mLineNum + 'ContainerNum']);
+        printAt(contRow, M.waste1container.col, manifest['waste' + mLineNum + 'ContainerType']);
+        printAt(contRow, M.waste1qty.col, manifest['waste' + mLineNum + 'Qty']);
+        printAt(contRow, M.waste1uom.col, manifest['waste' + mLineNum + 'Unit']);
+        var cwCodes = parseWC((manifest['waste' + mLineNum + 'WasteCodes'] || '').trim());
+        for (var cci = 0; cci < 6 && cci < cwCodes.length; cci++) {
+          var cwRow = contRow + (cci >= 3 ? 1 : 0);
+          var cwColOff = (cci % 3) * 5;
+          printAt(cwRow, M.waste1wc1.col + cwColOff, cwCodes[cci]);
+        }
+      }
+
+      // Continuation special handling
+      var cSh1 = manifest.contSpecialHandling || sh1;
+      var cSh2 = manifest.contSpecialHandling2 || sh2;
+      var cSh3 = manifest.contSpecialHandling3 || sh3;
+      printAt(contMap.specialHandling.row, contMap.specialHandling.col, cSh1);
+      printAt(contMap.specialHandling2.row, contMap.specialHandling2.col, cSh2);
+      printAt(contMap.specialHandling3.row, contMap.specialHandling3.col, cSh3);
+      printAt(contMap.contTransporterPrintName.row, contMap.contTransporterPrintName.col, manifest.contTransporterPrintName);
+      printAt(contMap.contTransporterDate.row, contMap.contTransporterDate.col, manifest.contTransporterDate);
+      printAt(contMap.contTransporter2PrintName.row, contMap.contTransporter2PrintName.col, manifest.contTransporter2PrintName);
+      printAt(contMap.contTransporter2Date.row, contMap.contTransporter2Date.col, manifest.contTransporter2Date);
+      printAt(contMap.contDiscrepancyInfo.row, contMap.contDiscrepancyInfo.col, manifest.contDiscrepancyInfo);
+
+      addBytes([0x0C]); // Form feed
+      remainingLines -= linesOnThisPage;
+      manifestLineStart += linesOnThisPage;
+      contPageNum++;
+    }
+  }
+
+  // Combine all buffers and send as downloadable .prn file
+  var output = Buffer.concat(commands);
+  var filename = 'manifest-' + (manifest.manifestTrackingNum || manifest.id) + '.prn';
+  res.set('Content-Type', 'application/octet-stream');
+  res.set('Content-Disposition', 'attachment; filename="' + filename + '"');
+  res.send(output);
 });
 
 // Serve static files
