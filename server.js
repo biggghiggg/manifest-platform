@@ -1122,7 +1122,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v51-2026-03-09';
+var BUILD_VERSION = 'v52-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1181,6 +1181,7 @@ function getActiveMap() {
 
 app.get('/api/alignment', function(req, res) {
   res.json({
+    fields: getActiveMap(),
     map: getActiveMap(),
     defaults: FORM_8700_MAP,
     hasPrevious: previousAlignment !== null,
@@ -1192,7 +1193,7 @@ app.get('/api/alignment', function(req, res) {
 app.put('/api/alignment', function(req, res) {
   previousAlignment = customAlignment ? JSON.parse(JSON.stringify(customAlignment)) : null;
   data.previousAlignment = previousAlignment;
-  customAlignment = req.body.map || null;
+  customAlignment = req.body.fields || req.body.map || null;
   data.customAlignment = customAlignment;
   if (typeof req.body.colShift === 'number') {
     colShift = req.body.colShift;
@@ -1229,7 +1230,7 @@ app.post('/api/alignment/undo', function(req, res) {
   data.customAlignment = customAlignment;
   data.previousAlignment = previousAlignment;
   saveData(data);
-  res.json({ ok: true, map: getActiveMap() });
+  res.json({ ok: true, fields: getActiveMap(), map: getActiveMap(), colShift: colShift, rowShift: rowShift });
 });
 
 // Alignment test print - prints a grid pattern to calibrate field positions
@@ -2291,8 +2292,11 @@ app.get('/api/print/direct/:id', function(req, res) {
   var LPI = 6;   // lines per inch
   var BASE_TOP_OFFSET = 0.5;   // inches - shift down for form header (v45 value)
   var BASE_LEFT_OFFSET = 0.0;  // inches - left adjustment
-  var colOffsetIn = BASE_LEFT_OFFSET + (parseFloat(req.query.colOffset) || 0);
-  var rowOffsetIn = BASE_TOP_OFFSET + (parseFloat(req.query.rowOffset) || 0);
+  // Apply saved alignment shifts (colShift/rowShift from Alignment tab) + query param overrides
+  var savedColShiftIn = colShift / CPI;  // convert column shift to inches
+  var savedRowShiftIn = rowShift / LPI;  // convert row shift to inches
+  var colOffsetIn = BASE_LEFT_OFFSET + savedColShiftIn + (parseFloat(req.query.colOffset) || 0);
+  var rowOffsetIn = BASE_TOP_OFFSET + savedRowShiftIn + (parseFloat(req.query.rowOffset) || 0);
 
   var html = '<!DOCTYPE html><html><head><title>Print Manifest</title><style>';
   html += '@page { margin: 0; size: 8.5in 11in; }';
