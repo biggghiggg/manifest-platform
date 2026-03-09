@@ -1121,7 +1121,7 @@ var CONT_MAX_WASTE_LINES = 10;
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v34-2026-03-08';
+var BUILD_VERSION = 'v35-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1533,7 +1533,16 @@ app.get('/api/print/manifest/:id', function(req, res) {
   // Box 15 - Generator Certification
   placeText(page1, MAP.generatorCertName.row, MAP.generatorCertName.col, manifest.generatorPrintName);
 
-  var allPages = [page1.join('\n')];
+  // Trim trailing blank lines from page to prevent browser from pushing to 2nd page
+  function trimPage(pageLines) {
+    var lastNonBlank = pageLines.length - 1;
+    while (lastNonBlank > 0 && pageLines[lastNonBlank].trim() === '') {
+      lastNonBlank--;
+    }
+    return pageLines.slice(0, lastNonBlank + 1).join('\n');
+  }
+
+  var allPages = [trimPage(page1)];
 
   // ===== CONTINUATION PAGES (8700-22A) =====
   // Only generate continuation pages when there are more than 4 waste lines
@@ -1591,7 +1600,7 @@ app.get('/api/print/manifest/:id', function(req, res) {
       // Box 35 - Discrepancy
       placeText(contPage, contMap.contDiscrepancyInfo.row, contMap.contDiscrepancyInfo.col, manifest.contDiscrepancyInfo);
 
-      allPages.push(contPage.join('\n'));
+      allPages.push(trimPage(contPage));
       remainingLines -= linesOnThisPage;
       manifestLineStart += linesOnThisPage;
       contPageNum++;

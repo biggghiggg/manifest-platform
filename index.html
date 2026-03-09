@@ -381,7 +381,7 @@
           var line = lines[i] || emptyWaste;
           var lineIsRQ = checkRQ(line.wasteCodes, line.qty, line.unit);
           var hasUNNA = (line.description || '').match(/\b(UN|NA)\d{4,5}\b/i);
-          payload['waste' + n + 'HM'] = lineIsRQ ? 'RQ' : (line.hm || '');
+          payload['waste' + n + 'HM'] = lineIsRQ ? 'X' : (line.hm || '');
           var saveDesc = line.description || '';
           if (hasUNNA && saveDesc.indexOf('RQ') !== 0) saveDesc = 'RQ, ' + saveDesc;
           payload['waste' + n + 'Description'] = saveDesc;
@@ -517,7 +517,7 @@
                       <tr key={i} style={isRQ?{background:'#fffbeb'}:i>=4?{background:'#f0f7ff'}:{}}>
                         <td style={{fontWeight:600,color:i>=4?'#3b82f6':'#888',fontSize:11}}>{i+1}<div style={{fontSize:8,color:'#999'}}>{pgLabel}</div></td>
                         <td style={isRQ?{position:'relative'}:{}}>
-                          <input value={isRQ?'RQ':(line.hm||'')} onChange={function(e){setWaste(i,'hm',e.target.value)}} maxLength={2} style={isRQ?{background:'#fef3c7',fontWeight:700,color:'#92400e'}:{}} readOnly={isRQ} />
+                          <input value={isRQ?'X':(line.hm||'')} onChange={function(e){setWaste(i,'hm',e.target.value)}} maxLength={2} style={isRQ?{background:'#fef3c7',fontWeight:700,color:'#92400e'}:{}} readOnly={isRQ} />
                         </td>
                         <td><input value={line.description} onChange={function(e){setWaste(i,'description',e.target.value)}} /></td>
                         <td><input value={line.containerNum} onChange={function(e){setWaste(i,'containerNum',e.target.value)}} /></td>
@@ -677,7 +677,7 @@
                   var sl = pLines[si] || emptyWaste;
                   var lineIsRQ = checkRQ(sl.wasteCodes, sl.qty, sl.unit);
                   var hasUNNA = (sl.description || '').match(/\b(UN|NA)\d{4,5}\b/i);
-                  payload['waste' + sn + 'HM'] = lineIsRQ ? 'RQ' : (sl.hm || '');
+                  payload['waste' + sn + 'HM'] = lineIsRQ ? 'X' : (sl.hm || '');
                   var saveDesc = sl.description || '';
                   if (hasUNNA && saveDesc.indexOf('RQ') !== 0) saveDesc = 'RQ, ' + saveDesc;
                   payload['waste' + sn + 'Description'] = saveDesc;
@@ -811,7 +811,7 @@
                               return (
                                 <tr key={ci} style={isRQ?{background:'#fffbeb'}:{background:'#f0f7ff'}}>
                                   <td style={{fontWeight:600,color:'#3b82f6'}}>{globalIdx + 1}</td>
-                                  <td><input value={isRQ?'RQ':(line.hm||'')} onChange={function(e){setContWaste(ci,'hm',e.target.value)}} maxLength={2} style={isRQ?{background:'#fef3c7',fontWeight:700,color:'#92400e'}:{}} readOnly={isRQ} /></td>
+                                  <td><input value={isRQ?'X':(line.hm||'')} onChange={function(e){setContWaste(ci,'hm',e.target.value)}} maxLength={2} style={isRQ?{background:'#fef3c7',fontWeight:700,color:'#92400e'}:{}} readOnly={isRQ} /></td>
                                   <td><input value={line.description||''} onChange={function(e){setContWaste(ci,'description',e.target.value)}} /></td>
                                   <td><input value={line.containerNum||''} onChange={function(e){setContWaste(ci,'containerNum',e.target.value)}} /></td>
                                   <td>
