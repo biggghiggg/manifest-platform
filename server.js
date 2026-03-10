@@ -1154,7 +1154,17 @@ var RAW_22A_MAP = {
   // Box 26 - Transporter 2 Company Name & EPA ID
   contTransporter2Name:     { row: 8, col: 8 },
   contTransporter2EpaId:    { row: 8, col: 62 },
-  // Box 32 - Special Handling Instructions (after 10 waste lines ending at row ~41)
+  // Box 27 - Waste line columns (8700-22A has different layout than main 8700-22)
+  wasteHm:                  { col: 3 },
+  wasteDesc:                { col: 7 },
+  wasteContainerNum:        { col: 50 },
+  wasteContainerType:       { col: 55 },
+  wasteQty:                 { col: 60 },
+  wasteUom:                 { col: 67 },
+  wasteWc1:                 { col: 73 },
+  wasteWc2:                 { col: 78 },
+  wasteWc3:                 { col: 83 },
+  // Box 32 - Special Handling Instructions
   specialHandling:          { row: 43, col: 8 },
   specialHandling2:         { row: 44, col: 8 },
   specialHandling3:         { row: 45, col: 8 },
@@ -1172,7 +1182,7 @@ var RAW_22A_MAP = {
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v71-2026-03-10';
+var BUILD_VERSION = 'v72-2026-03-10';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Debug endpoint - inspect manifest waste line data
@@ -1716,10 +1726,10 @@ app.get('/api/print/manifest/:id', function(req, res) {
         var mLineNum = manifestLineStart + cw;
         var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
         placeWasteLine(contPage, mLineNum, contRow,
-          MAP.waste1desc.col, MAP.waste1hm.col,
-          MAP.waste1containerNum.col, MAP.waste1container.col,
-          MAP.waste1qty.col, MAP.waste1uom.col,
-          MAP.waste1wc1.col, 1);
+          contMap.wasteDesc.col, contMap.wasteHm.col,
+          contMap.wasteContainerNum.col, contMap.wasteContainerType.col,
+          contMap.wasteQty.col, contMap.wasteUom.col,
+          contMap.wasteWc1.col, 1);
       }
 
       // Box 32 - Special Handling (build from THIS page's waste lines only)
@@ -2137,20 +2147,20 @@ app.get('/api/print/escp2/:id', function(req, res) {
         var mLineNum = manifestLineStart + cw;
         var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
         var cwDesc = manifest['waste' + mLineNum + 'Description'] || '';
-        var cwDescLines = wrapDesc(cwDesc, 45, 55);
+        var cwDescLines = wrapDesc(cwDesc, 40, 40);
         for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
-          printAt(contRow + cdl, M.waste1desc.col, cwDescLines[cdl]);
+          printAt(contRow + cdl, contMap.wasteDesc.col, cwDescLines[cdl]);
         }
-        printAt(contRow, M.waste1hm.col, manifest['waste' + mLineNum + 'HM']);
-        printAt(contRow, M.waste1containerNum.col, manifest['waste' + mLineNum + 'ContainerNum']);
-        printAt(contRow, M.waste1container.col, manifest['waste' + mLineNum + 'ContainerType']);
-        printAt(contRow, M.waste1qty.col, manifest['waste' + mLineNum + 'Qty']);
-        printAt(contRow, M.waste1uom.col, manifest['waste' + mLineNum + 'Unit']);
+        printAt(contRow, contMap.wasteHm.col, manifest['waste' + mLineNum + 'HM']);
+        printAt(contRow, contMap.wasteContainerNum.col, manifest['waste' + mLineNum + 'ContainerNum']);
+        printAt(contRow, contMap.wasteContainerType.col, manifest['waste' + mLineNum + 'ContainerType']);
+        printAt(contRow, contMap.wasteQty.col, manifest['waste' + mLineNum + 'Qty']);
+        printAt(contRow, contMap.wasteUom.col, manifest['waste' + mLineNum + 'Unit']);
         var cwCodes = parseWC((manifest['waste' + mLineNum + 'WasteCodes'] || '').trim());
         for (var cci = 0; cci < 6 && cci < cwCodes.length; cci++) {
           var cwRow = contRow + (cci >= 3 ? 1 : 0);
           var cwColOff = (cci % 3) * 5;
-          printAt(cwRow, M.waste1wc1.col + cwColOff, cwCodes[cci]);
+          printAt(cwRow, contMap.wasteWc1.col + cwColOff, cwCodes[cci]);
         }
       }
 
@@ -2496,20 +2506,20 @@ app.get('/api/print/direct/:id', function(req, res) {
         var cwErgNum = getErgNumber(cwRawDesc);
         var cwDesc = formatShipDesc(cwRawDesc);
         if (cwErgNum && cwDesc.indexOf('ERG') === -1) cwDesc += ', ERG # ' + cwErgNum;
-        var cwDescLines = wrapDesc(cwDesc, 45, 45);
+        var cwDescLines = wrapDesc(cwDesc, 40, 40);
         for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
-          placeAt(contRow + cdl, M.waste1desc.col, cwDescLines[cdl], pg);
+          placeAt(contRow + cdl, contMap.wasteDesc.col, cwDescLines[cdl], pg);
         }
-        placeAt(contRow, M.waste1hm.col, manifest['waste' + mLineNum + 'HM'], pg);
-        placeAt(contRow, M.waste1containerNum.col, manifest['waste' + mLineNum + 'ContainerNum'], pg);
-        placeAt(contRow, M.waste1container.col, manifest['waste' + mLineNum + 'ContainerType'], pg);
-        placeAt(contRow, M.waste1qty.col, manifest['waste' + mLineNum + 'Qty'], pg);
-        placeAt(contRow, M.waste1uom.col, manifest['waste' + mLineNum + 'Unit'], pg);
+        placeAt(contRow, contMap.wasteHm.col, manifest['waste' + mLineNum + 'HM'], pg);
+        placeAt(contRow, contMap.wasteContainerNum.col, manifest['waste' + mLineNum + 'ContainerNum'], pg);
+        placeAt(contRow, contMap.wasteContainerType.col, manifest['waste' + mLineNum + 'ContainerType'], pg);
+        placeAt(contRow, contMap.wasteQty.col, manifest['waste' + mLineNum + 'Qty'], pg);
+        placeAt(contRow, contMap.wasteUom.col, manifest['waste' + mLineNum + 'Unit'], pg);
         var cwCodes = parseWC((manifest['waste' + mLineNum + 'WasteCodes'] || '').trim());
         for (var cci = 0; cci < 6 && cci < cwCodes.length; cci++) {
           var cwRow2 = contRow + (cci >= 3 ? 1 : 0);
           var cwColOff = (cci % 3) * 5;
-          placeAt(cwRow2, M.waste1wc1.col + cwColOff, cwCodes[cci], pg);
+          placeAt(cwRow2, contMap.wasteWc1.col + cwColOff, cwCodes[cci], pg);
         }
       }
       // Box 14 - build from THIS page's waste lines only (not main page lines 1-4)

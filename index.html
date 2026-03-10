@@ -530,7 +530,7 @@
                             {CONTAINER_SIZES.map(function(sz) { return <option key={sz} value={sz}>{sz}</option>; })}
                           </select>
                         </td>
-                        <td><input value={line.qty} onChange={function(e){setWaste(i,'qty',e.target.value)}} /></td>
+                        <td><input value={line.qty} onChange={function(e){setWaste(i,'qty',e.target.value)}} style={{minWidth:70}} /></td>
                         <td>
                           <select value={line.unit} onChange={function(e){setWaste(i,'unit',e.target.value)}}>
                             <option value="">--</option>
@@ -845,7 +845,7 @@
                                       {CONTAINER_SIZES.map(function(sz){return <option key={sz} value={sz}>{sz}</option>})}
                                     </select>
                                   </td>
-                                  <td><input value={line.qty||''} onChange={function(e){setContWaste(ci,'qty',e.target.value)}} /></td>
+                                  <td><input value={line.qty||''} onChange={function(e){setContWaste(ci,'qty',e.target.value)}} style={{minWidth:70}} /></td>
                                   <td>
                                     <select value={line.unit||''} onChange={function(e){setContWaste(ci,'unit',e.target.value)}}>
                                       <option value="">--</option>
