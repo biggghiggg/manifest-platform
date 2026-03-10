@@ -1182,7 +1182,7 @@ var RAW_22A_MAP = {
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v73-2026-03-10';
+var BUILD_VERSION = 'v74-2026-03-10';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Debug endpoint - inspect manifest waste line data
@@ -2499,13 +2499,9 @@ app.get('/api/print/direct/:id', function(req, res) {
       placeAt(contMap.contTransporterEpaId.row, contMap.contTransporterEpaId.col, manifest.contTransporterEpaId || manifest.transporter1EpaId, pg);
       placeAt(contMap.contTransporter2Name.row, contMap.contTransporter2Name.col, manifest.contTransporter2Name, pg);
       placeAt(contMap.contTransporter2EpaId.row, contMap.contTransporter2EpaId.col, manifest.contTransporter2EpaId, pg);
-      // Debug: show what's happening on cont page
-      console.log('CONT PAGE ' + pg + ': linesOnThisPage=' + linesOnThisPage + ', manifestLineStart=' + manifestLineStart + ', CONT_WASTE_START_ROW=' + CONT_WASTE_START_ROW + ', wasteDesc.col=' + contMap.wasteDesc.col);
-      placeAt(10, 3, 'DEBUG: pg=' + pg + ' lines=' + linesOnThisPage + ' startLine=' + manifestLineStart + ' startRow=' + CONT_WASTE_START_ROW, pg);
       for (var cw = 0; cw < linesOnThisPage; cw++) {
         var mLineNum = manifestLineStart + cw;
         var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
-        console.log('  Waste line ' + mLineNum + ' at contRow=' + contRow + ', desc="' + (manifest['waste' + mLineNum + 'Description'] || '').substring(0, 30) + '"');
         var cwRawDesc = (manifest['waste' + mLineNum + 'Description'] || '').replace(/\s+/g, ' ').trim();
         var cwErgNum = getErgNumber(cwRawDesc);
         var cwDesc = formatShipDesc(cwRawDesc);
@@ -2612,7 +2608,6 @@ app.get('/api/print/direct/:id', function(req, res) {
   html += '<button class="print-btn" onclick="window.print()">Print Manifest</button>';
   html += '<button class="close-btn" onclick="window.close()">Close</button>';
   html += '<span style="margin-left:20px;font-size:12px;color:#666">Select your Epson LQ-590II in the print dialog. Set margins to None.</span>';
-  html += '<br><span style="font-size:11px;color:#999">DEBUG: colShift=' + colShift + ' rowShift=' + rowShift + ' customAlign=' + (customAlignment ? Object.keys(customAlignment).length + ' fields' : 'none') + ' colOffsetIn=' + colOffsetIn.toFixed(4) + ' rowOffsetIn=' + rowOffsetIn.toFixed(4) + '</span>';
   html += '</div>';
 
   // Group placements by page
