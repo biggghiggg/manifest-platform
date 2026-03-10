@@ -779,11 +779,11 @@
                         <div style={{display:'grid',gridTemplateColumns:'1fr 200px',gap:12}}>
                           <div className="form-group">
                             <label style={contLblStyle}>25. Transporter ___ Company Name</label>
-                            <input value={form.contTransporterName || form.transporter1Name || ''} onChange={function(e){set('contTransporterName',e.target.value)}} />
+                            <input value={form.contTransporterName || ''} onChange={function(e){set('contTransporterName',e.target.value)}} />
                           </div>
                           <div className="form-group">
                             <label style={contLblStyle}>US EPA ID Number</label>
-                            <input value={form.contTransporterEpaId || form.transporter1EpaId || ''} onChange={function(e){set('contTransporterEpaId',e.target.value)}} />
+                            <input value={form.contTransporterEpaId || ''} onChange={function(e){set('contTransporterEpaId',e.target.value)}} />
                           </div>
                         </div>
                       </div>
