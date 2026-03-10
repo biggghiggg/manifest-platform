@@ -1509,29 +1509,28 @@ app.post('/api/alignment22a/bake-defaults', function(req, res) {
 // Label positions for 6"x6" pre-printed Labelmaster/Landsberg label (part #1174351)
 // 72 cols at 12 CPI, 36 rows at 6 LPI
 var LABEL_MAP = {
-  dotShippingName1:  { row: 13, col: 3 },   // Fill area below "SHIPPING NAME" header
-  dotShippingName2:  { row: 14, col: 3 },
-  genPhone:          { row: 16, col: 42 },  // Right of "TELEPHONE"
-  genName:           { row: 17, col: 10 },  // Right of "NAME"
-  genAddress:        { row: 18, col: 14 },  // Right of "ADDRESS"
-  genCityStateZip:   { row: 19, col: 10 },  // Right of "CITY"
-  epaId:             { row: 22, col: 8 },   // Below "EPA ID#:"
-  epaWasteNum:       { row: 22, col: 35 },  // Below "E.P.A. WASTE#:"
-  stateWasteCode:    { row: 23, col: 55 },  // Below "STATE WASTE CODE:"
-  accumStartDate:    { row: 25, col: 20 },  // Right of "START DATE"
-  manifestTrackNo:   { row: 25, col: 48 },  // Right of "TRACKING NO."
-  contents1:         { row: 28, col: 3 },   // Below "COMPOSITION"
-  contents2:         { row: 29, col: 3 },
-  contents3:         { row: 30, col: 3 },
-  contents4:         { row: 31, col: 3 },
-  physStateSolid:    { row: 33, col: 8 },   // Under "SOLID"
-  physStateLiquid:   { row: 33, col: 16 },  // Under "LIQUID"
-  physStateGas:      { row: 33, col: 24 },  // Under "GAS"
-  hazPropFlammable:  { row: 32, col: 44 },  // Under "FLAMMABLE"
-  hazPropCorrosive:  { row: 33, col: 32 },  // Under "CORROSIVE"
-  hazPropReactivity: { row: 33, col: 44 },  // Under "REACTIVITY"
-  hazPropToxic:      { row: 32, col: 58 },  // Under "TOXIC"
-  hazPropOther:      { row: 33, col: 55 }   // Under "OTHER"
+  dotShippingName1:  { row: 14, col: 3 },   // Fill area below "SHIPPING NAME" header
+  dotShippingName2:  { row: 15, col: 3 },
+  genPhone:          { row: 18, col: 42 },  // Right of "TELEPHONE"
+  genName:           { row: 19, col: 10 },  // Right of "NAME"
+  genAddress:        { row: 20, col: 14 },  // Right of "ADDRESS"
+  genCityStateZip:   { row: 21, col: 10 },  // Right of "CITY"
+  epaId:             { row: 24, col: 8 },   // Below "EPA ID#:"
+  epaWasteNum:       { row: 24, col: 35 },  // Below "E.P.A. WASTE#:"
+  stateWasteCode:    { row: 25, col: 55 },  // Below "STATE WASTE CODE:"
+  accumStartDate:    { row: 27, col: 20 },  // Right of "START DATE"
+  manifestTrackNo:   { row: 27, col: 48 },  // Right of "TRACKING NO."
+  contentsUN:        { row: 29, col: 20 },  // Large UN/NA number centered in contents area
+  contents1:         { row: 30, col: 3 },   // Below "COMPOSITION"
+  contents2:         { row: 31, col: 3 },
+  physStateSolid:    { row: 32, col: 8 },   // Under "SOLID"
+  physStateLiquid:   { row: 32, col: 16 },  // Under "LIQUID"
+  physStateGas:      { row: 32, col: 24 },  // Under "GAS"
+  hazPropFlammable:  { row: 31, col: 44 },  // Under "FLAMMABLE"
+  hazPropCorrosive:  { row: 32, col: 32 },  // Under "CORROSIVE"
+  hazPropReactivity: { row: 32, col: 44 },  // Under "REACTIVITY"
+  hazPropToxic:      { row: 31, col: 58 },  // Under "TOXIC"
+  hazPropOther:      { row: 32, col: 55 }   // Under "OTHER"
 };
 
 // Label alignment system (same pattern as 22A)
@@ -1757,24 +1756,34 @@ app.get('/api/print/label/:id', function(req, res) {
   place('accumStartDate', label.accumStartDate);
   place('manifestTrackNo', label.manifestTrackNo);
 
-  // Contents (wrap to 4 lines at ~60 chars)
+  // Extract UN/NA number from DOT shipping name for large display in contents area
+  var unNumber = '';
+  var dotText = label.dotShippingName || '';
+  var unMatch = dotText.match(/\b(UN|NA)\s*(\d{4})\b/i);
+  if (unMatch) {
+    unNumber = unMatch[1].toUpperCase() + unMatch[2];
+  }
+  // Place large UN/NA number centered in contents area (rendered with larger font)
+  if (unNumber && M.contentsUN) {
+    placements.push({ row: M.contentsUN.row, col: M.contentsUN.col, text: unNumber, large: true });
+  }
+
+  // Contents (wrap to 2 lines at ~60 chars)
   var contents = (label.contents || '').trim();
   if (contents) {
     var cWords = contents.split(' ');
     var cLines = [''];
     var cLineNum = 0;
-    for (var ci = 0; ci < cWords.length && cLineNum < 4; ci++) {
+    for (var ci = 0; ci < cWords.length && cLineNum < 2; ci++) {
       if (cLines[cLineNum].length + cWords[ci].length + 1 > 60 && cLines[cLineNum].length > 0) {
         cLineNum++;
-        if (cLineNum >= 4) break;
+        if (cLineNum >= 2) break;
         cLines[cLineNum] = '';
       }
       cLines[cLineNum] += (cLines[cLineNum] ? ' ' : '') + cWords[ci];
     }
     if (cLines[0]) place('contents1', cLines[0]);
     if (cLines[1]) place('contents2', cLines[1]);
-    if (cLines[2]) place('contents3', cLines[2]);
-    if (cLines[3]) place('contents4', cLines[3]);
   }
 
   // Physical State checkboxes
@@ -1816,7 +1825,12 @@ app.get('/api/print/label/:id', function(req, res) {
     var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
     var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
     var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
+    if (p.large) {
+      // Large UN/NA number: ~0.5in tall, bold, centered in contents area
+      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:36pt;font-weight:bold;letter-spacing:2px;">' + safeText + '</span>';
+    } else {
+      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
+    }
   }
   html += '</div>';
   html += '</body></html>';
@@ -1890,24 +1904,33 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
     placeB('accumStartDate', label.accumStartDate);
     placeB('manifestTrackNo', label.manifestTrackNo);
 
-    // Contents
+    // Extract UN/NA number for large display
+    var bUnNumber = '';
+    var bDotText = label.dotShippingName || '';
+    var bUnMatch = bDotText.match(/\b(UN|NA)\s*(\d{4})\b/i);
+    if (bUnMatch) {
+      bUnNumber = bUnMatch[1].toUpperCase() + bUnMatch[2];
+    }
+    if (bUnNumber && M.contentsUN) {
+      placements.push({ row: M.contentsUN.row, col: M.contentsUN.col, text: bUnNumber, large: true });
+    }
+
+    // Contents (wrap to 2 lines)
     var contents = (label.contents || '').trim();
     if (contents) {
       var cWords = contents.split(' ');
       var cLines = [''];
       var cLineNum = 0;
-      for (var ci = 0; ci < cWords.length && cLineNum < 4; ci++) {
+      for (var ci = 0; ci < cWords.length && cLineNum < 2; ci++) {
         if (cLines[cLineNum].length + cWords[ci].length + 1 > 60 && cLines[cLineNum].length > 0) {
           cLineNum++;
-          if (cLineNum >= 4) break;
+          if (cLineNum >= 2) break;
           cLines[cLineNum] = '';
         }
         cLines[cLineNum] += (cLines[cLineNum] ? ' ' : '') + cWords[ci];
       }
       if (cLines[0]) placeB('contents1', cLines[0]);
       if (cLines[1]) placeB('contents2', cLines[1]);
-      if (cLines[2]) placeB('contents3', cLines[2]);
-      if (cLines[3]) placeB('contents4', cLines[3]);
     }
 
     if (label.physicalState === 'solid') placeB('physStateSolid', 'X');
@@ -1927,7 +1950,11 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
       var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
       var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
       var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
+      if (p.large) {
+        html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:36pt;font-weight:bold;letter-spacing:2px;">' + safeText + '</span>';
+      } else {
+        html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
+      }
     }
     html += '</div>';
   }
