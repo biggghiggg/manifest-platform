@@ -49,6 +49,8 @@ function saveData(data) {
 var data = loadData();
 // Ensure profiles array exists for older data files
 if (!data.profiles) { data.profiles = []; saveData(data); }
+// Ensure labels array exists for older data files
+if (!data.labels) { data.labels = []; saveData(data); }
 
 // Middleware
 app.use(express.json({ limit: '50mb' }));
@@ -1499,6 +1501,439 @@ app.post('/api/alignment22a/bake-defaults', function(req, res) {
   saveData(data);
   console.log('Alignment22a BAKED: savedDefaults22a now has ' + Object.keys(savedDefaults22a).length + ' fields');
   res.json({ ok: true, message: 'Current 22A settings saved as new defaults' });
+});
+
+// ==========================================
+// HAZARDOUS WASTE LABEL SYSTEM
+// ==========================================
+// Label positions for 6"x6" pre-printed Labelmaster/Landsberg label (part #1174351)
+// 72 cols at 12 CPI, 36 rows at 6 LPI
+var LABEL_MAP = {
+  dotShippingName1:  { row: 4,  col: 5 },
+  dotShippingName2:  { row: 5,  col: 5 },
+  genPhone:          { row: 7,  col: 40 },
+  genName:           { row: 8,  col: 5 },
+  genAddress:        { row: 9,  col: 5 },
+  genCityStateZip:   { row: 10, col: 5 },
+  epaId:             { row: 13, col: 12 },
+  epaWasteNum:       { row: 13, col: 40 },
+  stateWasteCode:    { row: 14, col: 18 },
+  accumStartDate:    { row: 16, col: 24 },
+  manifestTrackNo:   { row: 17, col: 24 },
+  contents1:         { row: 20, col: 5 },
+  contents2:         { row: 21, col: 5 },
+  contents3:         { row: 22, col: 5 },
+  contents4:         { row: 23, col: 5 },
+  physStateSolid:    { row: 26, col: 15 },
+  physStateLiquid:   { row: 26, col: 30 },
+  physStateGas:      { row: 26, col: 42 },
+  hazPropFlammable:  { row: 28, col: 18 },
+  hazPropCorrosive:  { row: 28, col: 34 },
+  hazPropReactivity: { row: 28, col: 50 },
+  hazPropToxic:      { row: 30, col: 18 },
+  hazPropOther:      { row: 30, col: 34 }
+};
+
+// Label alignment system (same pattern as 22A)
+var savedDefaultsLabel = data.savedDefaultsLabel || null;
+var customAlignmentLabel = data.customAlignmentLabel || null;
+var previousAlignmentLabel = data.previousAlignmentLabel || null;
+
+function getBaseLabelMap() {
+  return savedDefaultsLabel || LABEL_MAP;
+}
+
+function getActiveLabelMap() {
+  var base = getBaseLabelMap();
+  if (!customAlignmentLabel) return base;
+  var merged = {};
+  var keys = Object.keys(base);
+  for (var i = 0; i < keys.length; i++) {
+    if (customAlignmentLabel[keys[i]]) {
+      merged[keys[i]] = customAlignmentLabel[keys[i]];
+    } else {
+      merged[keys[i]] = base[keys[i]];
+    }
+  }
+  return merged;
+}
+
+// Label alignment endpoints
+app.get('/api/alignment-label', function(req, res) {
+  customAlignmentLabel = data.customAlignmentLabel || null;
+  previousAlignmentLabel = data.previousAlignmentLabel || null;
+  savedDefaultsLabel = data.savedDefaultsLabel || null;
+  res.json({
+    fields: getActiveLabelMap(),
+    map: getActiveLabelMap(),
+    defaults: getBaseLabelMap(),
+    hasPrevious: !!previousAlignmentLabel,
+    hasSavedDefaults: !!savedDefaultsLabel
+  });
+});
+
+app.put('/api/alignment-label', function(req, res) {
+  previousAlignmentLabel = customAlignmentLabel ? JSON.parse(JSON.stringify(customAlignmentLabel)) : null;
+  data.previousAlignmentLabel = previousAlignmentLabel;
+  customAlignmentLabel = req.body.fields || null;
+  data.customAlignmentLabel = customAlignmentLabel;
+  saveData(data);
+  res.json({ ok: true, fields: getActiveLabelMap() });
+});
+
+app.post('/api/alignment-label/reset', function(req, res) {
+  previousAlignmentLabel = customAlignmentLabel ? JSON.parse(JSON.stringify(customAlignmentLabel)) : null;
+  data.previousAlignmentLabel = previousAlignmentLabel;
+  customAlignmentLabel = null;
+  delete data.customAlignmentLabel;
+  saveData(data);
+  res.json({ ok: true, fields: getActiveLabelMap() });
+});
+
+app.post('/api/alignment-label/undo', function(req, res) {
+  if (!previousAlignmentLabel) return res.json({ ok: false, message: 'No previous settings' });
+  customAlignmentLabel = JSON.parse(JSON.stringify(previousAlignmentLabel));
+  data.customAlignmentLabel = customAlignmentLabel;
+  previousAlignmentLabel = null;
+  data.previousAlignmentLabel = null;
+  saveData(data);
+  res.json({ ok: true, fields: getActiveLabelMap(), map: getActiveLabelMap() });
+});
+
+app.post('/api/alignment-label/bake-defaults', function(req, res) {
+  var current = getActiveLabelMap();
+  savedDefaultsLabel = JSON.parse(JSON.stringify(current));
+  data.savedDefaultsLabel = savedDefaultsLabel;
+  previousAlignmentLabel = customAlignmentLabel ? JSON.parse(JSON.stringify(customAlignmentLabel)) : null;
+  data.previousAlignmentLabel = previousAlignmentLabel;
+  customAlignmentLabel = null;
+  delete data.customAlignmentLabel;
+  saveData(data);
+  res.json({ ok: true, message: 'Current label settings saved as new defaults' });
+});
+
+// Label CRUD endpoints
+app.get('/api/labels', function(req, res) {
+  res.json(data.labels || []);
+});
+
+app.post('/api/labels', function(req, res) {
+  var label = req.body;
+  label.id = Date.now().toString();
+  label.createdAt = new Date().toISOString();
+  if (!data.labels) data.labels = [];
+  data.labels.push(label);
+  saveData(data);
+  res.json(label);
+});
+
+app.put('/api/labels/:id', function(req, res) {
+  var idx = -1;
+  for (var i = 0; i < (data.labels || []).length; i++) {
+    if (data.labels[i].id === req.params.id) { idx = i; break; }
+  }
+  if (idx === -1) return res.status(404).json({ error: 'Label not found' });
+  data.labels[idx] = Object.assign(data.labels[idx], req.body);
+  saveData(data);
+  res.json(data.labels[idx]);
+});
+
+app.delete('/api/labels/:id', function(req, res) {
+  data.labels = (data.labels || []).filter(function(l) { return l.id !== req.params.id; });
+  saveData(data);
+  res.json({ ok: true });
+});
+
+// Generate labels from a manifest (one per waste line)
+app.post('/api/labels/from-manifest/:manifestId', function(req, res) {
+  var manifest = null;
+  for (var i = 0; i < data.manifests.length; i++) {
+    if (data.manifests[i].id === req.params.manifestId) { manifest = data.manifests[i]; break; }
+  }
+  if (!manifest) return res.status(404).json({ error: 'Manifest not found' });
+
+  var wasteLineCount = parseInt(manifest.wasteLineCount) || 4;
+  var labels = [];
+  for (var w = 1; w <= wasteLineCount; w++) {
+    var desc = manifest['waste' + w + 'Description'] || '';
+    if (!desc.trim()) continue;
+
+    // Build city/state/zip
+    var cityStateZip = '';
+    if (manifest.generatorMailCity) cityStateZip += manifest.generatorMailCity;
+    if (manifest.generatorMailState) cityStateZip += (cityStateZip ? ', ' : '') + manifest.generatorMailState;
+    if (manifest.generatorMailZip) cityStateZip += ' ' + manifest.generatorMailZip;
+
+    // Parse waste codes
+    var wasteCodes = (manifest['waste' + w + 'WasteCodes'] || '').trim();
+
+    var label = {
+      id: Date.now().toString() + '-' + w,
+      createdAt: new Date().toISOString(),
+      manifestId: manifest.id,
+      wasteLineNum: w,
+      dotShippingName: desc,
+      genName: manifest.generatorName || '',
+      genAddress: manifest.generatorMailAddr || '',
+      genCityStateZip: cityStateZip,
+      genPhone: manifest.generatorPhone || '',
+      epaId: manifest.generatorEpaId || '',
+      epaWasteNum: wasteCodes,
+      stateWasteCode: '',
+      accumStartDate: '',
+      manifestTrackNo: manifest.manifestTrackingNumber || '',
+      contents: desc,
+      physicalState: '',
+      hazProps: { flammable: false, corrosive: false, reactivity: false, toxic: false, other: false }
+    };
+    labels.push(label);
+    if (!data.labels) data.labels = [];
+    data.labels.push(label);
+  }
+  saveData(data);
+  res.json(labels);
+});
+
+// Print a single label (HTML positioned output for dot matrix)
+app.get('/api/print/label/:id', function(req, res) {
+  var label = null;
+  for (var i = 0; i < (data.labels || []).length; i++) {
+    if (data.labels[i].id === req.params.id) { label = data.labels[i]; break; }
+  }
+  if (!label) return res.status(404).send('Label not found');
+
+  // Re-sync alignment
+  customAlignmentLabel = data.customAlignmentLabel || null;
+  var M = getActiveLabelMap();
+
+  var CPI = 12;
+  var LPI = 6;
+  var BASE_LEFT_OFFSET = 0;
+  var BASE_TOP_OFFSET = 0;
+  var colOffsetIn = BASE_LEFT_OFFSET + (parseFloat(req.query.colOffset) || 0);
+  var rowOffsetIn = BASE_TOP_OFFSET + (parseFloat(req.query.rowOffset) || 0);
+
+  var placements = [];
+
+  function place(fieldKey, text) {
+    if (!text || !M[fieldKey]) return;
+    placements.push({ row: M[fieldKey].row, col: M[fieldKey].col, text: String(text) });
+  }
+
+  // DOT Shipping Name (wrap to 2 lines at ~60 chars)
+  var dotName = (label.dotShippingName || '').trim();
+  if (dotName.length > 60) {
+    // Word wrap
+    var words = dotName.split(' ');
+    var line1 = '';
+    var lineIdx = 0;
+    for (var wi = 0; wi < words.length; wi++) {
+      if (line1.length + words[wi].length + 1 > 60 && line1.length > 0) {
+        lineIdx = wi;
+        break;
+      }
+      line1 += (line1 ? ' ' : '') + words[wi];
+      lineIdx = wi + 1;
+    }
+    var line2 = words.slice(lineIdx).join(' ');
+    place('dotShippingName1', line1);
+    place('dotShippingName2', line2);
+  } else {
+    place('dotShippingName1', dotName);
+  }
+
+  // Generator info
+  place('genName', label.genName);
+  place('genAddress', label.genAddress);
+  place('genCityStateZip', label.genCityStateZip);
+  place('genPhone', label.genPhone);
+
+  // EPA / Waste
+  place('epaId', label.epaId);
+  place('epaWasteNum', label.epaWasteNum);
+  place('stateWasteCode', label.stateWasteCode);
+
+  // Dates / Manifest
+  place('accumStartDate', label.accumStartDate);
+  place('manifestTrackNo', label.manifestTrackNo);
+
+  // Contents (wrap to 4 lines at ~60 chars)
+  var contents = (label.contents || '').trim();
+  if (contents) {
+    var cWords = contents.split(' ');
+    var cLines = [''];
+    var cLineNum = 0;
+    for (var ci = 0; ci < cWords.length && cLineNum < 4; ci++) {
+      if (cLines[cLineNum].length + cWords[ci].length + 1 > 60 && cLines[cLineNum].length > 0) {
+        cLineNum++;
+        if (cLineNum >= 4) break;
+        cLines[cLineNum] = '';
+      }
+      cLines[cLineNum] += (cLines[cLineNum] ? ' ' : '') + cWords[ci];
+    }
+    if (cLines[0]) place('contents1', cLines[0]);
+    if (cLines[1]) place('contents2', cLines[1]);
+    if (cLines[2]) place('contents3', cLines[2]);
+    if (cLines[3]) place('contents4', cLines[3]);
+  }
+
+  // Physical State checkboxes
+  if (label.physicalState === 'solid') place('physStateSolid', 'X');
+  if (label.physicalState === 'liquid') place('physStateLiquid', 'X');
+  if (label.physicalState === 'gas') place('physStateGas', 'X');
+
+  // Hazardous Properties checkboxes
+  var hp = label.hazProps || {};
+  if (hp.flammable) place('hazPropFlammable', 'X');
+  if (hp.corrosive) place('hazPropCorrosive', 'X');
+  if (hp.reactivity) place('hazPropReactivity', 'X');
+  if (hp.toxic) place('hazPropToxic', 'X');
+  if (hp.other) place('hazPropOther', 'X');
+
+  // Build HTML output
+  var html = '<!DOCTYPE html><html><head><title>Print Label</title><style>';
+  html += '@page { margin: 0; size: 6in 6in; }';
+  html += '@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } }';
+  html += 'body { margin: 0; padding: 0; }';
+  html += '.page { position: relative; width: 6in; height: 6in; overflow: hidden; page-break-after: always; }';
+  html += '.page:last-child { page-break-after: auto; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 9pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
+  html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
+  html += '.toolbar .print-btn { background: #f59e0b; color: white; border: none; border-radius: 4px; }';
+  html += '.toolbar .close-btn { background: #6b7280; color: white; border: none; border-radius: 4px; }';
+  html += '</style></head><body>';
+
+  html += '<div class="no-print toolbar">';
+  html += '<button class="print-btn" onclick="window.print()">Print Label</button>';
+  html += '<button class="close-btn" onclick="window.close()">Close</button>';
+  html += '<span style="margin-left:20px;font-size:12px;color:#666">6x6 Hazardous Waste Label - Epson LQ-590II. Set paper size to 6x6 and margins to None.</span>';
+  html += '</div>';
+
+  html += '<div class="page">';
+  for (var pi = 0; pi < placements.length; pi++) {
+    var p = placements[pi];
+    var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
+    var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
+    var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
+  }
+  html += '</div>';
+  html += '</body></html>';
+  res.type('html').send(html);
+});
+
+// Batch print all labels for a manifest
+app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
+  var manifestLabels = (data.labels || []).filter(function(l) { return l.manifestId === req.params.manifestId; });
+  if (manifestLabels.length === 0) return res.status(404).send('No labels found for this manifest');
+
+  customAlignmentLabel = data.customAlignmentLabel || null;
+  var M = getActiveLabelMap();
+
+  var CPI = 12;
+  var LPI = 6;
+  var colOffsetIn = parseFloat(req.query.colOffset) || 0;
+  var rowOffsetIn = parseFloat(req.query.rowOffset) || 0;
+
+  var html = '<!DOCTYPE html><html><head><title>Print Labels</title><style>';
+  html += '@page { margin: 0; size: 6in 6in; }';
+  html += '@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } }';
+  html += 'body { margin: 0; padding: 0; }';
+  html += '.page { position: relative; width: 6in; height: 6in; overflow: hidden; page-break-after: always; }';
+  html += '.page:last-child { page-break-after: auto; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 9pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
+  html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
+  html += '.toolbar .print-btn { background: #f59e0b; color: white; border: none; border-radius: 4px; }';
+  html += '.toolbar .close-btn { background: #6b7280; color: white; border: none; border-radius: 4px; }';
+  html += '</style></head><body>';
+
+  html += '<div class="no-print toolbar">';
+  html += '<button class="print-btn" onclick="window.print()">Print All Labels (' + manifestLabels.length + ')</button>';
+  html += '<button class="close-btn" onclick="window.close()">Close</button>';
+  html += '</div>';
+
+  for (var li = 0; li < manifestLabels.length; li++) {
+    var label = manifestLabels[li];
+    var placements = [];
+
+    function placeB(fieldKey, text) {
+      if (!text || !M[fieldKey]) return;
+      placements.push({ row: M[fieldKey].row, col: M[fieldKey].col, text: String(text) });
+    }
+
+    // DOT Shipping Name
+    var dotName = (label.dotShippingName || '').trim();
+    if (dotName.length > 60) {
+      var words = dotName.split(' ');
+      var line1 = '';
+      var lineIdx = 0;
+      for (var wi = 0; wi < words.length; wi++) {
+        if (line1.length + words[wi].length + 1 > 60 && line1.length > 0) { lineIdx = wi; break; }
+        line1 += (line1 ? ' ' : '') + words[wi];
+        lineIdx = wi + 1;
+      }
+      placeB('dotShippingName1', line1);
+      placeB('dotShippingName2', words.slice(lineIdx).join(' '));
+    } else {
+      placeB('dotShippingName1', dotName);
+    }
+
+    placeB('genName', label.genName);
+    placeB('genAddress', label.genAddress);
+    placeB('genCityStateZip', label.genCityStateZip);
+    placeB('genPhone', label.genPhone);
+    placeB('epaId', label.epaId);
+    placeB('epaWasteNum', label.epaWasteNum);
+    placeB('stateWasteCode', label.stateWasteCode);
+    placeB('accumStartDate', label.accumStartDate);
+    placeB('manifestTrackNo', label.manifestTrackNo);
+
+    // Contents
+    var contents = (label.contents || '').trim();
+    if (contents) {
+      var cWords = contents.split(' ');
+      var cLines = [''];
+      var cLineNum = 0;
+      for (var ci = 0; ci < cWords.length && cLineNum < 4; ci++) {
+        if (cLines[cLineNum].length + cWords[ci].length + 1 > 60 && cLines[cLineNum].length > 0) {
+          cLineNum++;
+          if (cLineNum >= 4) break;
+          cLines[cLineNum] = '';
+        }
+        cLines[cLineNum] += (cLines[cLineNum] ? ' ' : '') + cWords[ci];
+      }
+      if (cLines[0]) placeB('contents1', cLines[0]);
+      if (cLines[1]) placeB('contents2', cLines[1]);
+      if (cLines[2]) placeB('contents3', cLines[2]);
+      if (cLines[3]) placeB('contents4', cLines[3]);
+    }
+
+    if (label.physicalState === 'solid') placeB('physStateSolid', 'X');
+    if (label.physicalState === 'liquid') placeB('physStateLiquid', 'X');
+    if (label.physicalState === 'gas') placeB('physStateGas', 'X');
+
+    var hp = label.hazProps || {};
+    if (hp.flammable) placeB('hazPropFlammable', 'X');
+    if (hp.corrosive) placeB('hazPropCorrosive', 'X');
+    if (hp.reactivity) placeB('hazPropReactivity', 'X');
+    if (hp.toxic) placeB('hazPropToxic', 'X');
+    if (hp.other) placeB('hazPropOther', 'X');
+
+    html += '<div class="page">';
+    for (var pi = 0; pi < placements.length; pi++) {
+      var p = placements[pi];
+      var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
+      var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
+      var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
+    }
+    html += '</div>';
+  }
+
+  html += '</body></html>';
+  res.type('html').send(html);
 });
 
 // Alignment test print - prints a grid pattern to calibrate field positions
