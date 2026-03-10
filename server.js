@@ -1121,13 +1121,13 @@ var FORM_8700_22A_MAP = {
   // Box 27-31 - Waste line columns (same col positions as RAW_22A_MAP for consistency)
   wasteHm:                  { col: 3, rowOffset: 0 },
   wasteDesc:                { col: 7, rowOffset: 0 },
-  wasteContainerNum:        { col: 50, rowOffset: 0 },
-  wasteContainerType:       { col: 55, rowOffset: 0 },
-  wasteQty:                 { col: 60, rowOffset: 0 },
-  wasteUom:                 { col: 67, rowOffset: 0 },
-  wasteWc1:                 { col: 73, rowOffset: 0 },
-  wasteWc2:                 { col: 78, rowOffset: 0 },
-  wasteWc3:                 { col: 83, rowOffset: 0 },
+  wasteContainerNum:        { col: 54, rowOffset: 0 },
+  wasteContainerType:       { col: 59, rowOffset: 0 },
+  wasteQty:                 { col: 64, rowOffset: 0 },
+  wasteUom:                 { col: 70, rowOffset: 0 },
+  wasteWc1:                 { col: 76, rowOffset: 0 },
+  wasteWc2:                 { col: 81, rowOffset: 0 },
+  wasteWc3:                 { col: 86, rowOffset: 0 },
   // Box 32 - Special Handling Instructions
   specialHandling:          { row: 50, col: 8 },
   specialHandling2:         { row: 51, col: 8 },
@@ -1149,43 +1149,43 @@ var CONT_MAX_WASTE_LINES = 8;
 // RAW 22A MAP for Epson direct print (calibrated separately from browser print)
 var RAW_22A_MAP = {
   // Box 21 - Generator's US EPA ID Number
-  generatorEpaId:           { row: 4, col: 22 },
+  generatorEpaId:           { row: 6, col: 26 },
   // Box 22 - Page __ of __
-  page:                     { row: 4, col: 43 },
-  totalPages:               { row: 4, col: 46 },
+  page:                     { row: 6, col: 47 },
+  totalPages:               { row: 6, col: 50 },
   // Box 23 - Manifest Tracking Number
-  manifestTrackingNum:      { row: 4, col: 58 },
+  manifestTrackingNum:      { row: 6, col: 62 },
   // Box 24 - Generator's Name & EPA ID
-  generatorName:            { row: 7, col: 8 },
-  generatorEpaId2:          { row: 7, col: 62 },
+  generatorName:            { row: 9, col: 8 },
+  generatorEpaId2:          { row: 9, col: 62 },
   // Box 25 - Transporter Company Name & EPA ID
-  contTransporterName:      { row: 9, col: 8 },
-  contTransporterEpaId:     { row: 9, col: 62 },
+  contTransporterName:      { row: 11, col: 8 },
+  contTransporterEpaId:     { row: 11, col: 62 },
   // Box 26 - Transporter 2 Company Name & EPA ID
-  contTransporter2Name:     { row: 11, col: 8 },
-  contTransporter2EpaId:    { row: 11, col: 62 },
+  contTransporter2Name:     { row: 13, col: 8 },
+  contTransporter2EpaId:    { row: 13, col: 62 },
   // Box 27 - Waste line columns (8700-22A layout - each field positioned independently)
   wasteHm:                  { col: 3, rowOffset: 0 },
   wasteDesc:                { col: 7, rowOffset: 0 },
-  wasteContainerNum:        { col: 50, rowOffset: 0 },
-  wasteContainerType:       { col: 55, rowOffset: 0 },
-  wasteQty:                 { col: 60, rowOffset: 0 },
-  wasteUom:                 { col: 67, rowOffset: 0 },
-  wasteWc1:                 { col: 73, rowOffset: 0 },
-  wasteWc2:                 { col: 78, rowOffset: 0 },
-  wasteWc3:                 { col: 83, rowOffset: 0 },
+  wasteContainerNum:        { col: 54, rowOffset: 0 },
+  wasteContainerType:       { col: 59, rowOffset: 0 },
+  wasteQty:                 { col: 64, rowOffset: 0 },
+  wasteUom:                 { col: 70, rowOffset: 0 },
+  wasteWc1:                 { col: 76, rowOffset: 0 },
+  wasteWc2:                 { col: 81, rowOffset: 0 },
+  wasteWc3:                 { col: 86, rowOffset: 0 },
   // Box 32 - Special Handling Instructions
-  specialHandling:          { row: 46, col: 8 },
-  specialHandling2:         { row: 47, col: 8 },
-  specialHandling3:         { row: 48, col: 8 },
+  specialHandling:          { row: 47, col: 8 },
+  specialHandling2:         { row: 48, col: 8 },
+  specialHandling3:         { row: 49, col: 8 },
   // Box 33 - Transporter Acknowledgment of Receipt
-  contTransporterPrintName: { row: 50, col: 8 },
-  contTransporterDate:      { row: 50, col: 62 },
+  contTransporterPrintName: { row: 51, col: 8 },
+  contTransporterDate:      { row: 51, col: 62 },
   // Box 34 - Transporter 2 Acknowledgment
-  contTransporter2PrintName:{ row: 52, col: 8 },
-  contTransporter2Date:     { row: 52, col: 62 },
+  contTransporter2PrintName:{ row: 53, col: 8 },
+  contTransporter2Date:     { row: 53, col: 62 },
   // Box 35 - Discrepancy
-  contDiscrepancyInfo:      { row: 54, col: 8 }
+  contDiscrepancyInfo:      { row: 55, col: 8 }
 };
 
 // Print manifest - plain text for dot matrix
@@ -1804,8 +1804,8 @@ app.get('/api/print/manifest/:id', function(req, res) {
       // Box 24 - Generator Name
       placeText(contPage, contMap.generatorName.row, contMap.generatorName.col, manifest.generatorName);
       // Box 25 - Transporter
-      placeText(contPage, contMap.contTransporterName.row, contMap.contTransporterName.col, manifest.contTransporterName || manifest.transporter1Name);
-      placeText(contPage, contMap.contTransporterEpaId.row, contMap.contTransporterEpaId.col, manifest.contTransporterEpaId || manifest.transporter1EpaId);
+      placeText(contPage, contMap.contTransporterName.row, contMap.contTransporterName.col, manifest.contTransporterName);
+      placeText(contPage, contMap.contTransporterEpaId.row, contMap.contTransporterEpaId.col, manifest.contTransporterEpaId);
       // Box 26 - Transporter 2
       placeText(contPage, contMap.contTransporter2Name.row, contMap.contTransporter2Name.col, manifest.contTransporter2Name);
       placeText(contPage, contMap.contTransporter2EpaId.row, contMap.contTransporter2EpaId.col, manifest.contTransporter2EpaId);
@@ -2243,8 +2243,8 @@ app.get('/api/print/escp2/:id', function(req, res) {
       printAt(contMap.totalPages.row, contMap.totalPages.col, String(totalPages));
       printAt(contMap.manifestTrackingNum.row, contMap.manifestTrackingNum.col, manifest.manifestTrackingNum);
       printAt(contMap.generatorName.row, contMap.generatorName.col, manifest.generatorName);
-      printAt(contMap.contTransporterName.row, contMap.contTransporterName.col, manifest.contTransporterName || manifest.transporter1Name);
-      printAt(contMap.contTransporterEpaId.row, contMap.contTransporterEpaId.col, manifest.contTransporterEpaId || manifest.transporter1EpaId);
+      printAt(contMap.contTransporterName.row, contMap.contTransporterName.col, manifest.contTransporterName);
+      printAt(contMap.contTransporterEpaId.row, contMap.contTransporterEpaId.col, manifest.contTransporterEpaId);
       printAt(contMap.contTransporter2Name.row, contMap.contTransporter2Name.col, manifest.contTransporter2Name);
       printAt(contMap.contTransporter2EpaId.row, contMap.contTransporter2EpaId.col, manifest.contTransporter2EpaId);
 
@@ -2602,8 +2602,8 @@ app.get('/api/print/direct/:id', function(req, res) {
       placeAt(contMap.totalPages.row, contMap.totalPages.col, String(totalPages), pg);
       placeAt(contMap.manifestTrackingNum.row, contMap.manifestTrackingNum.col, manifest.manifestTrackingNum, pg);
       placeAt(contMap.generatorName.row, contMap.generatorName.col, manifest.generatorName, pg);
-      placeAt(contMap.contTransporterName.row, contMap.contTransporterName.col, manifest.contTransporterName || manifest.transporter1Name, pg);
-      placeAt(contMap.contTransporterEpaId.row, contMap.contTransporterEpaId.col, manifest.contTransporterEpaId || manifest.transporter1EpaId, pg);
+      placeAt(contMap.contTransporterName.row, contMap.contTransporterName.col, manifest.contTransporterName, pg);
+      placeAt(contMap.contTransporterEpaId.row, contMap.contTransporterEpaId.col, manifest.contTransporterEpaId, pg);
       placeAt(contMap.contTransporter2Name.row, contMap.contTransporter2Name.col, manifest.contTransporter2Name, pg);
       placeAt(contMap.contTransporter2EpaId.row, contMap.contTransporter2EpaId.col, manifest.contTransporter2EpaId, pg);
       for (var cw = 0; cw < linesOnThisPage; cw++) {
