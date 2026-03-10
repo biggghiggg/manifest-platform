@@ -415,12 +415,8 @@
                 <input value={form.manifestTrackingNum || ''} onChange={function(e){set('manifestTrackingNum',e.target.value)}} placeholder="e.g. 028534496 JJK" />
               </div>
               <div className="form-group">
-                <label>Page ___ of ___</label>
-                <div style={{display:'flex',gap:8}}>
-                  <input value={form.pageNum || ''} onChange={function(e){set('pageNum',e.target.value)}} style={{width:50}} placeholder="#" />
-                  <span style={{alignSelf:'center'}}>of</span>
-                  <input value={form.pageTotal || ''} onChange={function(e){set('pageTotal',e.target.value)}} style={{width:50}} placeholder="#" />
-                </div>
+                <label>Total Manifest Pages (Box 2 "of ___")</label>
+                <input value={form.pageTotal || ''} onChange={function(e){set('pageTotal',e.target.value)}} style={{width:50}} placeholder="#" />
               </div>
               <div className="form-group">
                 <label>Emergency Response Phone (Box 3)</label>
@@ -997,7 +993,7 @@
                 </div>
                 <div style={bx}>
                   <div style={lbl}>{Box('2','Page 1 of')}</div>
-                  <div style={{fontSize:13}}>{(d.pageNum||'') + (d.pageTotal ? ' of ' + d.pageTotal : '')}</div>
+                  <div style={{fontSize:13}}>{d.pageTotal || ''}</div>
                 </div>
                 <div style={bx}>
                   <div style={lbl}>{Box('4','Manifest Tracking Number')}</div>
