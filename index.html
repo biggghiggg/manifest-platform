@@ -2536,7 +2536,12 @@
             ),
             React.createElement('div',{className:'form-group'},
               React.createElement('label',null,'ACCUMULATION START DATE'),
-              React.createElement('input',{value:form.accumStartDate,onChange:function(e){updateField('accumStartDate',e.target.value)}})
+              React.createElement('input',{type:'date',value:form.accumStartDateISO||'',onChange:function(e){
+                var v=e.target.value;
+                if(v){var parts=v.split('-');updateField('accumStartDate',parts[1]+'/'+parts[2]+'/'+parts[0]);updateField('accumStartDateISO',v)}
+                else{updateField('accumStartDate','');updateField('accumStartDateISO','')}
+              },style:{padding:'8px 12px',border:'1px solid #ddd',borderRadius:6,fontSize:14}}),
+              React.createElement('input',{value:form.accumStartDate,onChange:function(e){updateField('accumStartDate',e.target.value)},placeholder:'MM/DD/YYYY',style:{marginTop:2}})
             ),
             React.createElement('div',{className:'form-group'},
               React.createElement('label',null,'MANIFEST TRACKING NO.'),
