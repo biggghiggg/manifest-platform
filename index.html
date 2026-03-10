@@ -144,7 +144,7 @@
           tab==='waste'?React.createElement(WasteStreamsTab,{data:data,reload:loadAllData}):null,
           tab==='profiles'?React.createElement(ProfilesTab,{data:data,reload:loadAllData}):null,
           tab==='import'?React.createElement(ImportTab,{reload:loadAllData}):null,
-          tab==='alignment'?React.createElement(AlignmentEditor,null):null
+          tab==='alignment'?React.createElement(AlignmentTabs,null):null
         )
       );
     }
@@ -2035,6 +2035,130 @@
             )
           );
         })
+      );
+    }
+
+    function Alignment22AEditor(){
+      var s1=useState({});var alignData=s1[0];var setAlignData=s1[1];
+      var s2=useState(null);var selected=s2[0];var setSelected=s2[1];
+      var s3=useState('');var status=s3[0];var setStatus=s3[1];
+      var s4=useState(false);var hasPrevious=s4[0];var setHasPrevious=s4[1];
+
+      var FIELD_LABELS={
+        generatorEpaId:'Box 21 - EPA ID',page:'Box 22 - Page',totalPages:'Box 22 - Total Pages',
+        manifestTrackingNum:'Box 23 - Manifest Tracking',
+        generatorName:'Box 24 - Generator Name',generatorEpaId2:'Box 24 - EPA ID',
+        contTransporterName:'Box 25 - Transporter Name',contTransporterEpaId:'Box 25 - EPA ID',
+        contTransporter2Name:'Box 26 - Transporter 2 Name',contTransporter2EpaId:'Box 26 - EPA ID',
+        wasteDesc:'Box 27b - Description',wasteHm:'Box 27b - HM',
+        wasteContainerNum:'Box 28 - Container #',
+        wasteContainerType:'Box 29 - Type',
+        wasteQty:'Box 30 - Qty',wasteUom:'Box 31 - UOM',
+        wasteWc1:'Box 31 - Code 1',wasteWc2:'Box 31 - Code 2',wasteWc3:'Box 31 - Code 3',
+        specialHandling:'Box 32 - Special Handling 1',specialHandling2:'Box 32 - Special Handling 2',specialHandling3:'Box 32 - Special Handling 3',
+        contTransporterPrintName:'Box 33 - Transporter Name',contTransporterDate:'Box 33 - Date',
+        contTransporter2PrintName:'Box 34 - Transporter 2 Name',contTransporter2Date:'Box 34 - Date',
+        contDiscrepancyInfo:'Box 35 - Discrepancy'
+      };
+
+      useEffect(function(){api.get('/api/alignment22a').then(function(d){if(d.fields)setAlignData(d.fields);if(d.hasPrevious)setHasPrevious(true)})},[]);
+      function handleSave(){api.put('/api/alignment22a',{fields:alignData}).then(function(r){if(r&&r.ok){setHasPrevious(true);setStatus('Saved!');setTimeout(function(){setStatus('')},3000)}else{setStatus('ERROR: Save failed!')}})}
+      function handleUndo(){api.post('/api/alignment22a/undo').then(function(d){if(d.fields)setAlignData(d.fields);setStatus('Restored previous settings');setTimeout(function(){setStatus('')},2000)})}
+      function handleReset(){api.post('/api/alignment22a/reset').then(function(){setAlignData({});setStatus('Reset to defaults');setTimeout(function(){setStatus('')},2000)})}
+      function updateField(fk,dim,val){var v=parseInt(val);if(isNaN(v))return;if(dim==='rowOffset'){if(v>=-20&&v<=20){var newData=Object.assign({},alignData);newData[fk]=Object.assign({},alignData[fk]||{row:1,col:1,rowOffset:0});newData[fk][dim]=v;setAlignData(newData)}}else{if(v>=1&&v<=100){var newData2=Object.assign({},alignData);newData2[fk]=Object.assign({},alignData[fk]||{row:1,col:1,rowOffset:0});newData2[fk][dim]=v;setAlignData(newData2)}}}
+      function nudge(fk,dim,amt){var current=alignData[fk]||{row:1,col:1,rowOffset:0};var nv=(current[dim]||0)+amt;if(dim==='rowOffset'){if(nv>=-20&&nv<=20)updateField(fk,dim,nv)}else{if(nv>=1&&nv<=100)updateField(fk,dim,nv)}}
+
+      var groups=[
+        {title:'Box 21-23 (Header)',fields:['generatorEpaId','page','totalPages','manifestTrackingNum']},
+        {title:'Box 24 (Generator)',fields:['generatorName','generatorEpaId2']},
+        {title:'Box 25-26 (Transporters)',fields:['contTransporterName','contTransporterEpaId','contTransporter2Name','contTransporter2EpaId']},
+        {title:'Box 27b (Waste Description)',fields:['wasteDesc','wasteHm']},
+        {title:'Box 28 (Container #)',fields:['wasteContainerNum']},
+        {title:'Box 29 (Container Type)',fields:['wasteContainerType']},
+        {title:'Box 30 (Quantity)',fields:['wasteQty']},
+        {title:'Box 31 (UOM & Waste Codes)',fields:['wasteUom','wasteWc1','wasteWc2','wasteWc3']},
+        {title:'Box 32 (Special Handling)',fields:['specialHandling','specialHandling2','specialHandling3']},
+        {title:'Box 33-34 (Transporters)',fields:['contTransporterPrintName','contTransporterDate','contTransporter2PrintName','contTransporter2Date']},
+        {title:'Box 35 (Discrepancy)',fields:['contDiscrepancyInfo']}
+      ];
+
+      return React.createElement('div',null,
+        React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:8}},'Continuation Page (8700-22A) Alignment'),
+        React.createElement('p',{style:{color:'#666',marginBottom:16}},'Fine-tune field positions on the 8700-22A continuation page. Most fields can be shifted up/down independently using rowOffset.'),
+        React.createElement('div',{style:{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap'}},
+          React.createElement('button',{className:'btn btn-primary',onClick:handleSave,style:{padding:'10px 24px',fontSize:16}},'Save Alignment'),
+          React.createElement('button',{className:'btn',onClick:handleUndo,style:{padding:'10px 24px',background:hasPrevious?'#f59e0b':'#999',cursor:hasPrevious?'pointer':'not-allowed',color:'#fff'},disabled:!hasPrevious},'Undo'),
+          React.createElement('button',{className:'btn',onClick:handleReset,style:{padding:'10px 24px',background:'#666'}},'Reset to Defaults'),
+          status?React.createElement('span',{style:{color:'#4ade80',fontWeight:600,alignSelf:'center'}},status):null
+        ),
+        groups.map(function(group){
+          return React.createElement('div',{key:group.title,className:'card',style:{marginBottom:12,padding:16}},
+            React.createElement('h4',{style:{marginBottom:12,borderBottom:'1px solid #eee',paddingBottom:8}},group.title),
+            React.createElement('table',{style:{width:'100%',borderCollapse:'collapse'}},
+              React.createElement('thead',null,
+                React.createElement('tr',null,
+                  React.createElement('th',{style:{textAlign:'left',padding:'4px 8px',width:'40%'}},'Field'),
+                  React.createElement('th',{style:{textAlign:'center',padding:'4px 8px',width:'20%'}},'Row'),
+                  React.createElement('th',{style:{textAlign:'center',padding:'4px 8px',width:'20%'}},'Column'),
+                  React.createElement('th',{style:{textAlign:'center',padding:'4px 8px',width:'20%'}},'Row Offset')
+                )
+              ),
+              React.createElement('tbody',null,
+                (function(){
+                  var rows=[];
+                  for(var fi=0;fi<group.fields.length;fi++){
+                    (function(fk){
+                      var pos=alignData[fk]||{row:1,col:1,rowOffset:0};
+                      var isSelected=selected===fk;
+                      var btnSt={width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'};
+                      rows.push(React.createElement('tr',{key:fk,onClick:function(){setSelected(fk)},style:{background:isSelected?'rgba(233,69,96,0.1)':'transparent',cursor:'pointer',borderBottom:'1px solid #f0f0f0'}},
+                        React.createElement('td',{style:{padding:'6px 8px',fontSize:13,fontWeight:isSelected?700:400}},FIELD_LABELS[fk]||fk),
+                        React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
+                          React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',-1)},style:btnSt},String.fromCharCode(9650)),
+                            React.createElement('input',{type:'number',value:pos.row||'',onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'row',e.target.value)},style:{width:45,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',1)},style:btnSt},String.fromCharCode(9660))
+                          )
+                        ),
+                        React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
+                          React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',-1)},style:btnSt},String.fromCharCode(9664)),
+                            React.createElement('input',{type:'number',value:pos.col||'',onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'col',e.target.value)},style:{width:45,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',1)},style:btnSt},String.fromCharCode(9654))
+                          )
+                        ),
+                        React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
+                          React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'rowOffset',-1)},style:btnSt},String.fromCharCode(9650)),
+                            React.createElement('input',{type:'number',value:pos.rowOffset||0,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'rowOffset',e.target.value)},style:{width:45,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'rowOffset',1)},style:btnSt},String.fromCharCode(9660))
+                          )
+                        )
+                      ));
+                    })(group.fields[fi]);
+                  }
+                  return rows;
+                })()
+              )
+            )
+          );
+        })
+      );
+    }
+
+    function AlignmentTabs(){
+      var s1=useState('main');var tab=s1[0];var setTab=s1[1];
+      return React.createElement('div',null,
+        React.createElement('div',{style:{display:'flex',gap:0,marginBottom:20,borderBottom:'2px solid #eee'}},
+          React.createElement('button',{onClick:function(){setTab('main')},style:{padding:'12px 20px',border:'none',background:'transparent',cursor:'pointer',fontSize:15,fontWeight:tab==='main'?700:400,color:tab==='main'?'#e94560':'#999',borderBottom:tab==='main'?'3px solid #e94560':'none',marginBottom:-2}},
+            'Main Form (8700-22)'
+          ),
+          React.createElement('button',{onClick:function(){setTab('22a')},style:{padding:'12px 20px',border:'none',background:'transparent',cursor:'pointer',fontSize:15,fontWeight:tab==='22a'?700:400,color:tab==='22a'?'#e94560':'#999',borderBottom:tab==='22a'?'3px solid #e94560':'none',marginBottom:-2}},
+            'Continuation (8700-22A)'
+          )
+        ),
+        tab==='main'?React.createElement(AlignmentEditor,null):null,
+        tab==='22a'?React.createElement(Alignment22AEditor,null):null
       );
     }
 

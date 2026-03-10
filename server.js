@@ -1118,6 +1118,16 @@ var FORM_8700_22A_MAP = {
   // Box 26 - Transporter 2 Company Name & EPA ID
   contTransporter2Name:     { row: 8, col: 8 },
   contTransporter2EpaId:    { row: 8, col: 62 },
+  // Box 27-31 - Waste line columns (same col positions as RAW_22A_MAP for consistency)
+  wasteHm:                  { col: 3, rowOffset: 0 },
+  wasteDesc:                { col: 7, rowOffset: 0 },
+  wasteContainerNum:        { col: 50, rowOffset: 0 },
+  wasteContainerType:       { col: 55, rowOffset: 0 },
+  wasteQty:                 { col: 60, rowOffset: 0 },
+  wasteUom:                 { col: 67, rowOffset: 0 },
+  wasteWc1:                 { col: 73, rowOffset: 0 },
+  wasteWc2:                 { col: 78, rowOffset: 0 },
+  wasteWc3:                 { col: 83, rowOffset: 0 },
   // Box 32 - Special Handling Instructions
   specialHandling:          { row: 50, col: 8 },
   specialHandling2:         { row: 51, col: 8 },
@@ -1155,15 +1165,15 @@ var RAW_22A_MAP = {
   contTransporter2Name:     { row: 11, col: 8 },
   contTransporter2EpaId:    { row: 11, col: 62 },
   // Box 27 - Waste line columns (8700-22A layout - each field positioned independently)
-  wasteHm:                  { col: 3 },
-  wasteDesc:                { col: 7 },
-  wasteContainerNum:        { col: 50 },
-  wasteContainerType:       { col: 55 },
-  wasteQty:                 { col: 60 },
-  wasteUom:                 { col: 67 },
-  wasteWc1:                 { col: 73 },
-  wasteWc2:                 { col: 78 },
-  wasteWc3:                 { col: 83 },
+  wasteHm:                  { col: 3, rowOffset: 0 },
+  wasteDesc:                { col: 7, rowOffset: 0 },
+  wasteContainerNum:        { col: 50, rowOffset: 0 },
+  wasteContainerType:       { col: 55, rowOffset: 0 },
+  wasteQty:                 { col: 60, rowOffset: 0 },
+  wasteUom:                 { col: 67, rowOffset: 0 },
+  wasteWc1:                 { col: 73, rowOffset: 0 },
+  wasteWc2:                 { col: 78, rowOffset: 0 },
+  wasteWc3:                 { col: 83, rowOffset: 0 },
   // Box 32 - Special Handling Instructions
   specialHandling:          { row: 46, col: 8 },
   specialHandling2:         { row: 47, col: 8 },
@@ -1182,7 +1192,7 @@ var RAW_22A_MAP = {
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v75-2026-03-10';
+var BUILD_VERSION = 'v76-2026-03-10';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Debug endpoint - inspect manifest waste line data
@@ -1337,6 +1347,84 @@ app.post('/api/alignment/undo', function(req, res) {
   res.json({ ok: true, fields: getActiveMap(), map: getActiveMap(), colShift: colShift, rowShift: rowShift });
 });
 
+// 22A (Continuation Page) Alignment System
+var customAlignment22a = data.customAlignment22a || null;
+var previousAlignment22a = data.previousAlignment22a || null;
+
+function getActiveRaw22aMap() {
+  if (!customAlignment22a) return RAW_22A_MAP;
+  var merged = {};
+  var keys = Object.keys(RAW_22A_MAP);
+  for (var i = 0; i < keys.length; i++) {
+    if (customAlignment22a[keys[i]]) {
+      merged[keys[i]] = customAlignment22a[keys[i]];
+    } else {
+      merged[keys[i]] = RAW_22A_MAP[keys[i]];
+    }
+  }
+  return merged;
+}
+
+function getActiveForm22aMap() {
+  if (!customAlignment22a) return FORM_8700_22A_MAP;
+  var merged = {};
+  var keys = Object.keys(FORM_8700_22A_MAP);
+  for (var i = 0; i < keys.length; i++) {
+    if (customAlignment22a[keys[i]]) {
+      merged[keys[i]] = customAlignment22a[keys[i]];
+    } else {
+      merged[keys[i]] = FORM_8700_22A_MAP[keys[i]];
+    }
+  }
+  return merged;
+}
+
+app.get('/api/alignment22a', function(req, res) {
+  // Re-sync in-memory vars from data object
+  customAlignment22a = data.customAlignment22a || null;
+  previousAlignment22a = data.previousAlignment22a || null;
+  console.log('Alignment22a GET: customAlignment22a=' + (customAlignment22a ? 'yes(' + Object.keys(customAlignment22a).length + ' keys)' : 'null'));
+  res.json({
+    fields: getActiveRaw22aMap(),
+    map: getActiveRaw22aMap(),
+    defaults: RAW_22A_MAP,
+    hasPrevious: previousAlignment22a !== null
+  });
+});
+
+app.put('/api/alignment22a', function(req, res) {
+  console.log('Alignment22a SAVE: fieldsKeys=' + (req.body.fields ? Object.keys(req.body.fields).length : 'null'));
+  previousAlignment22a = customAlignment22a ? JSON.parse(JSON.stringify(customAlignment22a)) : null;
+  data.previousAlignment22a = previousAlignment22a;
+  customAlignment22a = req.body.fields || req.body.map || null;
+  data.customAlignment22a = customAlignment22a;
+  saveData(data);
+  console.log('Alignment22a SAVED: customAlignment22a=' + (data.customAlignment22a ? 'yes' : 'no'));
+  res.json({ ok: true });
+});
+
+app.post('/api/alignment22a/reset', function(req, res) {
+  previousAlignment22a = customAlignment22a ? JSON.parse(JSON.stringify(customAlignment22a)) : null;
+  data.previousAlignment22a = previousAlignment22a;
+  customAlignment22a = null;
+  delete data.customAlignment22a;
+  saveData(data);
+  res.json({ ok: true });
+});
+
+app.post('/api/alignment22a/undo', function(req, res) {
+  if (previousAlignment22a === null) {
+    return res.json({ ok: false, message: 'No previous settings to restore' });
+  }
+  var temp = customAlignment22a ? JSON.parse(JSON.stringify(customAlignment22a)) : null;
+  customAlignment22a = JSON.parse(JSON.stringify(previousAlignment22a));
+  previousAlignment22a = temp;
+  data.customAlignment22a = customAlignment22a;
+  data.previousAlignment22a = previousAlignment22a;
+  saveData(data);
+  res.json({ ok: true, fields: getActiveRaw22aMap(), map: getActiveRaw22aMap() });
+});
+
 // Alignment test print - prints a grid pattern to calibrate field positions
 app.get('/api/print/alignment-test', function(req, res) {
   // Re-sync alignment from data object
@@ -1444,6 +1532,7 @@ app.get('/api/print/manifest/:id', function(req, res) {
   colShift = (typeof data.colShift === 'number') ? data.colShift : 0;
   rowShift = (typeof data.rowShift === 'number') ? data.rowShift : 0;
   customAlignment = data.customAlignment || null;
+  customAlignment22a = data.customAlignment22a || null;
   console.log('ESC/P2 Print: using colShift=' + colShift + ', rowShift=' + rowShift);
 
   var manifest = null;
@@ -1695,7 +1784,7 @@ app.get('/api/print/manifest/:id', function(req, res) {
   // ===== CONTINUATION PAGES (8700-22A) =====
   // Only generate continuation pages when there are more than 4 waste lines
   if (wasteLineCount > 4) {
-    var contMap = FORM_8700_22A_MAP;
+    var contMap = getActiveForm22aMap();
     var remainingLines = wasteLineCount - 4;
     var contPageNum = 2;
     var manifestLineStart = 5;
@@ -1721,15 +1810,28 @@ app.get('/api/print/manifest/:id', function(req, res) {
       placeText(contPage, contMap.contTransporter2Name.row, contMap.contTransporter2Name.col, manifest.contTransporter2Name);
       placeText(contPage, contMap.contTransporter2EpaId.row, contMap.contTransporter2EpaId.col, manifest.contTransporter2EpaId);
 
-      // Box 27-31 - Waste lines on this continuation page
+      // Box 27-31 - Waste lines on this continuation page (with rowOffset support)
       for (var cw = 0; cw < linesOnThisPage; cw++) {
         var mLineNum = manifestLineStart + cw;
         var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
-        placeWasteLine(contPage, mLineNum, contRow,
-          contMap.wasteDesc.col, contMap.wasteHm.col,
-          contMap.wasteContainerNum.col, contMap.wasteContainerType.col,
-          contMap.wasteQty.col, contMap.wasteUom.col,
-          contMap.wasteWc1.col, 1);
+        var cwW = mLineNum;
+        var cwWasteDesc = manifest['waste' + cwW + 'Description'] || '';
+        var cwDescRow1Width = contMap.wasteContainerNum.col - contMap.wasteDesc.col - 1;
+        var cwDescLns = wrapDescLines(cwWasteDesc, cwDescRow1Width, 55);
+        for (var cwDl = 0; cwDl < cwDescLns.length && cwDl < 2; cwDl++) {
+          placeText(contPage, contRow + cwDl + (contMap.wasteDesc.rowOffset || 0), contMap.wasteDesc.col, cwDescLns[cwDl]);
+        }
+        placeText(contPage, contRow + (contMap.wasteHm.rowOffset || 0), contMap.wasteHm.col, manifest['waste' + cwW + 'HM']);
+        placeText(contPage, contRow + (contMap.wasteContainerNum.rowOffset || 0), contMap.wasteContainerNum.col, manifest['waste' + cwW + 'ContainerNum']);
+        placeText(contPage, contRow + (contMap.wasteContainerType.rowOffset || 0), contMap.wasteContainerType.col, manifest['waste' + cwW + 'ContainerType']);
+        placeText(contPage, contRow + (contMap.wasteQty.rowOffset || 0), contMap.wasteQty.col, manifest['waste' + cwW + 'Qty']);
+        placeText(contPage, contRow + (contMap.wasteUom.rowOffset || 0), contMap.wasteUom.col, manifest['waste' + cwW + 'Unit']);
+        var cwCodeArr = parseWasteCodes((manifest['waste' + cwW + 'WasteCodes'] || '').trim());
+        for (var cwCi = 0; cwCi < 6 && cwCi < cwCodeArr.length; cwCi++) {
+          var cwWcRow = contRow + (cwCi >= 3 ? 1 : 0) + (contMap.wasteWc1.rowOffset || 0);
+          var cwWcColOff = (cwCi % 3) * 5;
+          placeText(contPage, cwWcRow, contMap.wasteWc1.col + cwWcColOff, cwCodeArr[cwCi]);
+        }
       }
 
       // Box 32 - Special Handling (build from THIS page's waste lines only)
@@ -1902,6 +2004,10 @@ var RAW_MAP = {
 };
 
 app.get('/api/print/escp2/:id', function(req, res) {
+  // Re-sync alignment from data object before printing
+  customAlignment = data.customAlignment || null;
+  customAlignment22a = data.customAlignment22a || null;
+
   var manifest = null;
   for (var i = 0; i < data.manifests.length; i++) {
     if (data.manifests[i].id === req.params.id) { manifest = data.manifests[i]; break; }
@@ -2118,7 +2224,7 @@ app.get('/api/print/escp2/:id', function(req, res) {
 
   // === Continuation Pages (8700-22A) - if needed ===
   if (wasteLineCount > 4) {
-    var contMap = FORM_8700_22A_MAP;
+    var contMap = getActiveForm22aMap();
     var remainingLines = wasteLineCount - 4;
     var contPageNum = 2;
     var manifestLineStart = 5;
@@ -2149,16 +2255,16 @@ app.get('/api/print/escp2/:id', function(req, res) {
         var cwDesc = manifest['waste' + mLineNum + 'Description'] || '';
         var cwDescLines = wrapDesc(cwDesc, 40, 40);
         for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
-          printAt(contRow + cdl, contMap.wasteDesc.col, cwDescLines[cdl]);
+          printAt(contRow + cdl + (contMap.wasteDesc.rowOffset || 0), contMap.wasteDesc.col, cwDescLines[cdl]);
         }
-        printAt(contRow, contMap.wasteHm.col, manifest['waste' + mLineNum + 'HM']);
-        printAt(contRow, contMap.wasteContainerNum.col, manifest['waste' + mLineNum + 'ContainerNum']);
-        printAt(contRow, contMap.wasteContainerType.col, manifest['waste' + mLineNum + 'ContainerType']);
-        printAt(contRow, contMap.wasteQty.col, manifest['waste' + mLineNum + 'Qty']);
-        printAt(contRow, contMap.wasteUom.col, manifest['waste' + mLineNum + 'Unit']);
+        printAt(contRow + (contMap.wasteHm.rowOffset || 0), contMap.wasteHm.col, manifest['waste' + mLineNum + 'HM']);
+        printAt(contRow + (contMap.wasteContainerNum.rowOffset || 0), contMap.wasteContainerNum.col, manifest['waste' + mLineNum + 'ContainerNum']);
+        printAt(contRow + (contMap.wasteContainerType.rowOffset || 0), contMap.wasteContainerType.col, manifest['waste' + mLineNum + 'ContainerType']);
+        printAt(contRow + (contMap.wasteQty.rowOffset || 0), contMap.wasteQty.col, manifest['waste' + mLineNum + 'Qty']);
+        printAt(contRow + (contMap.wasteUom.rowOffset || 0), contMap.wasteUom.col, manifest['waste' + mLineNum + 'Unit']);
         var cwCodes = parseWC((manifest['waste' + mLineNum + 'WasteCodes'] || '').trim());
         for (var cci = 0; cci < 6 && cci < cwCodes.length; cci++) {
-          var cwRow = contRow + (cci >= 3 ? 1 : 0);
+          var cwRow = contRow + (cci >= 3 ? 1 : 0) + (contMap.wasteWc1.rowOffset || 0);
           var cwColOff = (cci % 3) * 5;
           printAt(cwRow, contMap.wasteWc1.col + cwColOff, cwCodes[cci]);
         }
@@ -2231,6 +2337,7 @@ app.get('/api/print/direct/:id', function(req, res) {
   colShift = (typeof data.colShift === 'number') ? data.colShift : 0;
   rowShift = (typeof data.rowShift === 'number') ? data.rowShift : 0;
   customAlignment = data.customAlignment || null;
+  customAlignment22a = data.customAlignment22a || null;
   console.log('Direct Print: using colShift=' + colShift + ', rowShift=' + rowShift);
 
   var manifest = null;
@@ -2482,7 +2589,7 @@ app.get('/api/print/direct/:id', function(req, res) {
 
   // === Continuation Pages ===
   if (wasteLineCount > 4) {
-    var contMap = RAW_22A_MAP;
+    var contMap = getActiveRaw22aMap();
     var remainingLines = wasteLineCount - 4;
     var contPageNum = 2;
     var manifestLineStart = 5;
@@ -2508,16 +2615,16 @@ app.get('/api/print/direct/:id', function(req, res) {
         if (cwErgNum && cwDesc.indexOf('ERG') === -1) cwDesc += ', ERG # ' + cwErgNum;
         var cwDescLines = wrapDesc(cwDesc, 40, 40);
         for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
-          placeAt(contRow + cdl, contMap.wasteDesc.col, cwDescLines[cdl], pg);
+          placeAt(contRow + cdl + (contMap.wasteDesc.rowOffset || 0), contMap.wasteDesc.col, cwDescLines[cdl], pg);
         }
-        placeAt(contRow, contMap.wasteHm.col, manifest['waste' + mLineNum + 'HM'], pg);
-        placeAt(contRow, contMap.wasteContainerNum.col, manifest['waste' + mLineNum + 'ContainerNum'], pg);
-        placeAt(contRow, contMap.wasteContainerType.col, manifest['waste' + mLineNum + 'ContainerType'], pg);
-        placeAt(contRow, contMap.wasteQty.col, manifest['waste' + mLineNum + 'Qty'], pg);
-        placeAt(contRow, contMap.wasteUom.col, manifest['waste' + mLineNum + 'Unit'], pg);
+        placeAt(contRow + (contMap.wasteHm.rowOffset || 0), contMap.wasteHm.col, manifest['waste' + mLineNum + 'HM'], pg);
+        placeAt(contRow + (contMap.wasteContainerNum.rowOffset || 0), contMap.wasteContainerNum.col, manifest['waste' + mLineNum + 'ContainerNum'], pg);
+        placeAt(contRow + (contMap.wasteContainerType.rowOffset || 0), contMap.wasteContainerType.col, manifest['waste' + mLineNum + 'ContainerType'], pg);
+        placeAt(contRow + (contMap.wasteQty.rowOffset || 0), contMap.wasteQty.col, manifest['waste' + mLineNum + 'Qty'], pg);
+        placeAt(contRow + (contMap.wasteUom.rowOffset || 0), contMap.wasteUom.col, manifest['waste' + mLineNum + 'Unit'], pg);
         var cwCodes = parseWC((manifest['waste' + mLineNum + 'WasteCodes'] || '').trim());
         for (var cci = 0; cci < 6 && cci < cwCodes.length; cci++) {
-          var cwRow2 = contRow + (cci >= 3 ? 1 : 0);
+          var cwRow2 = contRow + (cci >= 3 ? 1 : 0) + (contMap.wasteWc1.rowOffset || 0);
           var cwColOff = (cci % 3) * 5;
           placeAt(cwRow2, contMap.wasteWc1.col + cwColOff, cwCodes[cci], pg);
         }
