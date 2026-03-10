@@ -2338,6 +2338,7 @@
       var form=s1[0];var setForm=s1[1];
       var s2=useState('');var pullManifestId=s2[0];var setPullManifestId=s2[1];
       var s3=useState('');var pullWasteLine=s3[0];var setPullWasteLine=s3[1];
+      var s4ws=useState('');var pullWsId=s4ws[0];var setPullWsId=s4ws[1];
 
       function updateField(key,val){
         var nf=Object.assign({},form);nf[key]=val;setForm(nf);
@@ -2375,6 +2376,40 @@
           contents:desc,
           manifestId:manifest.id,
           wasteLineNum:w
+        });
+        setForm(nf);
+      }
+
+      function handlePullWs(){
+        if(!pullWsId)return;
+        var ws=null;
+        for(var i=0;i<(data.wasteStreams||[]).length;i++){
+          if(data.wasteStreams[i].id===pullWsId){ws=data.wasteStreams[i];break}
+        }
+        if(!ws)return;
+        // Build DOT shipping name same way manifest form does
+        var descParts=[];
+        var idNum=(ws.unNum||'').trim();
+        var validId=idNum.match(/^(UN|NA)\s*\d{4,5}$/i)||idNum.match(/^\d{4,5}$/);
+        if(validId)descParts.push(idNum.match(/^(UN|NA)/i)?idNum:'UN'+idNum);
+        var dotDesc=(ws.dotDescription||'').replace(/\b(UN|NA)\s*\d{4,5}\b/gi,'').replace(/,\s*,/g,',').replace(/^[\s,]+|[\s,]+$/g,'').trim();
+        var hzClass=(ws.hazardClass||'').trim();
+        var pg=(ws.packingGroup||'').trim();
+        if(hzClass&&hzClass.match(/^\d(\.\d)?$/)){dotDesc=dotDesc.replace(new RegExp(',\\s*'+hzClass.replace('.','\\.')+'\\s*(?=,|$)'),'').replace(/^[\s,]+|[\s,]+$/g,'').trim()}
+        if(pg&&pg.match(/^(I{1,3})$/i)){dotDesc=dotDesc.replace(new RegExp(',\\s*'+pg+'\\s*$','i'),'').replace(/^[\s,]+|[\s,]+$/g,'').trim()}
+        if(dotDesc)descParts.push(dotDesc);
+        if(hzClass&&hzClass.match(/^\d(\.\d)?$/))descParts.push(hzClass);
+        if(pg&&pg.match(/^(I{1,3}|PG\s*(I{1,3})|1|2|3)$/i))descParts.push(pg.match(/^(I{1,3})$/)?'PG '+pg:pg);
+        var desc=descParts.join(', ');
+        var rawFed=(ws.wasteCodes||'').replace(/\bnone\b/gi,'').trim();
+        var fedCodes=rawFed.replace(/([A-Za-z]\d{3})/g,' $1').replace(/\s+/g,' ').trim();
+        var stateCodes=(ws.stateWasteCodes||'').replace(/\bnone\b/gi,'').trim();
+        var allCodes=[fedCodes,stateCodes].filter(Boolean).join(' ').trim();
+        var nf=Object.assign({},form,{
+          dotShippingName:desc,
+          epaWasteNum:fedCodes,
+          stateWasteCode:stateCodes,
+          contents:desc
         });
         setForm(nf);
       }
@@ -2425,6 +2460,21 @@
               ),
               React.createElement('button',{className:'btn btn-sm btn-primary',onClick:handlePull,disabled:!pullManifestId||!pullWasteLine},'Pull')
             )
+          ),
+
+          // Pull from waste stream section
+          React.createElement('div',{style:{background:'#f0fdf4',padding:16,borderRadius:8,marginBottom:20,border:'1px solid #bbf7d0'}},
+            React.createElement('h4',{style:{marginBottom:8,fontSize:14,color:'#166534'}},'Pull from Waste Stream'),
+            React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}},
+              React.createElement('select',{value:pullWsId,onChange:function(e){setPullWsId(e.target.value)},style:{padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13,minWidth:300}},
+                React.createElement('option',{value:''},'-- Select Waste Stream --'),
+                (data.wasteStreams||[]).slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'')}).map(function(ws){
+                  return React.createElement('option',{key:ws.id,value:ws.id},(ws.name||'Unnamed')+' '+(ws.profileId?'('+ws.profileId+')':'')+(ws.wasteCodes?' - '+ws.wasteCodes:''));
+                })
+              ),
+              React.createElement('button',{className:'btn btn-sm btn-success',onClick:handlePullWs,disabled:!pullWsId},'Pull')
+            ),
+            React.createElement('p',{style:{fontSize:11,color:'#666',marginTop:6}},'Fills DOT shipping name, waste codes, state waste codes, and contents from the waste stream template.')
           ),
 
           // Form fields
