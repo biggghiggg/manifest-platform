@@ -1172,7 +1172,7 @@ var RAW_22A_MAP = {
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v67-2026-03-10';
+var BUILD_VERSION = 'v68-2026-03-10';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Debug endpoint - inspect manifest waste line data
@@ -2482,6 +2482,7 @@ app.get('/api/print/direct/:id', function(req, res) {
   html += '<button class="print-btn" onclick="window.print()">Print Manifest</button>';
   html += '<button class="close-btn" onclick="window.close()">Close</button>';
   html += '<span style="margin-left:20px;font-size:12px;color:#666">Select your Epson LQ-590II in the print dialog. Set margins to None.</span>';
+  html += '<br><span style="font-size:11px;color:#999">DEBUG: colShift=' + colShift + ' rowShift=' + rowShift + ' savedColIn=' + savedColShiftIn.toFixed(4) + ' savedRowIn=' + savedRowShiftIn.toFixed(4) + ' colOffsetIn=' + colOffsetIn.toFixed(4) + ' rowOffsetIn=' + rowOffsetIn.toFixed(4) + ' dataCol=' + data.colShift + ' dataRow=' + data.rowShift + '</span>';
   html += '</div>';
 
   // Group placements by page
