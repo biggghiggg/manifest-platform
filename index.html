@@ -2485,7 +2485,30 @@
             ),
             React.createElement('div',{className:'form-group'},
               React.createElement('label',null,'GENERATOR NAME'),
-              React.createElement('input',{value:form.genName,onChange:function(e){updateField('genName',e.target.value)}})
+              React.createElement('select',{value:'',onChange:function(e){
+                var gId=e.target.value;if(!gId)return;
+                var gen=null;for(var gi=0;gi<(data.generators||[]).length;gi++){if(data.generators[gi].id===gId){gen=data.generators[gi];break}}
+                if(!gen)return;
+                var csz='';
+                if(gen.mailCity)csz+=gen.mailCity;
+                if(gen.mailState)csz+=(csz?', ':'')+gen.mailState;
+                if(gen.mailZip)csz+=' '+gen.mailZip;
+                if(!csz){if(gen.city)csz+=gen.city;if(gen.state)csz+=(csz?', ':'')+gen.state;if(gen.zip)csz+=' '+gen.zip}
+                var nf=Object.assign({},form,{
+                  genName:gen.name||'',
+                  genAddress:gen.mailAddress||gen.siteAddress||'',
+                  genCityStateZip:csz,
+                  genPhone:gen.phone||'',
+                  epaId:gen.epaId||''
+                });
+                setForm(nf);
+              },style:{padding:'8px 12px',border:'1px solid #ddd',borderRadius:6,fontSize:14,marginBottom:4}},
+                React.createElement('option',{value:''},'-- Select Generator --'),
+                (data.generators||[]).slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'')}).map(function(g){
+                  return React.createElement('option',{key:g.id,value:g.id},g.name+(g.epaId?' ('+g.epaId+')':''));
+                })
+              ),
+              React.createElement('input',{value:form.genName,onChange:function(e){updateField('genName',e.target.value)},placeholder:'Or type manually',style:{marginTop:2}})
             ),
             React.createElement('div',{className:'form-group'},
               React.createElement('label',null,'TELEPHONE'),
