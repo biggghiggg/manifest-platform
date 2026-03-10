@@ -1132,29 +1132,29 @@ var FORM_8700_22A_MAP = {
   contDiscrepancyInfo:      { row: 58, col: 8 }
 };
 // Continuation sheet waste lines: 10 lines, starting row 11, 3 rows apart
-var CONT_WASTE_START_ROW = 14;  // Box 27 waste data starts after header rows on 8700-22A
+var CONT_WASTE_START_ROW = 17;  // Box 27 waste data rows on 8700-22A (after header)
 var CONT_WASTE_ROW_SPACING = 3;
-var CONT_MAX_WASTE_LINES = 8;  // reduced from 10 since start row moved down
+var CONT_MAX_WASTE_LINES = 8;
 
 // RAW 22A MAP for Epson direct print (calibrated separately from browser print)
 var RAW_22A_MAP = {
   // Box 21 - Generator's US EPA ID Number
-  generatorEpaId:           { row: 2, col: 18 },
+  generatorEpaId:           { row: 4, col: 22 },
   // Box 22 - Page __ of __
-  page:                     { row: 2, col: 40 },
-  totalPages:               { row: 2, col: 43 },
+  page:                     { row: 4, col: 43 },
+  totalPages:               { row: 4, col: 46 },
   // Box 23 - Manifest Tracking Number
-  manifestTrackingNum:      { row: 2, col: 55 },
+  manifestTrackingNum:      { row: 4, col: 58 },
   // Box 24 - Generator's Name & EPA ID
-  generatorName:            { row: 4, col: 8 },
-  generatorEpaId2:          { row: 4, col: 62 },
+  generatorName:            { row: 7, col: 8 },
+  generatorEpaId2:          { row: 7, col: 62 },
   // Box 25 - Transporter Company Name & EPA ID
-  contTransporterName:      { row: 6, col: 8 },
-  contTransporterEpaId:     { row: 6, col: 62 },
+  contTransporterName:      { row: 9, col: 8 },
+  contTransporterEpaId:     { row: 9, col: 62 },
   // Box 26 - Transporter 2 Company Name & EPA ID
-  contTransporter2Name:     { row: 8, col: 8 },
-  contTransporter2EpaId:    { row: 8, col: 62 },
-  // Box 27 - Waste line columns (8700-22A has different layout than main 8700-22)
+  contTransporter2Name:     { row: 11, col: 8 },
+  contTransporter2EpaId:    { row: 11, col: 62 },
+  // Box 27 - Waste line columns (8700-22A layout - each field positioned independently)
   wasteHm:                  { col: 3 },
   wasteDesc:                { col: 7 },
   wasteContainerNum:        { col: 50 },
@@ -1165,24 +1165,24 @@ var RAW_22A_MAP = {
   wasteWc2:                 { col: 78 },
   wasteWc3:                 { col: 83 },
   // Box 32 - Special Handling Instructions
-  specialHandling:          { row: 43, col: 8 },
-  specialHandling2:         { row: 44, col: 8 },
-  specialHandling3:         { row: 45, col: 8 },
+  specialHandling:          { row: 46, col: 8 },
+  specialHandling2:         { row: 47, col: 8 },
+  specialHandling3:         { row: 48, col: 8 },
   // Box 33 - Transporter Acknowledgment of Receipt
-  contTransporterPrintName: { row: 47, col: 8 },
-  contTransporterDate:      { row: 47, col: 62 },
+  contTransporterPrintName: { row: 50, col: 8 },
+  contTransporterDate:      { row: 50, col: 62 },
   // Box 34 - Transporter 2 Acknowledgment
-  contTransporter2PrintName:{ row: 49, col: 8 },
-  contTransporter2Date:     { row: 49, col: 62 },
+  contTransporter2PrintName:{ row: 52, col: 8 },
+  contTransporter2Date:     { row: 52, col: 62 },
   // Box 35 - Discrepancy
-  contDiscrepancyInfo:      { row: 51, col: 8 }
+  contDiscrepancyInfo:      { row: 54, col: 8 }
 };
 
 // Print manifest - plain text for dot matrix
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v74-2026-03-10';
+var BUILD_VERSION = 'v75-2026-03-10';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Debug endpoint - inspect manifest waste line data
