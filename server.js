@@ -1172,7 +1172,7 @@ var RAW_22A_MAP = {
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v66-2026-03-10';
+var BUILD_VERSION = 'v67-2026-03-10';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Debug endpoint - inspect manifest waste line data
@@ -1612,8 +1612,7 @@ app.get('/api/print/manifest/:id', function(req, res) {
 
   // Box 1 - Generator EPA ID
   placeText(page1, MAP.generatorEpaId.row, MAP.generatorEpaId.col, manifest.generatorEpaId);
-  // Box 2 - Page (only print if user manually entered values)
-  if (manifest.pageNum) placeText(page1, MAP.page.row, MAP.page.col, manifest.pageNum);
+  // Box 2 - Page ("Page 1 of" is preprinted on the form, only print total pages)
   if (manifest.pageTotal) placeText(page1, MAP.totalPages.row, MAP.totalPages.col, manifest.pageTotal);
   // Box 3 - Emergency Response Phone
   placeText(page1, MAP.emergencyPhone.row, MAP.emergencyPhone.col, manifest.emergencyPhone);
@@ -1951,8 +1950,7 @@ app.get('/api/print/escp2/:id', function(req, res) {
 
   // Box 1 - Generator EPA ID
   printAt(M.generatorEpaId.row, M.generatorEpaId.col, manifest.generatorEpaId);
-  // Box 2 - Page (only if user filled it in)
-  if (manifest.pageNum) printAt(M.page.row, M.page.col, manifest.pageNum);
+  // Box 2 - Page ("Page 1 of" is preprinted, only print total pages)
   if (manifest.pageTotal) printAt(M.totalPages.row, M.totalPages.col, manifest.pageTotal);
   // Box 3 - Emergency Response Phone
   printAt(M.emergencyPhone.row, M.emergencyPhone.col, manifest.emergencyPhone);
@@ -2230,7 +2228,7 @@ app.get('/api/print/direct/:id', function(req, res) {
 
   // === Page 1 - Main Form (8700-22) ===
   placeAt(M.generatorEpaId.row, M.generatorEpaId.col, manifest.generatorEpaId);
-  if (manifest.pageNum) placeAt(M.page.row, M.page.col, manifest.pageNum);
+  // Box 2 - "Page 1 of" is preprinted, only print total pages
   if (manifest.pageTotal) placeAt(M.totalPages.row, M.totalPages.col, manifest.pageTotal);
   placeAt(M.emergencyPhone.row, M.emergencyPhone.col, manifest.emergencyPhone);
   placeAt(M.generatorName.row, M.generatorName.col, manifest.generatorName);
