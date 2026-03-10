@@ -1172,7 +1172,7 @@ var RAW_22A_MAP = {
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v61-2026-03-09';
+var BUILD_VERSION = 'v63-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Alignment system - clean slate for v26
@@ -1515,36 +1515,41 @@ app.get('/api/print/manifest/:id', function(req, res) {
   var totalPages = wasteLineCount <= 4 ? 1 : Math.ceil((wasteLineCount - 4) / CONT_MAX_WASTE_LINES) + 1;
   console.log('Print manifest ' + manifest.id + ': totalPages=' + totalPages);
 
-  // Build Box 14 auto-populate across ALL waste lines
-  var autoLine1 = '';
-  if (!manifest.specialHandling || manifest.specialHandling.trim() === '') {
-    var parts14 = [];
-    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
-      var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
-      var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
-      var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
-      var desc14 = manifest['waste' + b14 + 'Description'] || '';
-      if (!desc14 && !pid14) continue;
-      var entry = '';
-      if (pid14) entry += pid14;
-      if (csize14) entry += (entry ? ' ' : '') + csize14;
-      if (ctype14) entry += (entry ? ' ' : '') + ctype14;
-      if (entry) parts14.push('9b.' + b14 + '= ' + entry);
-    }
-    var autoText14 = parts14.join(', ');
-    if (autoText14.length > 75) {
-      var cut14b = autoText14.lastIndexOf(', ', 75);
-      if (cut14b <= 0) cut14b = 75;
-      autoLine1 = autoText14.substring(0, cut14b);
-      var autoRest14 = autoText14.substring(cut14b).replace(/^,?\s*/, '');
-      manifest._autoLine2 = autoRest14;
-    } else {
-      autoLine1 = autoText14;
-    }
-  }
-  var sh1 = manifest.specialHandling || autoLine1;
-  var sh2 = manifest.specialHandling2 || manifest._autoLine2 || '';
+  // Build Box 14 - always regenerate from current waste lines at print time
   var sh3 = manifest.specialHandling3 || '';
+  var parts14 = [];
+  for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+    var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
+    var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
+    var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
+    var desc14 = manifest['waste' + b14 + 'Description'] || '';
+    if (!desc14 && !pid14) continue;
+    var entry = '';
+    if (pid14) entry += pid14;
+    if (csize14) entry += (entry ? ' ' : '') + csize14;
+    if (ctype14) entry += (entry ? ' ' : '') + ctype14;
+    if (entry) parts14.push('9b.' + b14 + '= ' + entry);
+  }
+  var autoText14 = parts14.join(', ');
+  var sh1 = '';
+  var sh2 = '';
+  if (autoText14.length > 75) {
+    var cut14b = autoText14.lastIndexOf(', ', 75);
+    if (cut14b <= 0) cut14b = 75;
+    sh1 = autoText14.substring(0, cut14b);
+    var autoRest14 = autoText14.substring(cut14b).replace(/^,?\s*/, '');
+    if (autoRest14.length > 75) {
+      var cut14c = autoRest14.lastIndexOf(', ', 75);
+      if (cut14c <= 0) cut14c = 75;
+      sh2 = autoRest14.substring(0, cut14c);
+      var overflow14 = autoRest14.substring(cut14c).replace(/^,?\s*/, '');
+      if (overflow14 && !sh3) sh3 = overflow14;
+    } else {
+      sh2 = autoRest14;
+    }
+  } else {
+    sh1 = autoText14;
+  }
 
   // ===== PAGE 1: Main Form (8700-22) =====
   var page1 = createCanvas();
@@ -1949,37 +1954,40 @@ app.get('/api/print/escp2/:id', function(req, res) {
     }
   }
 
-  // Box 14 - Special Handling / Box 14 auto-populate
-  var sh1 = manifest.specialHandling || '';
-  var sh2 = manifest.specialHandling2 || '';
+  // Box 14 - Special Handling (always regenerate from waste lines at print time)
   var sh3 = manifest.specialHandling3 || '';
-  if (!sh1 && !sh2) {
-    // Auto-populate from waste lines
-    var parts14 = [];
-    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
-      var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
-      var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
-      var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
-      var desc14 = manifest['waste' + b14 + 'Description'] || '';
-      if (!desc14 && !pid14) continue;
-      var label14 = '9b.' + b14 + '= ';
-      if (pid14) label14 += pid14;
-      if (csize14) label14 += ' ' + csize14;
-      if (ctype14) label14 += ' ' + ctype14;
-      parts14.push(label14.trim());
-    }
-    var autoText = parts14.join(', ');
-    if (autoText.length > 75) {
-      sh1 = autoText.substring(0, 75);
-      var rest = autoText.substring(75);
-      if (rest.length > 75) {
-        sh2 = rest.substring(0, 75);
-      } else {
-        sh2 = rest;
-      }
+  var parts14 = [];
+  for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+    var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
+    var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
+    var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
+    var desc14 = manifest['waste' + b14 + 'Description'] || '';
+    if (!desc14 && !pid14) continue;
+    var label14 = '9b.' + b14 + '= ';
+    if (pid14) label14 += pid14;
+    if (csize14) label14 += ' ' + csize14;
+    if (ctype14) label14 += ' ' + ctype14;
+    parts14.push(label14.trim());
+  }
+  var autoText = parts14.join(', ');
+  var sh1 = '';
+  var sh2 = '';
+  if (autoText.length > 75) {
+    var cut14 = autoText.lastIndexOf(', ', 75);
+    if (cut14 <= 0) cut14 = 75;
+    sh1 = autoText.substring(0, cut14);
+    var rest14 = autoText.substring(cut14).replace(/^,?\s*/, '');
+    if (rest14.length > 75) {
+      var cut14b = rest14.lastIndexOf(', ', 75);
+      if (cut14b <= 0) cut14b = 75;
+      sh2 = rest14.substring(0, cut14b);
+      var overflow14 = rest14.substring(cut14b).replace(/^,?\s*/, '');
+      if (overflow14 && !sh3) sh3 = overflow14;
     } else {
-      sh1 = autoText;
+      sh2 = rest14;
     }
+  } else {
+    sh1 = autoText;
   }
   printAt(M.specialHandling.row, M.specialHandling.col, sh1);
   printAt(M.specialHandling2.row, M.specialHandling2.col, sh2);
@@ -2271,44 +2279,42 @@ app.get('/api/print/direct/:id', function(req, res) {
     }
   }
 
-  // Box 14 - Special Handling
-  var sh1 = manifest.specialHandling || '';
-  var sh2 = manifest.specialHandling2 || '';
+  // Box 14 - Special Handling (always regenerate from waste lines at print time)
   var sh3 = manifest.specialHandling3 || '';
-  if (!sh1 && !sh2) {
-    var parts14 = [];
-    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
-      var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
-      var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
-      var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
-      var desc14 = manifest['waste' + b14 + 'Description'] || '';
-      if (!desc14 && !pid14) continue;
-      var label14 = '9b.' + b14 + '= ';
-      if (pid14) label14 += pid14;
-      if (csize14) label14 += ' ' + csize14;
-      if (ctype14) label14 += ' ' + ctype14;
-      parts14.push(label14.trim());
-    }
-    var autoText = parts14.join(', ');
-    if (autoText.length > 75) {
-      var cut14 = autoText.lastIndexOf(', ', 75);
-      if (cut14 <= 0) cut14 = 75;
-      sh1 = autoText.substring(0, cut14);
-      var rest14 = autoText.substring(cut14).replace(/^,?\s*/, '');
-      if (rest14.length > 75) {
-        var cut14b = rest14.lastIndexOf(', ', 75);
-        if (cut14b <= 0) cut14b = 75;
-        sh2 = rest14.substring(0, cut14b);
-        // Overflow to sh3 only if sh3 is not already set (contract number)
-        if (!sh3) {
-          sh3 = rest14.substring(cut14b).replace(/^,?\s*/, '');
-        }
-      } else {
-        sh2 = rest14;
-      }
+  // Always build profile/container info from current waste lines
+  var parts14 = [];
+  for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+    var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
+    var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
+    var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
+    var desc14 = manifest['waste' + b14 + 'Description'] || '';
+    if (!desc14 && !pid14) continue;
+    var label14 = '9b.' + b14 + '= ';
+    if (pid14) label14 += pid14;
+    if (csize14) label14 += ' ' + csize14;
+    if (ctype14) label14 += ' ' + ctype14;
+    parts14.push(label14.trim());
+  }
+  var autoText = parts14.join(', ');
+  var sh1 = '';
+  var sh2 = '';
+  if (autoText.length > 75) {
+    var cut14 = autoText.lastIndexOf(', ', 75);
+    if (cut14 <= 0) cut14 = 75;
+    sh1 = autoText.substring(0, cut14);
+    var rest14 = autoText.substring(cut14).replace(/^,?\s*/, '');
+    if (rest14.length > 75) {
+      var cut14b = rest14.lastIndexOf(', ', 75);
+      if (cut14b <= 0) cut14b = 75;
+      sh2 = rest14.substring(0, cut14b);
+      // Overflow: append to sh3 if space allows
+      var overflow14 = rest14.substring(cut14b).replace(/^,?\s*/, '');
+      if (overflow14 && !sh3) sh3 = overflow14;
     } else {
-      sh1 = autoText;
+      sh2 = rest14;
     }
+  } else {
+    sh1 = autoText;
   }
   placeAt(M.specialHandling.row, M.specialHandling.col, sh1);
   placeAt(M.specialHandling2.row, M.specialHandling2.col, sh2);

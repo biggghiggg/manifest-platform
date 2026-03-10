@@ -393,6 +393,8 @@
           payload['waste' + n + 'ProfileId'] = line.profileId || '';
         }
         delete payload.wasteLines; // flattened to waste1*, waste2*, etc.
+        // Sync manifestNum for list display with manifestTrackingNum from form
+        payload.manifestNum = payload.manifestTrackingNum || '';
         var promise;
         if (isEdit && manifest && manifest.id) {
           promise = api.put('/api/manifests/' + manifest.id, payload);
@@ -409,8 +411,8 @@
 
             <div className="form-grid" style={{marginBottom:20}}>
               <div className="form-group">
-                <label>Manifest Tracking # (Box 4)</label>
-                <input value={form.manifestTrackingNum || ''} onChange={function(e){set('manifestTrackingNum',e.target.value)}} placeholder="Pre-printed on form" />
+                <label>Manifest Tracking # (prints on Cont. page Box 23)</label>
+                <input value={form.manifestTrackingNum || ''} onChange={function(e){set('manifestTrackingNum',e.target.value)}} placeholder="e.g. 028534496 JJK" />
               </div>
               <div className="form-group">
                 <label>Page ___ of ___</label>
@@ -1912,7 +1914,7 @@
       };
 
       useEffect(function(){api.get('/api/alignment').then(function(d){if(d.fields)setAlignData(d.fields);if(typeof d.colShift==='number')setColShift(d.colShift);if(typeof d.rowShift==='number')setRowShift(d.rowShift);if(d.hasPrevious)setHasPrevious(true)})},[]);
-      function handleSave(){api.put('/api/alignment',{fields:alignData,colShift:colShift,rowShift:rowShift}).then(function(){setHasPrevious(true);setStatus('Saved!');setTimeout(function(){setStatus('')},2000)})}
+      function handleSave(){api.put('/api/alignment',{fields:alignData,colShift:colShift,rowShift:rowShift}).then(function(r){if(r&&r.ok){setHasPrevious(true);setStatus('Saved!');api.get('/api/alignment').then(function(d){if(typeof d.colShift==='number'&&d.colShift!==colShift){setStatus('WARNING: Save may not have persisted. Try again.');return}setStatus('Saved and verified!')})}else{setStatus('ERROR: Save failed!')}setTimeout(function(){setStatus('')},3000)}).catch(function(err){setStatus('ERROR: '+err.message);setTimeout(function(){setStatus('')},5000)})}
       function handleUndo(){api.post('/api/alignment/undo').then(function(d){if(d.fields)setAlignData(d.fields);if(typeof d.colShift==='number')setColShift(d.colShift);if(typeof d.rowShift==='number')setRowShift(d.rowShift);setStatus('Restored previous settings');setTimeout(function(){setStatus('')},2000)})}
       function handleReset(){api.post('/api/alignment/reset').then(function(){setAlignData({});setColShift(0);setRowShift(0);setStatus('Reset to defaults');setTimeout(function(){setStatus('')},2000)})}
       function handleTestPrint(){window.open('/api/print/alignment-test','_blank')}
