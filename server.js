@@ -1172,7 +1172,7 @@ var RAW_22A_MAP = {
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v64-2026-03-09';
+var BUILD_VERSION = 'v65-2026-03-10';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Debug endpoint - inspect manifest waste line data
@@ -1254,6 +1254,11 @@ function getActiveMap() {
 }
 
 app.get('/api/alignment', function(req, res) {
+  // Re-sync in-memory vars from data object to ensure they're current after saves
+  colShift = (typeof data.colShift === 'number') ? data.colShift : 0;
+  rowShift = (typeof data.rowShift === 'number') ? data.rowShift : 0;
+  customAlignment = data.customAlignment || null;
+  previousAlignment = data.previousAlignment || null;
   console.log('Alignment GET: colShift=' + colShift + ', rowShift=' + rowShift + ', customAlignment=' + (customAlignment ? 'yes(' + Object.keys(customAlignment).length + ' keys)' : 'null'));
   res.json({
     fields: getActiveMap(),
@@ -1281,14 +1286,19 @@ app.put('/api/alignment', function(req, res) {
   }
   saveData(data);
   console.log('Alignment SAVED: colShift=' + data.colShift + ', rowShift=' + data.rowShift + ', customAlignment=' + (data.customAlignment ? 'yes' : 'no'));
-  // Verify by reading back
+  // Verify by reading back from disk and re-sync in-memory vars
   try {
     var verify = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
     console.log('Alignment VERIFY from disk: colShift=' + verify.colShift + ', rowShift=' + verify.rowShift);
+    // Re-sync in-memory from what's actually on disk
+    colShift = (typeof verify.colShift === 'number') ? verify.colShift : 0;
+    rowShift = (typeof verify.rowShift === 'number') ? verify.rowShift : 0;
+    customAlignment = verify.customAlignment || null;
+    previousAlignment = verify.previousAlignment || null;
   } catch (e) {
     console.error('Alignment VERIFY FAILED:', e.message);
   }
-  res.json({ ok: true });
+  res.json({ ok: true, colShift: colShift, rowShift: rowShift });
 });
 
 app.post('/api/alignment/reset', function(req, res) {
@@ -1559,7 +1569,9 @@ app.get('/api/print/manifest/:id', function(req, res) {
     var desc14 = manifest['waste' + b14 + 'Description'] || '';
     if (!desc14 && !pid14) continue;
     var entry = '';
-    if (pid14) entry += pid14;
+    // Strip waste stream name from profileId - keep only the numeric ID portion
+    var cleanPid14 = pid14 ? pid14.split(/\s+/)[0] : '';
+    if (cleanPid14) entry += cleanPid14;
     if (csize14) entry += (entry ? ' ' : '') + csize14;
     if (ctype14) entry += (entry ? ' ' : '') + ctype14;
     if (entry) parts14.push('9b.' + b14 + '= ' + entry);
@@ -1998,7 +2010,9 @@ app.get('/api/print/escp2/:id', function(req, res) {
     var desc14 = manifest['waste' + b14 + 'Description'] || '';
     if (!desc14 && !pid14) continue;
     var label14 = '9b.' + b14 + '= ';
-    if (pid14) label14 += pid14;
+    // Strip waste stream name from profileId - keep only the numeric ID portion
+    var cleanPid = pid14 ? pid14.split(/\s+/)[0] : '';
+    if (cleanPid) label14 += cleanPid;
     if (csize14) label14 += ' ' + csize14;
     if (ctype14) label14 += ' ' + ctype14;
     parts14.push(label14.trim());
@@ -2326,7 +2340,9 @@ app.get('/api/print/direct/:id', function(req, res) {
     var desc14 = manifest['waste' + b14 + 'Description'] || '';
     if (!desc14 && !pid14) continue;
     var label14 = '9b.' + b14 + '= ';
-    if (pid14) label14 += pid14;
+    // Strip waste stream name from profileId - keep only the numeric ID portion
+    var cleanPid = pid14 ? pid14.split(/\s+/)[0] : '';
+    if (cleanPid) label14 += cleanPid;
     if (csize14) label14 += ' ' + csize14;
     if (ctype14) label14 += ' ' + ctype14;
     parts14.push(label14.trim());
