@@ -1509,29 +1509,29 @@ app.post('/api/alignment22a/bake-defaults', function(req, res) {
 // Label positions for 6"x6" pre-printed Labelmaster/Landsberg label (part #1174351)
 // 72 cols at 12 CPI, 36 rows at 6 LPI
 var LABEL_MAP = {
-  dotShippingName1:  { row: 4,  col: 5 },
-  dotShippingName2:  { row: 5,  col: 5 },
-  genPhone:          { row: 7,  col: 40 },
-  genName:           { row: 8,  col: 5 },
-  genAddress:        { row: 9,  col: 5 },
-  genCityStateZip:   { row: 10, col: 5 },
-  epaId:             { row: 13, col: 12 },
-  epaWasteNum:       { row: 13, col: 40 },
-  stateWasteCode:    { row: 14, col: 18 },
-  accumStartDate:    { row: 16, col: 24 },
-  manifestTrackNo:   { row: 17, col: 24 },
-  contents1:         { row: 20, col: 5 },
-  contents2:         { row: 21, col: 5 },
-  contents3:         { row: 22, col: 5 },
-  contents4:         { row: 23, col: 5 },
-  physStateSolid:    { row: 26, col: 15 },
-  physStateLiquid:   { row: 26, col: 30 },
-  physStateGas:      { row: 26, col: 42 },
-  hazPropFlammable:  { row: 28, col: 18 },
-  hazPropCorrosive:  { row: 28, col: 34 },
-  hazPropReactivity: { row: 28, col: 50 },
-  hazPropToxic:      { row: 30, col: 18 },
-  hazPropOther:      { row: 30, col: 34 }
+  dotShippingName1:  { row: 10, col: 3 },   // Fill area below "SHIPPING NAME" header
+  dotShippingName2:  { row: 11, col: 3 },
+  genPhone:          { row: 13, col: 42 },  // Right of "TELEPHONE"
+  genName:           { row: 14, col: 10 },  // Right of "NAME"
+  genAddress:        { row: 15, col: 14 },  // Right of "ADDRESS"
+  genCityStateZip:   { row: 16, col: 10 },  // Right of "CITY"
+  epaId:             { row: 19, col: 8 },   // Below "EPA ID#:"
+  epaWasteNum:       { row: 19, col: 35 },  // Below "E.P.A. WASTE#:"
+  stateWasteCode:    { row: 20, col: 55 },  // Below "STATE WASTE CODE:"
+  accumStartDate:    { row: 22, col: 20 },  // Right of "START DATE"
+  manifestTrackNo:   { row: 22, col: 48 },  // Right of "TRACKING NO."
+  contents1:         { row: 25, col: 3 },   // Below "COMPOSITION"
+  contents2:         { row: 26, col: 3 },
+  contents3:         { row: 27, col: 3 },
+  contents4:         { row: 28, col: 3 },
+  physStateSolid:    { row: 30, col: 8 },   // Under "SOLID"
+  physStateLiquid:   { row: 30, col: 16 },  // Under "LIQUID"
+  physStateGas:      { row: 30, col: 24 },  // Under "GAS"
+  hazPropFlammable:  { row: 29, col: 44 },  // Under "FLAMMABLE"
+  hazPropCorrosive:  { row: 30, col: 32 },  // Under "CORROSIVE"
+  hazPropReactivity: { row: 30, col: 44 },  // Under "REACTIVITY"
+  hazPropToxic:      { row: 29, col: 58 },  // Under "TOXIC"
+  hazPropOther:      { row: 30, col: 55 }   // Under "OTHER"
 };
 
 // Label alignment system (same pattern as 22A)
