@@ -1172,7 +1172,7 @@ var RAW_22A_MAP = {
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v68-2026-03-10';
+var BUILD_VERSION = 'v69-2026-03-10';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Debug endpoint - inspect manifest waste line data
@@ -1763,6 +1763,25 @@ app.get('/api/print/manifest/:id', function(req, res) {
 
 // ESC/P2 raw print - generates .prn file for direct Epson LQ-590II printing
 // Bypasses browser entirely - no margins, precise positioning
+// Apply alignment overrides to RAW_MAP by computing deltas from FORM_8700_MAP defaults
+function getActiveRawMap() {
+  if (!customAlignment) return RAW_MAP;
+  var merged = {};
+  var keys = Object.keys(RAW_MAP);
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    if (customAlignment[key] && FORM_8700_MAP[key]) {
+      // User changed this field in Alignment tab - compute delta and apply to RAW_MAP
+      var deltaRow = customAlignment[key].row - FORM_8700_MAP[key].row;
+      var deltaCol = customAlignment[key].col - FORM_8700_MAP[key].col;
+      merged[key] = { row: RAW_MAP[key].row + deltaRow, col: RAW_MAP[key].col + deltaCol };
+    } else {
+      merged[key] = RAW_MAP[key];
+    }
+  }
+  return merged;
+}
+
 var RAW_MAP = {
   // Original 12 CPI positions for direct printer output (no browser margin)
   generatorEpaId:     { row: 4, col: 18 },
@@ -1847,7 +1866,7 @@ app.get('/api/print/escp2/:id', function(req, res) {
   }
   if (!manifest) return res.status(404).send('Manifest not found');
 
-  var M = RAW_MAP;
+  var M = getActiveRawMap();
   var commands = [];
 
   function addBytes(arr) { commands.push(Buffer.from(arr)); }
@@ -2146,7 +2165,7 @@ app.get('/api/print/direct/:id', function(req, res) {
   }
   if (!manifest) return res.status(404).send('Manifest not found');
 
-  var M = RAW_MAP;
+  var M = getActiveRawMap();
 
   // Collect all text placements: [{row, col, text, page}]
   var placements = [];
@@ -2482,7 +2501,7 @@ app.get('/api/print/direct/:id', function(req, res) {
   html += '<button class="print-btn" onclick="window.print()">Print Manifest</button>';
   html += '<button class="close-btn" onclick="window.close()">Close</button>';
   html += '<span style="margin-left:20px;font-size:12px;color:#666">Select your Epson LQ-590II in the print dialog. Set margins to None.</span>';
-  html += '<br><span style="font-size:11px;color:#999">DEBUG: colShift=' + colShift + ' rowShift=' + rowShift + ' savedColIn=' + savedColShiftIn.toFixed(4) + ' savedRowIn=' + savedRowShiftIn.toFixed(4) + ' colOffsetIn=' + colOffsetIn.toFixed(4) + ' rowOffsetIn=' + rowOffsetIn.toFixed(4) + ' dataCol=' + data.colShift + ' dataRow=' + data.rowShift + '</span>';
+  html += '<br><span style="font-size:11px;color:#999">DEBUG: colShift=' + colShift + ' rowShift=' + rowShift + ' customAlign=' + (customAlignment ? Object.keys(customAlignment).length + ' fields' : 'none') + ' colOffsetIn=' + colOffsetIn.toFixed(4) + ' rowOffsetIn=' + rowOffsetIn.toFixed(4) + '</span>';
   html += '</div>';
 
   // Group placements by page
