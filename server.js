@@ -1797,7 +1797,7 @@ app.get('/api/print/manifest/:id', function(req, res) {
       // Box 21 - Generator EPA ID
       placeText(contPage, contMap.generatorEpaId.row, contMap.generatorEpaId.col, manifest.generatorEpaId);
       // Box 22 - Page
-      placeText(contPage, contMap.page.row, contMap.page.col, manifest.contPageNum || String(contPageNum));
+      // Page number not printed - "Page __" is preprinted; only print total pages ("of __")
       placeText(contPage, contMap.totalPages.row, contMap.totalPages.col, String(totalPages));
       // Box 23 - Manifest Tracking Number
       placeText(contPage, contMap.manifestTrackingNum.row, contMap.manifestTrackingNum.col, manifest.manifestTrackingNum);
@@ -2239,7 +2239,7 @@ app.get('/api/print/escp2/:id', function(req, res) {
       addBytes([0x1B, 0x32]); // 6 LPI
 
       printAt(contMap.generatorEpaId.row, contMap.generatorEpaId.col, manifest.generatorEpaId);
-      printAt(contMap.page.row, contMap.page.col, manifest.contPageNum || String(contPageNum));
+      // Page number not printed - "Page __" is preprinted; only print total pages ("of __")
       printAt(contMap.totalPages.row, contMap.totalPages.col, String(totalPages));
       printAt(contMap.manifestTrackingNum.row, contMap.manifestTrackingNum.col, manifest.manifestTrackingNum);
       printAt(contMap.generatorName.row, contMap.generatorName.col, manifest.generatorName);
@@ -2598,7 +2598,7 @@ app.get('/api/print/direct/:id', function(req, res) {
       var pg = cpIdx + 2;
       var linesOnThisPage = Math.min(remainingLines, CONT_MAX_WASTE_LINES);
       placeAt(contMap.generatorEpaId.row, contMap.generatorEpaId.col, manifest.generatorEpaId, pg);
-      placeAt(contMap.page.row, contMap.page.col, manifest.contPageNum || String(contPageNum), pg);
+      // Page number not printed - "Page __" is preprinted; only print total pages ("of __")
       placeAt(contMap.totalPages.row, contMap.totalPages.col, String(totalPages), pg);
       placeAt(contMap.manifestTrackingNum.row, contMap.manifestTrackingNum.col, manifest.manifestTrackingNum, pg);
       placeAt(contMap.generatorName.row, contMap.generatorName.col, manifest.generatorName, pg);
