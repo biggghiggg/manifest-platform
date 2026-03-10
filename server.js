@@ -1172,7 +1172,7 @@ var RAW_22A_MAP = {
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v65-2026-03-10';
+var BUILD_VERSION = 'v66-2026-03-10';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Debug endpoint - inspect manifest waste line data
@@ -1329,6 +1329,10 @@ app.post('/api/alignment/undo', function(req, res) {
 
 // Alignment test print - prints a grid pattern to calibrate field positions
 app.get('/api/print/alignment-test', function(req, res) {
+  // Re-sync alignment from data object
+  colShift = (typeof data.colShift === 'number') ? data.colShift : 0;
+  rowShift = (typeof data.rowShift === 'number') ? data.rowShift : 0;
+  console.log('Alignment Test Print: using colShift=' + colShift + ', rowShift=' + rowShift);
   var pageLines = [];
   for (var l = 0; l < 66; l++) {
     var row = '';
@@ -1426,6 +1430,12 @@ app.get('/api/print/alignment-test', function(req, res) {
 });
 
 app.get('/api/print/manifest/:id', function(req, res) {
+  // Re-sync alignment from data object before printing
+  colShift = (typeof data.colShift === 'number') ? data.colShift : 0;
+  rowShift = (typeof data.rowShift === 'number') ? data.rowShift : 0;
+  customAlignment = data.customAlignment || null;
+  console.log('ESC/P2 Print: using colShift=' + colShift + ', rowShift=' + rowShift);
+
   var manifest = null;
   for (var i = 0; i < data.manifests.length; i++) {
     if (data.manifests[i].id === req.params.id) { manifest = data.manifests[i]; break; }
@@ -2126,6 +2136,12 @@ app.get('/api/print/escp2/:id', function(req, res) {
 // === Direct Print - HTML with CSS absolute positioning ===
 // Opens in new tab, user selects Epson printer and clicks Print. No file download needed.
 app.get('/api/print/direct/:id', function(req, res) {
+  // Re-sync alignment from data object before printing
+  colShift = (typeof data.colShift === 'number') ? data.colShift : 0;
+  rowShift = (typeof data.rowShift === 'number') ? data.rowShift : 0;
+  customAlignment = data.customAlignment || null;
+  console.log('Direct Print: using colShift=' + colShift + ', rowShift=' + rowShift);
+
   var manifest = null;
   for (var i = 0; i < data.manifests.length; i++) {
     if (data.manifests[i].id === req.params.id) { manifest = data.manifests[i]; break; }
