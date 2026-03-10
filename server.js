@@ -1132,9 +1132,9 @@ var FORM_8700_22A_MAP = {
   contDiscrepancyInfo:      { row: 58, col: 8 }
 };
 // Continuation sheet waste lines: 10 lines, starting row 11, 3 rows apart
-var CONT_WASTE_START_ROW = 11;
+var CONT_WASTE_START_ROW = 14;  // Box 27 waste data starts after header rows on 8700-22A
 var CONT_WASTE_ROW_SPACING = 3;
-var CONT_MAX_WASTE_LINES = 10;
+var CONT_MAX_WASTE_LINES = 8;  // reduced from 10 since start row moved down
 
 // RAW 22A MAP for Epson direct print (calibrated separately from browser print)
 var RAW_22A_MAP = {
@@ -1172,7 +1172,7 @@ var RAW_22A_MAP = {
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v69-2026-03-10';
+var BUILD_VERSION = 'v71-2026-03-10';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
 // Debug endpoint - inspect manifest waste line data
@@ -1722,13 +1722,45 @@ app.get('/api/print/manifest/:id', function(req, res) {
           MAP.waste1wc1.col, 1);
       }
 
-      // Box 32 - Special Handling
-      var contSh1 = manifest.contSpecialHandling || sh1;
-      var contSh2 = manifest.contSpecialHandling2 || sh2;
-      var contSh3 = manifest.contSpecialHandling3 || sh3;
+      // Box 32 - Special Handling (build from THIS page's waste lines only)
+      var contParts14b = [];
+      var contSh3b = manifest.specialHandling3 || '';
+      for (var cp14b = 0; cp14b < linesOnThisPage; cp14b++) {
+        var cpLN = manifestLineStart + cp14b;
+        var cpPidB = manifest['waste' + cpLN + 'ProfileId'] || '';
+        var cpCleanB = cpPidB ? cpPidB.split(/\s+/)[0] : '';
+        var cpSzB = manifest['waste' + cpLN + 'ContainerSize'] || '';
+        var cpTpB = manifest['waste' + cpLN + 'ContainerType'] || '';
+        var cpDsB = manifest['waste' + cpLN + 'Description'] || '';
+        if (!cpDsB && !cpPidB) continue;
+        var cpEnt = '9b.' + cpLN + '= ';
+        if (cpCleanB) cpEnt += cpCleanB;
+        if (cpSzB) cpEnt += ' ' + cpSzB;
+        if (cpTpB) cpEnt += ' ' + cpTpB;
+        contParts14b.push(cpEnt.trim());
+      }
+      var contAutoB = contParts14b.join(', ');
+      var contSh1 = '', contSh2 = '';
+      if (contAutoB.length > 75) {
+        var cCutB = contAutoB.lastIndexOf(', ', 75);
+        if (cCutB <= 0) cCutB = 75;
+        contSh1 = contAutoB.substring(0, cCutB);
+        var cRestB = contAutoB.substring(cCutB).replace(/^,?\s*/, '');
+        if (cRestB.length > 75) {
+          var cCut2B = cRestB.lastIndexOf(', ', 75);
+          if (cCut2B <= 0) cCut2B = 75;
+          contSh2 = cRestB.substring(0, cCut2B);
+          var cOverB = cRestB.substring(cCut2B).replace(/^,?\s*/, '');
+          if (cOverB && !contSh3b) contSh3b = cOverB;
+        } else {
+          contSh2 = cRestB;
+        }
+      } else {
+        contSh1 = contAutoB;
+      }
       placeText(contPage, contMap.specialHandling.row, contMap.specialHandling.col, contSh1);
       placeText(contPage, contMap.specialHandling2.row, contMap.specialHandling2.col, contSh2);
-      placeText(contPage, contMap.specialHandling3.row, contMap.specialHandling3.col, contSh3);
+      placeText(contPage, contMap.specialHandling3.row, contMap.specialHandling3.col, contSh3b);
       // Box 33 - Transporter Acknowledgment
       placeText(contPage, contMap.contTransporterPrintName.row, contMap.contTransporterPrintName.col, manifest.contTransporterPrintName);
       placeText(contPage, contMap.contTransporterDate.row, contMap.contTransporterDate.col, manifest.contTransporterDate);
@@ -2122,13 +2154,45 @@ app.get('/api/print/escp2/:id', function(req, res) {
         }
       }
 
-      // Continuation special handling
-      var cSh1 = manifest.contSpecialHandling || sh1;
-      var cSh2 = manifest.contSpecialHandling2 || sh2;
-      var cSh3 = manifest.contSpecialHandling3 || sh3;
+      // Box 32 - Special Handling (build from THIS page's waste lines only)
+      var contParts14c = [];
+      var contSh3c = manifest.specialHandling3 || '';
+      for (var cp14c = 0; cp14c < linesOnThisPage; cp14c++) {
+        var cpLNc = manifestLineStart + cp14c;
+        var cpPidC = manifest['waste' + cpLNc + 'ProfileId'] || '';
+        var cpCleanC = cpPidC ? cpPidC.split(/\s+/)[0] : '';
+        var cpSzC = manifest['waste' + cpLNc + 'ContainerSize'] || '';
+        var cpTpC = manifest['waste' + cpLNc + 'ContainerType'] || '';
+        var cpDsC = manifest['waste' + cpLNc + 'Description'] || '';
+        if (!cpDsC && !cpPidC) continue;
+        var cpEntC = '9b.' + cpLNc + '= ';
+        if (cpCleanC) cpEntC += cpCleanC;
+        if (cpSzC) cpEntC += ' ' + cpSzC;
+        if (cpTpC) cpEntC += ' ' + cpTpC;
+        contParts14c.push(cpEntC.trim());
+      }
+      var contAutoC = contParts14c.join(', ');
+      var cSh1 = '', cSh2 = '';
+      if (contAutoC.length > 75) {
+        var cCutC = contAutoC.lastIndexOf(', ', 75);
+        if (cCutC <= 0) cCutC = 75;
+        cSh1 = contAutoC.substring(0, cCutC);
+        var cRestC = contAutoC.substring(cCutC).replace(/^,?\s*/, '');
+        if (cRestC.length > 75) {
+          var cCut2C = cRestC.lastIndexOf(', ', 75);
+          if (cCut2C <= 0) cCut2C = 75;
+          cSh2 = cRestC.substring(0, cCut2C);
+          var cOverC = cRestC.substring(cCut2C).replace(/^,?\s*/, '');
+          if (cOverC && !contSh3c) contSh3c = cOverC;
+        } else {
+          cSh2 = cRestC;
+        }
+      } else {
+        cSh1 = contAutoC;
+      }
       printAt(contMap.specialHandling.row, contMap.specialHandling.col, cSh1);
       printAt(contMap.specialHandling2.row, contMap.specialHandling2.col, cSh2);
-      printAt(contMap.specialHandling3.row, contMap.specialHandling3.col, cSh3);
+      printAt(contMap.specialHandling3.row, contMap.specialHandling3.col, contSh3c);
       printAt(contMap.contTransporterPrintName.row, contMap.contTransporterPrintName.col, manifest.contTransporterPrintName);
       printAt(contMap.contTransporterDate.row, contMap.contTransporterDate.col, manifest.contTransporterDate);
       printAt(contMap.contTransporter2PrintName.row, contMap.contTransporter2PrintName.col, manifest.contTransporter2PrintName);
@@ -2448,12 +2512,45 @@ app.get('/api/print/direct/:id', function(req, res) {
           placeAt(cwRow2, M.waste1wc1.col + cwColOff, cwCodes[cci], pg);
         }
       }
-      var cSh1 = manifest.contSpecialHandling || sh1;
-      var cSh2 = manifest.contSpecialHandling2 || sh2;
-      var cSh3 = manifest.contSpecialHandling3 || sh3;
+      // Box 14 - build from THIS page's waste lines only (not main page lines 1-4)
+      var contParts14 = [];
+      var contSh3 = manifest.specialHandling3 || '';
+      for (var cp14 = 0; cp14 < linesOnThisPage; cp14++) {
+        var cpLineNum = manifestLineStart + cp14;
+        var cpPid = manifest['waste' + cpLineNum + 'ProfileId'] || '';
+        var cpCleanPid = cpPid ? cpPid.split(/\s+/)[0] : '';
+        var cpSize = manifest['waste' + cpLineNum + 'ContainerSize'] || '';
+        var cpType = manifest['waste' + cpLineNum + 'ContainerType'] || '';
+        var cpDesc = manifest['waste' + cpLineNum + 'Description'] || '';
+        if (!cpDesc && !cpPid) continue;
+        var cpEntry = '9b.' + cpLineNum + '= ';
+        if (cpCleanPid) cpEntry += cpCleanPid;
+        if (cpSize) cpEntry += ' ' + cpSize;
+        if (cpType) cpEntry += ' ' + cpType;
+        contParts14.push(cpEntry.trim());
+      }
+      var contAutoText = contParts14.join(', ');
+      var cSh1 = '', cSh2 = '';
+      if (contAutoText.length > 75) {
+        var cCut = contAutoText.lastIndexOf(', ', 75);
+        if (cCut <= 0) cCut = 75;
+        cSh1 = contAutoText.substring(0, cCut);
+        var cRest = contAutoText.substring(cCut).replace(/^,?\s*/, '');
+        if (cRest.length > 75) {
+          var cCut2 = cRest.lastIndexOf(', ', 75);
+          if (cCut2 <= 0) cCut2 = 75;
+          cSh2 = cRest.substring(0, cCut2);
+          var cOverflow = cRest.substring(cCut2).replace(/^,?\s*/, '');
+          if (cOverflow && !contSh3) contSh3 = cOverflow;
+        } else {
+          cSh2 = cRest;
+        }
+      } else {
+        cSh1 = contAutoText;
+      }
       placeAt(contMap.specialHandling.row, contMap.specialHandling.col, cSh1, pg);
       placeAt(contMap.specialHandling2.row, contMap.specialHandling2.col, cSh2, pg);
-      placeAt(contMap.specialHandling3.row, contMap.specialHandling3.col, cSh3, pg);
+      placeAt(contMap.specialHandling3.row, contMap.specialHandling3.col, contSh3, pg);
       placeAt(contMap.contTransporterPrintName.row, contMap.contTransporterPrintName.col, manifest.contTransporterPrintName, pg);
       placeAt(contMap.contTransporterDate.row, contMap.contTransporterDate.col, manifest.contTransporterDate, pg);
       placeAt(contMap.contTransporter2PrintName.row, contMap.contTransporter2PrintName.col, manifest.contTransporter2PrintName, pg);
