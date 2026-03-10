@@ -1172,8 +1172,32 @@ var RAW_22A_MAP = {
 // Epson LQ-590II at 12 CPI, tractor feed locked all the way left
 // Pinfeed manifests with strips on left and right sides (~0.5" each = ~6 chars at 12 CPI)
 // MAP column values already account for the left pinfeed strip offset
-var BUILD_VERSION = 'v63-2026-03-09';
+var BUILD_VERSION = 'v64-2026-03-09';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
+
+// Debug endpoint - inspect manifest waste line data
+app.get('/api/debug/manifest/:id', function(req, res) {
+  var manifest = null;
+  for (var i = 0; i < (data.manifests || []).length; i++) {
+    if (data.manifests[i].id === req.params.id) { manifest = data.manifests[i]; break; }
+  }
+  if (!manifest) return res.status(404).json({ error: 'Not found' });
+  var debug = { id: manifest.id, wasteLineCount: manifest.wasteLineCount };
+  for (var w = 1; w <= 10; w++) {
+    var desc = manifest['waste' + w + 'Description'] || '';
+    var pid = manifest['waste' + w + 'ProfileId'] || '';
+    var csize = manifest['waste' + w + 'ContainerSize'] || '';
+    var ctype = manifest['waste' + w + 'ContainerType'] || '';
+    if (desc || pid) {
+      debug['waste' + w] = { desc: desc, profileId: pid, containerSize: csize, containerType: ctype };
+    }
+  }
+  debug.specialHandling = manifest.specialHandling || '';
+  debug.specialHandling2 = manifest.specialHandling2 || '';
+  debug.specialHandling3 = manifest.specialHandling3 || '';
+  debug.alignment = { colShift: colShift, rowShift: rowShift, customAlignment: customAlignment ? 'yes' : 'no' };
+  res.json(debug);
+});
 
 // Alignment system - clean slate for v26
 // colShift: positive moves text RIGHT, negative moves text LEFT (global fine-tune)
@@ -1230,6 +1254,7 @@ function getActiveMap() {
 }
 
 app.get('/api/alignment', function(req, res) {
+  console.log('Alignment GET: colShift=' + colShift + ', rowShift=' + rowShift + ', customAlignment=' + (customAlignment ? 'yes(' + Object.keys(customAlignment).length + ' keys)' : 'null'));
   res.json({
     fields: getActiveMap(),
     map: getActiveMap(),
@@ -1241,6 +1266,7 @@ app.get('/api/alignment', function(req, res) {
 });
 
 app.put('/api/alignment', function(req, res) {
+  console.log('Alignment SAVE: colShift=' + req.body.colShift + ', rowShift=' + req.body.rowShift + ', fieldsKeys=' + (req.body.fields ? Object.keys(req.body.fields).length : 'null'));
   previousAlignment = customAlignment ? JSON.parse(JSON.stringify(customAlignment)) : null;
   data.previousAlignment = previousAlignment;
   customAlignment = req.body.fields || req.body.map || null;
@@ -1254,6 +1280,14 @@ app.put('/api/alignment', function(req, res) {
     data.rowShift = rowShift;
   }
   saveData(data);
+  console.log('Alignment SAVED: colShift=' + data.colShift + ', rowShift=' + data.rowShift + ', customAlignment=' + (data.customAlignment ? 'yes' : 'no'));
+  // Verify by reading back
+  try {
+    var verify = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    console.log('Alignment VERIFY from disk: colShift=' + verify.colShift + ', rowShift=' + verify.rowShift);
+  } catch (e) {
+    console.error('Alignment VERIFY FAILED:', e.message);
+  }
   res.json({ ok: true });
 });
 
@@ -2157,9 +2191,11 @@ app.get('/api/print/direct/:id', function(req, res) {
     var wd = (manifest['waste' + wlc + 'Description'] || '').replace(/^RQ,?\s*/i, '').trim();
     var wco = (manifest['waste' + wlc + 'WasteCodes'] || '').trim();
     var wq = (manifest['waste' + wlc + 'Qty'] || '').trim();
+    console.log('  Direct print waste' + wlc + ': desc="' + (manifest['waste' + wlc + 'Description'] || '') + '" pid="' + (manifest['waste' + wlc + 'ProfileId'] || '') + '" csize="' + (manifest['waste' + wlc + 'ContainerSize'] || '') + '" ctype="' + (manifest['waste' + wlc + 'ContainerType'] || '') + '"');
     if (wd || wco || wq) wasteLineCount = wlc;
   }
   if (wasteLineCount < 4) wasteLineCount = 4;
+  console.log('Direct print: rawWLC=' + rawWLC + ', activeWasteLines=' + wasteLineCount);
   var totalPages = wasteLineCount <= 4 ? 1 : Math.ceil((wasteLineCount - 4) / CONT_MAX_WASTE_LINES) + 1;
 
   // === Page 1 - Main Form (8700-22) ===
@@ -2296,6 +2332,7 @@ app.get('/api/print/direct/:id', function(req, res) {
     parts14.push(label14.trim());
   }
   var autoText = parts14.join(', ');
+  console.log('Direct print Box14: parts14=' + JSON.stringify(parts14) + ', autoText="' + autoText + '" (' + autoText.length + ' chars)');
   var sh1 = '';
   var sh2 = '';
   if (autoText.length > 75) {
@@ -2307,7 +2344,6 @@ app.get('/api/print/direct/:id', function(req, res) {
       var cut14b = rest14.lastIndexOf(', ', 75);
       if (cut14b <= 0) cut14b = 75;
       sh2 = rest14.substring(0, cut14b);
-      // Overflow: append to sh3 if space allows
       var overflow14 = rest14.substring(cut14b).replace(/^,?\s*/, '');
       if (overflow14 && !sh3) sh3 = overflow14;
     } else {
