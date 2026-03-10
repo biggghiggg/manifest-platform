@@ -1259,15 +1259,51 @@ if (!data.migratedToV38) {
   console.log('V38 migration: MAP columns shifted -10, reset shifts to 0');
 }
 
-function getActiveMap() {
-  if (!customAlignment) return FORM_8700_MAP;
+// Saved defaults: when user clicks "Set Current as Default", current positions are stored here
+// These override the hardcoded MAPs as the baseline
+var savedDefaults = data.savedDefaults || null;
+var savedDefaults22a = data.savedDefaults22a || null;
+
+function getBaseMap() {
+  return savedDefaults || FORM_8700_MAP;
+}
+
+function getBaseRawMap() {
+  // For RAW_MAP, we compute from saved defaults using delta approach (same as getActiveRawMap)
+  if (!savedDefaults) return RAW_MAP;
   var merged = {};
-  var keys = Object.keys(FORM_8700_MAP);
+  var keys = Object.keys(RAW_MAP);
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    if (savedDefaults[key] && FORM_8700_MAP[key]) {
+      var deltaRow = savedDefaults[key].row - FORM_8700_MAP[key].row;
+      var deltaCol = savedDefaults[key].col - FORM_8700_MAP[key].col;
+      merged[key] = { row: RAW_MAP[key].row + deltaRow, col: RAW_MAP[key].col + deltaCol };
+    } else {
+      merged[key] = RAW_MAP[key];
+    }
+  }
+  return merged;
+}
+
+function getBaseRaw22aMap() {
+  return savedDefaults22a || RAW_22A_MAP;
+}
+
+function getBaseForm22aMap() {
+  return savedDefaults22a || FORM_8700_22A_MAP;
+}
+
+function getActiveMap() {
+  var base = getBaseMap();
+  if (!customAlignment) return base;
+  var merged = {};
+  var keys = Object.keys(base);
   for (var i = 0; i < keys.length; i++) {
     if (customAlignment[keys[i]]) {
       merged[keys[i]] = customAlignment[keys[i]];
     } else {
-      merged[keys[i]] = FORM_8700_MAP[keys[i]];
+      merged[keys[i]] = base[keys[i]];
     }
   }
   return merged;
@@ -1279,12 +1315,14 @@ app.get('/api/alignment', function(req, res) {
   rowShift = (typeof data.rowShift === 'number') ? data.rowShift : 0;
   customAlignment = data.customAlignment || null;
   previousAlignment = data.previousAlignment || null;
-  console.log('Alignment GET: colShift=' + colShift + ', rowShift=' + rowShift + ', customAlignment=' + (customAlignment ? 'yes(' + Object.keys(customAlignment).length + ' keys)' : 'null'));
+  savedDefaults = data.savedDefaults || null;
+  console.log('Alignment GET: colShift=' + colShift + ', rowShift=' + rowShift + ', customAlignment=' + (customAlignment ? 'yes(' + Object.keys(customAlignment).length + ' keys)' : 'null') + ', savedDefaults=' + (savedDefaults ? 'yes' : 'no'));
   res.json({
     fields: getActiveMap(),
     map: getActiveMap(),
-    defaults: FORM_8700_MAP,
+    defaults: getBaseMap(),
     hasPrevious: previousAlignment !== null,
+    hasSavedDefaults: savedDefaults !== null,
     colShift: colShift,
     rowShift: rowShift
   });
@@ -1347,33 +1385,54 @@ app.post('/api/alignment/undo', function(req, res) {
   res.json({ ok: true, fields: getActiveMap(), map: getActiveMap(), colShift: colShift, rowShift: rowShift });
 });
 
+// Bake current alignment as new defaults (main form)
+app.post('/api/alignment/bake-defaults', function(req, res) {
+  var current = getActiveMap();
+  savedDefaults = JSON.parse(JSON.stringify(current));
+  data.savedDefaults = savedDefaults;
+  // Clear custom overrides since they're now baked into defaults
+  previousAlignment = customAlignment ? JSON.parse(JSON.stringify(customAlignment)) : null;
+  data.previousAlignment = previousAlignment;
+  customAlignment = null;
+  delete data.customAlignment;
+  colShift = 0;
+  data.colShift = 0;
+  rowShift = 0;
+  data.rowShift = 0;
+  saveData(data);
+  console.log('Alignment BAKED: savedDefaults now has ' + Object.keys(savedDefaults).length + ' fields');
+  res.json({ ok: true, message: 'Current settings saved as new defaults' });
+});
+
 // 22A (Continuation Page) Alignment System
 var customAlignment22a = data.customAlignment22a || null;
 var previousAlignment22a = data.previousAlignment22a || null;
 
 function getActiveRaw22aMap() {
-  if (!customAlignment22a) return RAW_22A_MAP;
+  var base = getBaseRaw22aMap();
+  if (!customAlignment22a) return base;
   var merged = {};
-  var keys = Object.keys(RAW_22A_MAP);
+  var keys = Object.keys(base);
   for (var i = 0; i < keys.length; i++) {
     if (customAlignment22a[keys[i]]) {
       merged[keys[i]] = customAlignment22a[keys[i]];
     } else {
-      merged[keys[i]] = RAW_22A_MAP[keys[i]];
+      merged[keys[i]] = base[keys[i]];
     }
   }
   return merged;
 }
 
 function getActiveForm22aMap() {
-  if (!customAlignment22a) return FORM_8700_22A_MAP;
+  var base = getBaseForm22aMap();
+  if (!customAlignment22a) return base;
   var merged = {};
-  var keys = Object.keys(FORM_8700_22A_MAP);
+  var keys = Object.keys(base);
   for (var i = 0; i < keys.length; i++) {
     if (customAlignment22a[keys[i]]) {
       merged[keys[i]] = customAlignment22a[keys[i]];
     } else {
-      merged[keys[i]] = FORM_8700_22A_MAP[keys[i]];
+      merged[keys[i]] = base[keys[i]];
     }
   }
   return merged;
@@ -1383,12 +1442,14 @@ app.get('/api/alignment22a', function(req, res) {
   // Re-sync in-memory vars from data object
   customAlignment22a = data.customAlignment22a || null;
   previousAlignment22a = data.previousAlignment22a || null;
-  console.log('Alignment22a GET: customAlignment22a=' + (customAlignment22a ? 'yes(' + Object.keys(customAlignment22a).length + ' keys)' : 'null'));
+  savedDefaults22a = data.savedDefaults22a || null;
+  console.log('Alignment22a GET: customAlignment22a=' + (customAlignment22a ? 'yes(' + Object.keys(customAlignment22a).length + ' keys)' : 'null') + ', savedDefaults22a=' + (savedDefaults22a ? 'yes' : 'no'));
   res.json({
     fields: getActiveRaw22aMap(),
     map: getActiveRaw22aMap(),
-    defaults: RAW_22A_MAP,
-    hasPrevious: previousAlignment22a !== null
+    defaults: getBaseRaw22aMap(),
+    hasPrevious: previousAlignment22a !== null,
+    hasSavedDefaults: savedDefaults22a !== null
   });
 });
 
@@ -1423,6 +1484,21 @@ app.post('/api/alignment22a/undo', function(req, res) {
   data.previousAlignment22a = previousAlignment22a;
   saveData(data);
   res.json({ ok: true, fields: getActiveRaw22aMap(), map: getActiveRaw22aMap() });
+});
+
+// Bake current alignment as new defaults (22A continuation page)
+app.post('/api/alignment22a/bake-defaults', function(req, res) {
+  var current = getActiveRaw22aMap();
+  savedDefaults22a = JSON.parse(JSON.stringify(current));
+  data.savedDefaults22a = savedDefaults22a;
+  // Clear custom overrides since they're now baked into defaults
+  previousAlignment22a = customAlignment22a ? JSON.parse(JSON.stringify(customAlignment22a)) : null;
+  data.previousAlignment22a = previousAlignment22a;
+  customAlignment22a = null;
+  delete data.customAlignment22a;
+  saveData(data);
+  console.log('Alignment22a BAKED: savedDefaults22a now has ' + Object.keys(savedDefaults22a).length + ' fields');
+  res.json({ ok: true, message: 'Current 22A settings saved as new defaults' });
 });
 
 // Alignment test print - prints a grid pattern to calibrate field positions
@@ -1909,18 +1985,19 @@ app.get('/api/print/manifest/:id', function(req, res) {
 // Bypasses browser entirely - no margins, precise positioning
 // Apply alignment overrides to RAW_MAP by computing deltas from FORM_8700_MAP defaults
 function getActiveRawMap() {
-  if (!customAlignment) return RAW_MAP;
+  var base = getBaseRawMap();
+  if (!customAlignment) return base;
+  var baseForm = getBaseMap();
   var merged = {};
-  var keys = Object.keys(RAW_MAP);
+  var keys = Object.keys(base);
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
-    if (customAlignment[key] && FORM_8700_MAP[key]) {
-      // User changed this field in Alignment tab - compute delta and apply to RAW_MAP
-      var deltaRow = customAlignment[key].row - FORM_8700_MAP[key].row;
-      var deltaCol = customAlignment[key].col - FORM_8700_MAP[key].col;
-      merged[key] = { row: RAW_MAP[key].row + deltaRow, col: RAW_MAP[key].col + deltaCol };
+    if (customAlignment[key] && baseForm[key]) {
+      var deltaRow = customAlignment[key].row - baseForm[key].row;
+      var deltaCol = customAlignment[key].col - baseForm[key].col;
+      merged[key] = { row: base[key].row + deltaRow, col: base[key].col + deltaCol };
     } else {
-      merged[key] = RAW_MAP[key];
+      merged[key] = base[key];
     }
   }
   return merged;
