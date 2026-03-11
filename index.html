@@ -2193,7 +2193,10 @@
         }).catch(function(){setStatus('Error generating labels')});
       }
 
-      function handlePrintSingle(id){window.open('/api/print/label/'+id,'_blank')}
+      var labelCopiesState=useState({});var labelCopies=labelCopiesState[0];var setLabelCopies=labelCopiesState[1];
+      function getLabelCopies(id){return labelCopies[id]||1}
+      function setLabelCopy(id,val){var nc=Object.assign({},labelCopies);nc[id]=parseInt(val)||1;setLabelCopies(nc)}
+      function handlePrintSingle(id){var copies=getLabelCopies(id);window.open('/api/print/label/'+id+'?copies='+copies,'_blank')}
       function handlePrintManifest(manifestId){window.open('/api/print/labels/manifest/'+manifestId,'_blank')}
 
       function openNew(){setEditLabel(null);setShowForm(true)}
@@ -2267,6 +2270,9 @@
                   React.createElement('td',null,l.genName||''),
                   React.createElement('td',null,l.physicalState||'--'),
                   React.createElement('td',{style:{textAlign:'right'}},
+                    React.createElement('select',{value:getLabelCopies(l.id),onChange:function(){var lid=l.id;return function(e){setLabelCopy(lid,e.target.value)}}(),style:{padding:'2px 4px',fontSize:11,marginRight:4,borderRadius:3,border:'1px solid #ccc'}},
+                      React.createElement('option',{value:1},'1'),React.createElement('option',{value:2},'2'),React.createElement('option',{value:3},'3'),React.createElement('option',{value:4},'4'),React.createElement('option',{value:5},'5'),React.createElement('option',{value:10},'10')
+                    ),
                     React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){handlePrintSingle(l.id)},style:{marginRight:4}},'Print'),
                     React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){openEdit(l)},style:{marginRight:4}},'Edit'),
                     React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){handleDelete(l.id)}},'Del')
@@ -2303,6 +2309,9 @@
                     React.createElement('td',null,l.epaWasteNum||''),
                     React.createElement('td',null,l.physicalState||'--'),
                     React.createElement('td',{style:{textAlign:'right'}},
+                      React.createElement('select',{value:getLabelCopies(l.id),onChange:function(){var lid=l.id;return function(e){setLabelCopy(lid,e.target.value)}}(),style:{padding:'2px 4px',fontSize:11,marginRight:4,borderRadius:3,border:'1px solid #ccc'}},
+                        React.createElement('option',{value:1},'1'),React.createElement('option',{value:2},'2'),React.createElement('option',{value:3},'3'),React.createElement('option',{value:4},'4'),React.createElement('option',{value:5},'5'),React.createElement('option',{value:10},'10')
+                      ),
                       React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){handlePrintSingle(l.id)},style:{marginRight:4}},'Print'),
                       React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){openEdit(l)},style:{marginRight:4}},'Edit'),
                       React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){handleDelete(l.id)}},'Del')
@@ -2363,10 +2372,12 @@
         if(!manifest)return;
         var w=parseInt(pullWasteLine);
         var desc=manifest['waste'+w+'Description']||'';
-        var cityStateZip='';
-        if(manifest.generatorMailCity)cityStateZip+=manifest.generatorMailCity;
-        if(manifest.generatorMailState)cityStateZip+=(cityStateZip?', ':'')+manifest.generatorMailState;
-        if(manifest.generatorMailZip)cityStateZip+=' '+manifest.generatorMailZip;
+        var cityStateZip=manifest.generatorCityStZip||'';
+        if(!cityStateZip){
+          if(manifest.generatorMailCity)cityStateZip+=manifest.generatorMailCity;
+          if(manifest.generatorMailState)cityStateZip+=(cityStateZip?', ':'')+manifest.generatorMailState;
+          if(manifest.generatorMailZip)cityStateZip+=' '+manifest.generatorMailZip;
+        }
         var wasteCodes=(manifest['waste'+w+'WasteCodes']||'').trim();
         // Look up profile number from waste stream
         var profId=manifest['waste'+w+'ProfileId']||'';
@@ -2376,8 +2387,8 @@
           dotShippingName:desc,
           profileNumber:profNum,
           genName:manifest.generatorName||'',
-          genAddress:manifest.generatorMailAddr||'',
-          genCityStateZip:cityStateZip,
+          genAddress:manifest.genSiteAddress||manifest.generatorAddress||'',
+          genCityStateZip:manifest.genSiteCityStZip||manifest.generatorCityStZip||cityStateZip,
           genPhone:manifest.generatorPhone||'',
           epaId:manifest.generatorEpaId||'',
           epaWasteNum:wasteCodes,

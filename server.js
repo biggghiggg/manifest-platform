@@ -1659,11 +1659,13 @@ app.post('/api/labels/from-manifest/:manifestId', function(req, res) {
     var desc = manifest['waste' + w + 'Description'] || '';
     if (!desc.trim()) continue;
 
-    // Build city/state/zip
-    var cityStateZip = '';
-    if (manifest.generatorMailCity) cityStateZip += manifest.generatorMailCity;
-    if (manifest.generatorMailState) cityStateZip += (cityStateZip ? ', ' : '') + manifest.generatorMailState;
-    if (manifest.generatorMailZip) cityStateZip += ' ' + manifest.generatorMailZip;
+    // Build city/state/zip — use site location first, fall back to mailing
+    var cityStateZip = manifest.genSiteCityStZip || manifest.generatorCityStZip || '';
+    if (!cityStateZip) {
+      if (manifest.generatorMailCity) cityStateZip += manifest.generatorMailCity;
+      if (manifest.generatorMailState) cityStateZip += (cityStateZip ? ', ' : '') + manifest.generatorMailState;
+      if (manifest.generatorMailZip) cityStateZip += ' ' + manifest.generatorMailZip;
+    }
 
     // Parse waste codes
     var wasteCodes = (manifest['waste' + w + 'WasteCodes'] || '').trim();
@@ -1688,7 +1690,7 @@ app.post('/api/labels/from-manifest/:manifestId', function(req, res) {
       dotShippingName: desc,
       profileNumber: profileNum,
       genName: manifest.generatorName || '',
-      genAddress: manifest.generatorMailAddr || '',
+      genAddress: manifest.genSiteAddress || manifest.generatorAddress || '',
       genCityStateZip: cityStateZip,
       genPhone: manifest.generatorPhone || '',
       epaId: manifest.generatorEpaId || '',
@@ -1849,22 +1851,26 @@ app.get('/api/print/label/:id', function(req, res) {
   html += '<span style="margin-left:20px;font-size:12px;color:#666">6x6 Hazardous Waste Label - Epson LQ-590II. Set paper size to 6x6 and margins to None.</span>';
   html += '</div>';
 
-  html += '<div class="page">';
-  for (var pi = 0; pi < placements.length; pi++) {
-    var p = placements[pi];
-    var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
-    var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
-    var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    if (p.large) {
-      // Large UN/NA number: ~0.5in tall, bold, centered in contents area
-      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:36pt;font-weight:bold;letter-spacing:2px;">' + safeText + '</span>';
-    } else if (p.medium) {
-      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:14pt;font-weight:bold;">' + safeText + '</span>';
-    } else {
-      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
+  var copies = parseInt(req.query.copies) || 1;
+  if (copies < 1) copies = 1;
+  if (copies > 20) copies = 20;
+  for (var ci = 0; ci < copies; ci++) {
+    html += '<div class="page">';
+    for (var pi = 0; pi < placements.length; pi++) {
+      var p = placements[pi];
+      var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
+      var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
+      var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      if (p.large) {
+        html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:36pt;font-weight:bold;letter-spacing:2px;">' + safeText + '</span>';
+      } else if (p.medium) {
+        html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:14pt;font-weight:bold;">' + safeText + '</span>';
+      } else {
+        html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
+      }
     }
+    html += '</div>';
   }
-  html += '</div>';
   html += '</body></html>';
   res.type('html').send(html);
 });
