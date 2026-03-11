@@ -2352,9 +2352,9 @@ app.get('/api/print/bol/:id', function(req, res) {
   // Build HTML
   var html = '<!DOCTYPE html><html><head><title>Print BOL</title><style>';
   html += '@page { margin: 0; size: 8.5in 11in; }';
-  html += '@media print { body { margin: 0; padding: 0; } .page { transform: translateX(-0.35in); } .no-print { display: none !important; } }';
+  html += '@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } }';
   html += 'body { margin: 0; padding: 0; }';
-  html += '.page { position: relative; width: 8.5in; height: 11in; overflow: visible; page-break-after: always; }';
+  html += '.page { position: relative; width: 8.5in; height: 11in; overflow: hidden; page-break-after: always; }';
   html += '.page:last-child { page-break-after: auto; }';
   html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.field-wrap { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; line-height: 1.15; white-space: pre-wrap; word-break: break-word; margin: 0; padding: 0; }';
