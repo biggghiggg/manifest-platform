@@ -2717,7 +2717,7 @@
       var onClose=props.onClose;
       var onSave=props.onSave;
 
-      var emptyLine={units:'',hm:'',desc:'',qty:'',weight:''};
+      var emptyLine={containerNum:'',containerType:'',containerSize:'',hm:'',desc:'',qty:'',weight:''};
       var emptyLines=[];
       for(var el=0;el<14;el++)emptyLines.push(Object.assign({},emptyLine));
 
@@ -2798,8 +2798,11 @@
           var qty=manifest['waste'+w+'Qty']||'';
           var unit=manifest['waste'+w+'Unit']||'';
           var hm=manifest['waste'+w+'HM']||'X';
+          var cSize=manifest['waste'+w+'ContainerSize']||'';
           newLines.push({
-            units:cNum?(cNum+' '+cType).trim():'',
+            containerNum:cNum,
+            containerType:cType,
+            containerSize:cSize,
             hm:hm,
             desc:desc,
             qty:qty+(unit?' '+unit:''),
@@ -3017,8 +3020,10 @@
             React.createElement('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:12}},
               React.createElement('thead',null,
                 React.createElement('tr',{style:{background:'#f9fafb'}},
-                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:30}},'#'),
-                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:100}},'Units/Type'),
+                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:25}},'#'),
+                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'center',borderBottom:'2px solid #e5e7eb',width:40}},'Num'),
+                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:55}},'Type'),
+                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:80}},'Size'),
                   React.createElement('th',{style:{padding:'6px 4px',textAlign:'center',borderBottom:'2px solid #e5e7eb',width:30}},'HM'),
                   React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb'}},'Basic Description'),
                   React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:90}},'Qty'),
@@ -3031,7 +3036,19 @@
                   return React.createElement('tr',{key:idx,style:{borderBottom:'1px solid #f3f4f6'}},
                     React.createElement('td',{style:{padding:'3px 4px',color:'#9ca3af',fontSize:11}},idx+1),
                     React.createElement('td',{style:{padding:'3px 2px'}},
-                      React.createElement('input',{value:line.units||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'units',e.target.value)}}(),style:{width:'100%',padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12}})
+                      React.createElement('input',{value:line.containerNum||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'containerNum',e.target.value)}}(),style:{width:'100%',padding:'3px 4px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12,textAlign:'center'}})
+                    ),
+                    React.createElement('td',{style:{padding:'3px 2px'}},
+                      React.createElement('select',{value:line.containerType||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'containerType',e.target.value)}}(),style:{width:'100%',padding:'3px 2px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:11}},
+                        React.createElement('option',{value:''},'--'),
+                        CONTAINER_TYPES.map(function(ct){return React.createElement('option',{key:ct.code,value:ct.code},ct.code)})
+                      )
+                    ),
+                    React.createElement('td',{style:{padding:'3px 2px'}},
+                      React.createElement('select',{value:line.containerSize||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'containerSize',e.target.value)}}(),style:{width:'100%',padding:'3px 2px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:10}},
+                        React.createElement('option',{value:''},'--'),
+                        CONTAINER_SIZES.map(function(sz){return React.createElement('option',{key:sz,value:sz},sz)})
+                      )
                     ),
                     React.createElement('td',{style:{padding:'3px 2px',textAlign:'center'}},
                       React.createElement('input',{type:'checkbox',checked:line.hm==='X',onChange:function(){var ii=idx;return function(e){updateLine(ii,'hm',e.target.checked?'X':'')}}()})

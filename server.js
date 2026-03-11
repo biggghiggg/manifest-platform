@@ -2161,8 +2161,11 @@ app.post('/api/bols/from-manifest/:manifestId', function(req, res) {
     var unit = manifest['waste' + w + 'Unit'] || '';
     var hm = manifest['waste' + w + 'HM'] || 'X';
 
+    var containerSize = manifest['waste' + w + 'ContainerSize'] || '';
     bol.lines.push({
-      units: containerNum ? containerNum + ' ' + containerType : '',
+      containerNum: containerNum,
+      containerType: containerType,
+      containerSize: containerSize,
       hm: hm,
       desc: desc,
       qty: qty + (unit ? ' ' + unit : ''),
@@ -2172,7 +2175,7 @@ app.post('/api/bols/from-manifest/:manifestId', function(req, res) {
 
   // Pad lines array to 14
   while (bol.lines.length < 14) {
-    bol.lines.push({ units: '', hm: '', desc: '', qty: '', weight: '' });
+    bol.lines.push({ containerNum: '', containerType: '', containerSize: '', hm: '', desc: '', qty: '', weight: '' });
   }
 
   if (!data.bols) data.bols = [];
@@ -2287,7 +2290,8 @@ app.get('/api/print/bol/:id', function(req, res) {
   for (var ln = 0; ln < 14; ln++) {
     var line = lines[ln] || {};
     var n = ln + 1;
-    place('line' + n + 'units', line.units);
+    var unitsText = [line.containerNum || '', line.containerSize || '', line.containerType || ''].filter(Boolean).join(' ');
+    place('line' + n + 'units', unitsText);
     place('line' + n + 'hm', line.hm);
     place('line' + n + 'desc', line.desc);
     place('line' + n + 'qty', line.qty);
