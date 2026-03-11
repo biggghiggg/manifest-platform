@@ -2334,12 +2334,15 @@ app.get('/api/print/bol/:id', function(req, res) {
   for (var ln = 0; ln < 14; ln++) {
     var line = lines[ln] || {};
     var n = ln + 1;
-    var unitsParts = [line.containerNum || '', line.containerType || '', line.containerSize ? line.containerSize.replace(/[^0-9]/g, '') : ''].filter(Boolean);
-    var unitsText = unitsParts.join('/');
+    var unitsText = [line.containerNum || '', line.containerType || ''].filter(Boolean).join('/');
     place('line' + n + 'units', unitsText);
     place('line' + n + 'hm', line.hm);
-    // Description - use single field with CSS wrapping (no desc2)
+    // Description - append (size/type) at end
     var descText = (line.desc || '').trim();
+    var sizeNum = line.containerSize ? line.containerSize.replace(/[^0-9]/g, '') : '';
+    if (sizeNum && line.containerType) {
+      descText = descText ? descText + ' (' + sizeNum + '/' + line.containerType + ')' : '(' + sizeNum + '/' + line.containerType + ')';
+    }
     place('line' + n + 'desc', descText);
     place('line' + n + 'qty', line.qty);
     place('line' + n + 'weight', line.weight);
