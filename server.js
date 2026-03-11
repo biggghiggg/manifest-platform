@@ -1621,6 +1621,8 @@ app.get('/api/alignment22a', function(req, res) {
     fields: getActiveRaw22aMap(),
     map: getActiveRaw22aMap(),
     defaults: getBaseRaw22aMap(),
+    colShift: (typeof data.colShift22a === 'number') ? data.colShift22a : 0,
+    rowShift: (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0,
     hasPrevious: previousAlignment22a !== null,
     hasSavedDefaults: savedDefaults22a !== null
   });
@@ -1630,18 +1632,26 @@ app.put('/api/alignment22a', function(req, res) {
   console.log('Alignment22a SAVE: fieldsKeys=' + (req.body.fields ? Object.keys(req.body.fields).length : 'null'));
   previousAlignment22a = customAlignment22a ? JSON.parse(JSON.stringify(customAlignment22a)) : null;
   data.previousAlignment22a = previousAlignment22a;
+  data.previousColShift22a = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
+  data.previousRowShift22a = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
   customAlignment22a = req.body.fields || req.body.map || null;
   data.customAlignment22a = customAlignment22a;
+  if (typeof req.body.colShift === 'number') data.colShift22a = req.body.colShift;
+  if (typeof req.body.rowShift === 'number') data.rowShift22a = req.body.rowShift;
   saveData(data);
-  console.log('Alignment22a SAVED: customAlignment22a=' + (data.customAlignment22a ? 'yes' : 'no'));
+  console.log('Alignment22a SAVED: customAlignment22a=' + (data.customAlignment22a ? 'yes' : 'no') + ', colShift=' + data.colShift22a + ', rowShift=' + data.rowShift22a);
   res.json({ ok: true });
 });
 
 app.post('/api/alignment22a/reset', function(req, res) {
   previousAlignment22a = customAlignment22a ? JSON.parse(JSON.stringify(customAlignment22a)) : null;
   data.previousAlignment22a = previousAlignment22a;
+  data.previousColShift22a = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
+  data.previousRowShift22a = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
   customAlignment22a = null;
   delete data.customAlignment22a;
+  data.colShift22a = 0;
+  data.rowShift22a = 0;
   saveData(data);
   res.json({ ok: true });
 });
@@ -1651,12 +1661,18 @@ app.post('/api/alignment22a/undo', function(req, res) {
     return res.json({ ok: false, message: 'No previous settings to restore' });
   }
   var temp = customAlignment22a ? JSON.parse(JSON.stringify(customAlignment22a)) : null;
+  var tempCs = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
+  var tempRs = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
   customAlignment22a = JSON.parse(JSON.stringify(previousAlignment22a));
   previousAlignment22a = temp;
   data.customAlignment22a = customAlignment22a;
   data.previousAlignment22a = previousAlignment22a;
+  data.colShift22a = (typeof data.previousColShift22a === 'number') ? data.previousColShift22a : 0;
+  data.rowShift22a = (typeof data.previousRowShift22a === 'number') ? data.previousRowShift22a : 0;
+  data.previousColShift22a = tempCs;
+  data.previousRowShift22a = tempRs;
   saveData(data);
-  res.json({ ok: true, fields: getActiveRaw22aMap(), map: getActiveRaw22aMap() });
+  res.json({ ok: true, fields: getActiveRaw22aMap(), map: getActiveRaw22aMap(), colShift: data.colShift22a, rowShift: data.rowShift22a });
 });
 
 // Bake current alignment as new defaults (22A continuation page)
@@ -1739,6 +1755,8 @@ app.get('/api/alignment-label', function(req, res) {
     fields: getActiveLabelMap(),
     map: getActiveLabelMap(),
     defaults: getBaseLabelMap(),
+    colShift: (typeof data.colShiftLabel === 'number') ? data.colShiftLabel : 0,
+    rowShift: (typeof data.rowShiftLabel === 'number') ? data.rowShiftLabel : 0,
     hasPrevious: !!previousAlignmentLabel,
     hasSavedDefaults: !!savedDefaultsLabel
   });
@@ -1747,8 +1765,12 @@ app.get('/api/alignment-label', function(req, res) {
 app.put('/api/alignment-label', function(req, res) {
   previousAlignmentLabel = customAlignmentLabel ? JSON.parse(JSON.stringify(customAlignmentLabel)) : null;
   data.previousAlignmentLabel = previousAlignmentLabel;
+  data.previousColShiftLabel = (typeof data.colShiftLabel === 'number') ? data.colShiftLabel : 0;
+  data.previousRowShiftLabel = (typeof data.rowShiftLabel === 'number') ? data.rowShiftLabel : 0;
   customAlignmentLabel = req.body.fields || null;
   data.customAlignmentLabel = customAlignmentLabel;
+  if (typeof req.body.colShift === 'number') data.colShiftLabel = req.body.colShift;
+  if (typeof req.body.rowShift === 'number') data.rowShiftLabel = req.body.rowShift;
   saveData(data);
   res.json({ ok: true, fields: getActiveLabelMap() });
 });
@@ -1756,20 +1778,30 @@ app.put('/api/alignment-label', function(req, res) {
 app.post('/api/alignment-label/reset', function(req, res) {
   previousAlignmentLabel = customAlignmentLabel ? JSON.parse(JSON.stringify(customAlignmentLabel)) : null;
   data.previousAlignmentLabel = previousAlignmentLabel;
+  data.previousColShiftLabel = (typeof data.colShiftLabel === 'number') ? data.colShiftLabel : 0;
+  data.previousRowShiftLabel = (typeof data.rowShiftLabel === 'number') ? data.rowShiftLabel : 0;
   customAlignmentLabel = null;
   delete data.customAlignmentLabel;
+  data.colShiftLabel = 0;
+  data.rowShiftLabel = 0;
   saveData(data);
   res.json({ ok: true, fields: getActiveLabelMap() });
 });
 
 app.post('/api/alignment-label/undo', function(req, res) {
   if (!previousAlignmentLabel) return res.json({ ok: false, message: 'No previous settings' });
+  var tempCs = (typeof data.colShiftLabel === 'number') ? data.colShiftLabel : 0;
+  var tempRs = (typeof data.rowShiftLabel === 'number') ? data.rowShiftLabel : 0;
   customAlignmentLabel = JSON.parse(JSON.stringify(previousAlignmentLabel));
   data.customAlignmentLabel = customAlignmentLabel;
   previousAlignmentLabel = null;
   data.previousAlignmentLabel = null;
+  data.colShiftLabel = (typeof data.previousColShiftLabel === 'number') ? data.previousColShiftLabel : 0;
+  data.rowShiftLabel = (typeof data.previousRowShiftLabel === 'number') ? data.previousRowShiftLabel : 0;
+  data.previousColShiftLabel = tempCs;
+  data.previousRowShiftLabel = tempRs;
   saveData(data);
-  res.json({ ok: true, fields: getActiveLabelMap(), map: getActiveLabelMap() });
+  res.json({ ok: true, fields: getActiveLabelMap(), map: getActiveLabelMap(), colShift: data.colShiftLabel, rowShift: data.rowShiftLabel });
 });
 
 app.post('/api/alignment-label/bake-defaults', function(req, res) {
@@ -1897,8 +1929,10 @@ app.get('/api/print/label/:id', function(req, res) {
   var LPI = 6;
   var BASE_LEFT_OFFSET = 0;
   var BASE_TOP_OFFSET = 0;
-  var colOffsetIn = BASE_LEFT_OFFSET + (parseFloat(req.query.colOffset) || 0);
-  var rowOffsetIn = BASE_TOP_OFFSET + (parseFloat(req.query.rowOffset) || 0);
+  var labelColShift = (typeof data.colShiftLabel === 'number') ? data.colShiftLabel : 0;
+  var labelRowShift = (typeof data.rowShiftLabel === 'number') ? data.rowShiftLabel : 0;
+  var colOffsetIn = BASE_LEFT_OFFSET + (labelColShift / CPI) + (parseFloat(req.query.colOffset) || 0);
+  var rowOffsetIn = BASE_TOP_OFFSET + (labelRowShift / LPI) + (parseFloat(req.query.rowOffset) || 0);
 
   var placements = [];
 
@@ -2067,8 +2101,10 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
 
   var CPI = 12;
   var LPI = 6;
-  var colOffsetIn = parseFloat(req.query.colOffset) || 0;
-  var rowOffsetIn = parseFloat(req.query.rowOffset) || 0;
+  var labelColShiftB = (typeof data.colShiftLabel === 'number') ? data.colShiftLabel : 0;
+  var labelRowShiftB = (typeof data.rowShiftLabel === 'number') ? data.rowShiftLabel : 0;
+  var colOffsetIn = (labelColShiftB / CPI) + (parseFloat(req.query.colOffset) || 0);
+  var rowOffsetIn = (labelRowShiftB / LPI) + (parseFloat(req.query.rowOffset) || 0);
 
   var totalHeight = 6 * manifestLabels.length;
 
@@ -2734,8 +2770,8 @@ app.get('/api/print/manifest/:id', function(req, res) {
   function placeText(pageLines, row, col, text) {
     if (!text) return;
     text = String(text);
-    var actualRow = row + rowShift;
-    var actualCol = col + colShift;
+    var actualRow = Math.round(row + rowShift);
+    var actualCol = Math.round(col + colShift);
     if (actualRow < 1 || actualRow > CANVAS_ROWS) return;
     if (actualCol < 1) actualCol = 1; // safety: print at col 1 instead of skipping
     var line = pageLines[actualRow - 1];
@@ -2962,6 +2998,11 @@ app.get('/api/print/manifest/:id', function(req, res) {
     var contPageNum = 2;
     var manifestLineStart = 5;
     var contPageCount = Math.ceil(remainingLines / CONT_MAX_WASTE_LINES);
+    // Swap to 22A shifts for continuation pages
+    var savedMainColShift = colShift;
+    var savedMainRowShift = rowShift;
+    colShift = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
+    rowShift = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
 
     for (var cpIdx = 0; cpIdx < contPageCount; cpIdx++) {
       var linesOnThisPage = Math.min(remainingLines, CONT_MAX_WASTE_LINES);
@@ -3060,6 +3101,9 @@ app.get('/api/print/manifest/:id', function(req, res) {
       manifestLineStart += linesOnThisPage;
       contPageNum++;
     }
+    // Restore main form shifts
+    colShift = savedMainColShift;
+    rowShift = savedMainRowShift;
   }
 
   // Support ?page=N to print a specific page, or all pages if not specified
@@ -3194,18 +3238,25 @@ app.get('/api/print/escp2/:id', function(req, res) {
   function addBytes(arr) { commands.push(Buffer.from(arr)); }
   function addText(text) { commands.push(Buffer.from(text, 'ascii')); }
 
+  // Current shift values for ESC/P2 positioning (swapped for continuation pages)
+  var prnColShift = colShift;
+  var prnRowShift = rowShift;
+
   // Position print head and print text
   // Row/col are 1-based. Horizontal: (col-1)*5 in 1/60" units. Vertical: (row-1)*60 in 1/360" units.
+  // Applies prnColShift/prnRowShift (can be fractional, e.g. 0.5)
   function printAt(row, col, text) {
     if (!text) return;
     text = String(text);
     // ESC ( V 2 0 mL mH - absolute vertical position in 1/360"
-    var vPos = (row - 1) * 60;
+    var vPos = Math.round((row - 1 + prnRowShift) * 60);
+    if (vPos < 0) vPos = 0;
     var mL = vPos & 0xFF;
     var mH = (vPos >> 8) & 0xFF;
     addBytes([0x1B, 0x28, 0x56, 0x02, 0x00, mL, mH]);
     // ESC $ nL nH - absolute horizontal position in 1/60"
-    var hPos = (col - 1) * 5;
+    var hPos = Math.round((col - 1 + prnColShift) * 5);
+    if (hPos < 0) hPos = 0;
     var nL = hPos & 0xFF;
     var nH = (hPos >> 8) & 0xFF;
     addBytes([0x1B, 0x24, nL, nH]);
@@ -3403,6 +3454,9 @@ app.get('/api/print/escp2/:id', function(req, res) {
     var contPageNum = 2;
     var manifestLineStart = 5;
     var contPageCount = Math.ceil(remainingLines / CONT_MAX_WASTE_LINES);
+    // Swap to 22A shifts for continuation pages
+    prnColShift = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
+    prnRowShift = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
 
     for (var cpIdx = 0; cpIdx < contPageCount; cpIdx++) {
       var linesOnThisPage = Math.min(remainingLines, CONT_MAX_WASTE_LINES);
@@ -3868,6 +3922,11 @@ app.get('/api/print/direct/:id', function(req, res) {
   var savedRowShiftIn = rowShift / LPI;  // convert row shift to inches
   var colOffsetIn = BASE_LEFT_OFFSET + savedColShiftIn + (parseFloat(req.query.colOffset) || 0);
   var rowOffsetIn = BASE_TOP_OFFSET + savedRowShiftIn + (parseFloat(req.query.rowOffset) || 0);
+  // Continuation page (22A) shifts - applied to page 2+
+  var colShift22aVal = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
+  var rowShift22aVal = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
+  var contColOffsetIn = BASE_LEFT_OFFSET + (colShift22aVal / CPI) + (parseFloat(req.query.colOffset) || 0);
+  var contRowOffsetIn = BASE_TOP_OFFSET + (rowShift22aVal / LPI) + (parseFloat(req.query.rowOffset) || 0);
 
   var html = '<!DOCTYPE html><html><head><title>Print Manifest</title><style>';
   html += '@page { margin: 0; size: 8.5in 11in; }';
@@ -3904,12 +3963,15 @@ app.get('/api/print/direct/:id', function(req, res) {
     // Skip pages that weren't requested (if a specific page was requested)
     if (requestedPage > 0 && pg !== requestedPage) continue;
     html += '<div class="page">';
+    // Use continuation shifts for page 2+, main form shifts for page 1
+    var pgColOff = (pg >= 2) ? contColOffsetIn : colOffsetIn;
+    var pgRowOff = (pg >= 2) ? contRowOffsetIn : rowOffsetIn;
     for (var fi = 0; fi < placements.length; fi++) {
       var p = placements[fi];
       if (p.page !== pg) continue;
       // Convert row/col to inches: col 1 = 0in from left, row 1 = 0in from top
-      var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
-      var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
+      var leftIn = ((p.col - 1) / CPI) + pgColOff;
+      var topIn = ((p.row - 1) / LPI) + pgRowOff;
       // Escape HTML
       var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
