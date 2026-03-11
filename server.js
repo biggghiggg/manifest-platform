@@ -2044,22 +2044,22 @@ var BOL_MAP = {
   // BOL Number
   bolNumber:          { row: 17, col: 8 },
 
-  // Line items (14 rows, 2 rows each for desc wrapping)
-  // Columns: units(col 3), hm(col 14), desc(col 17), desc2(col 17, +1 row), qty(col 55), weight(col 65)
-  line1units: { row: 20, col: 3 },  line1hm: { row: 20, col: 14 }, line1desc: { row: 20, col: 17 }, line1desc2: { row: 21, col: 17 }, line1qty: { row: 20, col: 55 }, line1weight: { row: 20, col: 65 },
-  line2units: { row: 22, col: 3 },  line2hm: { row: 22, col: 14 }, line2desc: { row: 22, col: 17 }, line2desc2: { row: 23, col: 17 }, line2qty: { row: 22, col: 55 }, line2weight: { row: 22, col: 65 },
-  line3units: { row: 24, col: 3 },  line3hm: { row: 24, col: 14 }, line3desc: { row: 24, col: 17 }, line3desc2: { row: 25, col: 17 }, line3qty: { row: 24, col: 55 }, line3weight: { row: 24, col: 65 },
-  line4units: { row: 26, col: 3 },  line4hm: { row: 26, col: 14 }, line4desc: { row: 26, col: 17 }, line4desc2: { row: 27, col: 17 }, line4qty: { row: 26, col: 55 }, line4weight: { row: 26, col: 65 },
-  line5units: { row: 28, col: 3 },  line5hm: { row: 28, col: 14 }, line5desc: { row: 28, col: 17 }, line5desc2: { row: 29, col: 17 }, line5qty: { row: 28, col: 55 }, line5weight: { row: 28, col: 65 },
-  line6units: { row: 30, col: 3 },  line6hm: { row: 30, col: 14 }, line6desc: { row: 30, col: 17 }, line6desc2: { row: 31, col: 17 }, line6qty: { row: 30, col: 55 }, line6weight: { row: 30, col: 65 },
-  line7units: { row: 32, col: 3 },  line7hm: { row: 32, col: 14 }, line7desc: { row: 32, col: 17 }, line7desc2: { row: 33, col: 17 }, line7qty: { row: 32, col: 55 }, line7weight: { row: 32, col: 65 },
-  line8units: { row: 34, col: 3 },  line8hm: { row: 34, col: 14 }, line8desc: { row: 34, col: 17 }, line8desc2: { row: 35, col: 17 }, line8qty: { row: 34, col: 55 }, line8weight: { row: 34, col: 65 },
-  line9units: { row: 36, col: 3 },  line9hm: { row: 36, col: 14 }, line9desc: { row: 36, col: 17 }, line9desc2: { row: 37, col: 17 }, line9qty: { row: 36, col: 55 }, line9weight: { row: 36, col: 65 },
-  line10units: { row: 38, col: 3 }, line10hm: { row: 38, col: 14 }, line10desc: { row: 38, col: 17 }, line10desc2: { row: 39, col: 17 }, line10qty: { row: 38, col: 55 }, line10weight: { row: 38, col: 65 },
-  line11units: { row: 40, col: 3 }, line11hm: { row: 40, col: 14 }, line11desc: { row: 40, col: 17 }, line11desc2: { row: 41, col: 17 }, line11qty: { row: 40, col: 55 }, line11weight: { row: 40, col: 65 },
-  line12units: { row: 42, col: 3 }, line12hm: { row: 42, col: 14 }, line12desc: { row: 42, col: 17 }, line12desc2: { row: 43, col: 17 }, line12qty: { row: 42, col: 55 }, line12weight: { row: 42, col: 65 },
-  line13units: { row: 44, col: 3 }, line13hm: { row: 44, col: 14 }, line13desc: { row: 44, col: 17 }, line13desc2: { row: 45, col: 17 }, line13qty: { row: 44, col: 55 }, line13weight: { row: 44, col: 65 },
-  line14units: { row: 46, col: 3 }, line14hm: { row: 46, col: 14 }, line14desc: { row: 46, col: 17 }, line14desc2: { row: 47, col: 17 }, line14qty: { row: 46, col: 55 }, line14weight: { row: 46, col: 65 }
+  // Line items (14 rows, 2 rows each on form; desc uses CSS wrapping)
+  // Columns: units(col 3), hm(col 14), desc(col 17, CSS-wrapped), qty(col 55), weight(col 65)
+  line1units: { row: 20, col: 3 },  line1hm: { row: 20, col: 14 }, line1desc: { row: 20, col: 17 }, line1qty: { row: 20, col: 55 }, line1weight: { row: 20, col: 65 },
+  line2units: { row: 22, col: 3 },  line2hm: { row: 22, col: 14 }, line2desc: { row: 22, col: 17 }, line2qty: { row: 22, col: 55 }, line2weight: { row: 22, col: 65 },
+  line3units: { row: 24, col: 3 },  line3hm: { row: 24, col: 14 }, line3desc: { row: 24, col: 17 }, line3qty: { row: 24, col: 55 }, line3weight: { row: 24, col: 65 },
+  line4units: { row: 26, col: 3 },  line4hm: { row: 26, col: 14 }, line4desc: { row: 26, col: 17 }, line4qty: { row: 26, col: 55 }, line4weight: { row: 26, col: 65 },
+  line5units: { row: 28, col: 3 },  line5hm: { row: 28, col: 14 }, line5desc: { row: 28, col: 17 }, line5qty: { row: 28, col: 55 }, line5weight: { row: 28, col: 65 },
+  line6units: { row: 30, col: 3 },  line6hm: { row: 30, col: 14 }, line6desc: { row: 30, col: 17 }, line6qty: { row: 30, col: 55 }, line6weight: { row: 30, col: 65 },
+  line7units: { row: 32, col: 3 },  line7hm: { row: 32, col: 14 }, line7desc: { row: 32, col: 17 }, line7qty: { row: 32, col: 55 }, line7weight: { row: 32, col: 65 },
+  line8units: { row: 34, col: 3 },  line8hm: { row: 34, col: 14 }, line8desc: { row: 34, col: 17 }, line8qty: { row: 34, col: 55 }, line8weight: { row: 34, col: 65 },
+  line9units: { row: 36, col: 3 },  line9hm: { row: 36, col: 14 }, line9desc: { row: 36, col: 17 }, line9qty: { row: 36, col: 55 }, line9weight: { row: 36, col: 65 },
+  line10units: { row: 38, col: 3 }, line10hm: { row: 38, col: 14 }, line10desc: { row: 38, col: 17 }, line10qty: { row: 38, col: 55 }, line10weight: { row: 38, col: 65 },
+  line11units: { row: 40, col: 3 }, line11hm: { row: 40, col: 14 }, line11desc: { row: 40, col: 17 }, line11qty: { row: 40, col: 55 }, line11weight: { row: 40, col: 65 },
+  line12units: { row: 42, col: 3 }, line12hm: { row: 42, col: 14 }, line12desc: { row: 42, col: 17 }, line12qty: { row: 42, col: 55 }, line12weight: { row: 42, col: 65 },
+  line13units: { row: 44, col: 3 }, line13hm: { row: 44, col: 14 }, line13desc: { row: 44, col: 17 }, line13qty: { row: 44, col: 55 }, line13weight: { row: 44, col: 65 },
+  line14units: { row: 46, col: 3 }, line14hm: { row: 46, col: 14 }, line14desc: { row: 46, col: 17 }, line14qty: { row: 46, col: 55 }, line14weight: { row: 46, col: 65 }
 };
 
 // BOL Alignment System — same pattern as labels
@@ -2257,7 +2257,7 @@ app.get('/api/print/bol/:id', function(req, res) {
   var placements = [];
   function place(fieldKey, text) {
     if (!text || !M[fieldKey]) return;
-    placements.push({ row: M[fieldKey].row, col: M[fieldKey].col, text: String(text) });
+    placements.push({ row: M[fieldKey].row, col: M[fieldKey].col, text: String(text), fieldKey: fieldKey });
   }
 
   // Header
@@ -2291,25 +2291,12 @@ app.get('/api/print/bol/:id', function(req, res) {
   for (var ln = 0; ln < 14; ln++) {
     var line = lines[ln] || {};
     var n = ln + 1;
-    var unitsText = [line.containerNum || '', line.containerSize || '', line.containerType || ''].filter(Boolean).join(' ');
+    var unitsText = (line.containerNum && line.containerType) ? line.containerNum + '/' + line.containerType : (line.containerNum || line.containerType || '');
     place('line' + n + 'units', unitsText);
     place('line' + n + 'hm', line.hm);
-    // Wrap description to 2 lines at ~35 chars
+    // Description - use single field with CSS wrapping (no desc2)
     var descText = (line.desc || '').trim();
-    if (descText.length > 35) {
-      var dWords = descText.split(' ');
-      var dLine1 = '';
-      var dSplit = 0;
-      for (var dw = 0; dw < dWords.length; dw++) {
-        if (dLine1.length + dWords[dw].length + 1 > 35 && dLine1.length > 0) { dSplit = dw; break; }
-        dLine1 += (dLine1 ? ' ' : '') + dWords[dw];
-        dSplit = dw + 1;
-      }
-      place('line' + n + 'desc', dLine1);
-      place('line' + n + 'desc2', dWords.slice(dSplit).join(' '));
-    } else {
-      place('line' + n + 'desc', descText);
-    }
+    place('line' + n + 'desc', descText);
     place('line' + n + 'qty', line.qty);
     place('line' + n + 'weight', line.weight);
   }
@@ -2322,6 +2309,7 @@ app.get('/api/print/bol/:id', function(req, res) {
   html += '.page { position: relative; width: 8.5in; height: 11in; overflow: hidden; page-break-after: always; }';
   html += '.page:last-child { page-break-after: auto; }';
   html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.field-wrap { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; line-height: 1.15; white-space: pre-wrap; word-break: break-word; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
   html += '.toolbar .print-btn { background: #2563eb; color: white; border: none; border-radius: 4px; }';
@@ -2334,13 +2322,21 @@ app.get('/api/print/bol/:id', function(req, res) {
   html += '<span style="margin-left:20px;font-size:12px;color:#666">8.5x11 Straight Bill of Lading - Epson LQ-590II. Set paper size to 8.5x11 and margins to None.</span>';
   html += '</div>';
 
+  // Calculate max width for description fields: from col 17 to col 55 = 38 chars at CPI 10
+  var descWidthIn = 38 / CPI;
+
   html += '<div class="page">';
   for (var pi = 0; pi < placements.length; pi++) {
     var p = placements[pi];
     var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
     var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
     var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
+    // Use wrapping class for description fields
+    if (p.fieldKey && p.fieldKey.match(/line\d+desc$/)) {
+      html += '<span class="field-wrap" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;width:' + descWidthIn.toFixed(4) + 'in;">' + safeText + '</span>';
+    } else {
+      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
+    }
   }
   html += '</div>';
   html += '</body></html>';

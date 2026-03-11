@@ -74,7 +74,7 @@
       put:function(url,body){return fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()})},
       del:function(url){return fetch(url,{method:'DELETE'}).then(function(r){return r.json()})}
     };
-    var CONTAINER_TYPES=[{code:'BA',label:'Burlap Bags'},{code:'CF',label:'Fiber/Cardboard Boxes'},{code:'CM',label:'Metal Boxes'},{code:'CW',label:'Wooden Boxes'},{code:'CY',label:'Cylinders'},{code:'DF',label:'Fiberboard Drums'},{code:'DM',label:'Metal Drums'},{code:'DP',label:'Plastic Drums'},{code:'DW',label:'Wooden Drums'},{code:'HG',label:'Hopper/Gondola Cars'},{code:'TC',label:'Tank Cars'},{code:'TP',label:'Portable Tanks'},{code:'TT',label:'Dump Truck/Trailer'}];
+    var CONTAINER_TYPES=[{code:'BA',label:'Burlap Bags'},{code:'BX',label:'Box'},{code:'CF',label:'Fiber/Cardboard Boxes'},{code:'CM',label:'Metal Boxes'},{code:'CW',label:'Wooden Boxes'},{code:'CY',label:'Cylinders'},{code:'DF',label:'Fiberboard Drums'},{code:'DM',label:'Metal Drums'},{code:'DP',label:'Plastic Drums'},{code:'DW',label:'Wooden Drums'},{code:'HG',label:'Hopper/Gondola Cars'},{code:'TC',label:'Tank Cars'},{code:'TP',label:'Portable Tanks'},{code:'TT',label:'Dump Truck/Trailer'}];
     var CONTAINER_SIZES=['5 gal','15 gal','30 gal','55 gal','85 gal','CYB','Pallet','275 gal tote','330 gal tote','20 yard bin','40 yard bin'];
     var UNIT_TYPES=[{code:'G',label:'Gallons'},{code:'K',label:'Kilograms'},{code:'L',label:'Liters'},{code:'M',label:'Metric Tons'},{code:'N',label:'Cubic Yards'},{code:'P',label:'Pounds'},{code:'T',label:'Tons (Short)'},{code:'Y',label:'Cubic Meters'}];
 
@@ -3119,8 +3119,7 @@
       for(var li=1;li<=14;li++){
         FIELD_LABELS['line'+li+'units']='Line '+li+' Units';
         FIELD_LABELS['line'+li+'hm']='Line '+li+' HM';
-        FIELD_LABELS['line'+li+'desc']='Line '+li+' Desc (line 1)';
-        FIELD_LABELS['line'+li+'desc2']='Line '+li+' Desc (line 2)';
+        FIELD_LABELS['line'+li+'desc']='Line '+li+' Desc';
         FIELD_LABELS['line'+li+'qty']='Line '+li+' Qty';
         FIELD_LABELS['line'+li+'weight']='Line '+li+' Weight';
       }
@@ -3146,7 +3145,7 @@
         {title:'BOL #',fields:['bolNumber']}
       ];
       for(var lg=1;lg<=14;lg++){
-        groups.push({title:'Line '+lg,fields:['line'+lg+'units','line'+lg+'hm','line'+lg+'desc','line'+lg+'desc2','line'+lg+'qty','line'+lg+'weight']});
+        groups.push({title:'Line '+lg,fields:['line'+lg+'units','line'+lg+'hm','line'+lg+'desc','line'+lg+'qty','line'+lg+'weight']});
       }
 
       return React.createElement('div',null,
