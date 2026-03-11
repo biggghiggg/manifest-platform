@@ -2383,7 +2383,12 @@ app.get('/api/print/bol/:id', function(req, res) {
     if (p.fieldKey && p.fieldKey.match(/line\d+desc$/)) {
       html += '<span class="field-wrap" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;width:' + descWidthIn.toFixed(4) + 'in;font-size:9pt;">' + safeText + '</span>';
     } else if (p.fieldKey && p.fieldKey.match(/line\d+units$/)) {
-      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:9pt;">' + safeText + '</span>';
+      // Right-align units so text always ends at same spot; get HM col for this line
+      var lineNum = p.fieldKey.replace('units','').replace('line','');
+      var hmKey = 'line' + lineNum + 'hm';
+      var hmCol = M[hmKey] ? M[hmKey].col : (p.col + 10);
+      var unitsWidthIn = (hmCol - p.col - 1) / CPI;
+      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;width:' + unitsWidthIn.toFixed(4) + 'in;text-align:right;font-size:9pt;">' + safeText + '</span>';
     } else {
       html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
     }
