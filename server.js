@@ -2018,48 +2018,52 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
 // Positions are initial estimates — calibrate with alignment editor + test prints
 var BOL_MAP = {
   // Header
-  date:               { row: 9, col: 72 },
+  date:               { row: 9, col: 70 },
 
   // Page / Carrier
-  pageNum:            { row: 11, col: 11 },
-  pageOf:             { row: 11, col: 18 },
-  carrierName:        { row: 11, col: 35 },
-  scac:               { row: 11, col: 62 },
+  pageNum:            { row: 11, col: 9 },
+  pageOf:             { row: 11, col: 16 },
+  carrierName:        { row: 11, col: 33 },
+  scac:               { row: 11, col: 60 },
 
   // TO (Consignee) — left column
-  toConsignee:        { row: 13, col: 5 },
-  toStreet:           { row: 14, col: 5 },
-  toCity:             { row: 15, col: 5 },
-  toState:            { row: 15, col: 25 },
-  toZip:              { row: 15, col: 35 },
+  toConsignee:        { row: 13, col: 3 },
+  toStreet:           { row: 14, col: 3 },
+  toCity:             { row: 15, col: 3 },
+  toState:            { row: 15, col: 23 },
+  toZip:              { row: 15, col: 33 },
 
   // FROM (Shipper) — right column
-  fromShipper:        { row: 13, col: 48 },
-  fromStreet:         { row: 14, col: 48 },
-  fromCity:           { row: 15, col: 48 },
-  fromState:          { row: 15, col: 65 },
-  fromZip:            { row: 15, col: 72 },
-  emergencyPhone:     { row: 16, col: 60 },
+  fromShipper:        { row: 13, col: 46 },
+  fromStreet:         { row: 14, col: 46 },
+  fromCity:           { row: 15, col: 46 },
+  fromState:          { row: 15, col: 63 },
+  fromZip:            { row: 15, col: 70 },
+  emergencyPhone:     { row: 16, col: 58 },
 
   // BOL Number
-  bolNumber:          { row: 17, col: 8 },
+  bolNumber:          { row: 17, col: 6 },
 
   // Line items (14 rows, 2 rows each on form; desc uses CSS wrapping)
-  // Columns: units(col 3), hm(col 14), desc(col 17, CSS-wrapped), qty(col 55), weight(col 65)
-  line1units: { row: 20, col: 3 },  line1hm: { row: 20, col: 14 }, line1desc: { row: 20, col: 17 }, line1qty: { row: 20, col: 55 }, line1weight: { row: 20, col: 65 },
-  line2units: { row: 22, col: 3 },  line2hm: { row: 22, col: 14 }, line2desc: { row: 22, col: 17 }, line2qty: { row: 22, col: 55 }, line2weight: { row: 22, col: 65 },
-  line3units: { row: 24, col: 3 },  line3hm: { row: 24, col: 14 }, line3desc: { row: 24, col: 17 }, line3qty: { row: 24, col: 55 }, line3weight: { row: 24, col: 65 },
-  line4units: { row: 26, col: 3 },  line4hm: { row: 26, col: 14 }, line4desc: { row: 26, col: 17 }, line4qty: { row: 26, col: 55 }, line4weight: { row: 26, col: 65 },
-  line5units: { row: 28, col: 3 },  line5hm: { row: 28, col: 14 }, line5desc: { row: 28, col: 17 }, line5qty: { row: 28, col: 55 }, line5weight: { row: 28, col: 65 },
-  line6units: { row: 30, col: 3 },  line6hm: { row: 30, col: 14 }, line6desc: { row: 30, col: 17 }, line6qty: { row: 30, col: 55 }, line6weight: { row: 30, col: 65 },
-  line7units: { row: 32, col: 3 },  line7hm: { row: 32, col: 14 }, line7desc: { row: 32, col: 17 }, line7qty: { row: 32, col: 55 }, line7weight: { row: 32, col: 65 },
-  line8units: { row: 34, col: 3 },  line8hm: { row: 34, col: 14 }, line8desc: { row: 34, col: 17 }, line8qty: { row: 34, col: 55 }, line8weight: { row: 34, col: 65 },
-  line9units: { row: 36, col: 3 },  line9hm: { row: 36, col: 14 }, line9desc: { row: 36, col: 17 }, line9qty: { row: 36, col: 55 }, line9weight: { row: 36, col: 65 },
-  line10units: { row: 38, col: 3 }, line10hm: { row: 38, col: 14 }, line10desc: { row: 38, col: 17 }, line10qty: { row: 38, col: 55 }, line10weight: { row: 38, col: 65 },
-  line11units: { row: 40, col: 3 }, line11hm: { row: 40, col: 14 }, line11desc: { row: 40, col: 17 }, line11qty: { row: 40, col: 55 }, line11weight: { row: 40, col: 65 },
-  line12units: { row: 42, col: 3 }, line12hm: { row: 42, col: 14 }, line12desc: { row: 42, col: 17 }, line12qty: { row: 42, col: 55 }, line12weight: { row: 42, col: 65 },
-  line13units: { row: 44, col: 3 }, line13hm: { row: 44, col: 14 }, line13desc: { row: 44, col: 17 }, line13qty: { row: 44, col: 55 }, line13weight: { row: 44, col: 65 },
-  line14units: { row: 46, col: 3 }, line14hm: { row: 46, col: 14 }, line14desc: { row: 46, col: 17 }, line14qty: { row: 46, col: 55 }, line14weight: { row: 46, col: 65 }
+  // Columns: units(col 1), hm(col 12), desc(col 15, CSS-wrapped), qty(col 53), weight(col 63)
+  line1units: { row: 20, col: 1 },  line1hm: { row: 20, col: 12 }, line1desc: { row: 20, col: 15 }, line1qty: { row: 20, col: 53 }, line1weight: { row: 20, col: 63 },
+  line2units: { row: 22, col: 1 },  line2hm: { row: 22, col: 12 }, line2desc: { row: 22, col: 15 }, line2qty: { row: 22, col: 53 }, line2weight: { row: 22, col: 63 },
+  line3units: { row: 24, col: 1 },  line3hm: { row: 24, col: 12 }, line3desc: { row: 24, col: 15 }, line3qty: { row: 24, col: 53 }, line3weight: { row: 24, col: 63 },
+  line4units: { row: 26, col: 1 },  line4hm: { row: 26, col: 12 }, line4desc: { row: 26, col: 15 }, line4qty: { row: 26, col: 53 }, line4weight: { row: 26, col: 63 },
+  line5units: { row: 28, col: 1 },  line5hm: { row: 28, col: 12 }, line5desc: { row: 28, col: 15 }, line5qty: { row: 28, col: 53 }, line5weight: { row: 28, col: 63 },
+  line6units: { row: 30, col: 1 },  line6hm: { row: 30, col: 12 }, line6desc: { row: 30, col: 15 }, line6qty: { row: 30, col: 53 }, line6weight: { row: 30, col: 63 },
+  line7units: { row: 32, col: 1 },  line7hm: { row: 32, col: 12 }, line7desc: { row: 32, col: 15 }, line7qty: { row: 32, col: 53 }, line7weight: { row: 32, col: 63 },
+  line8units: { row: 34, col: 1 },  line8hm: { row: 34, col: 12 }, line8desc: { row: 34, col: 15 }, line8qty: { row: 34, col: 53 }, line8weight: { row: 34, col: 63 },
+  line9units: { row: 36, col: 1 },  line9hm: { row: 36, col: 12 }, line9desc: { row: 36, col: 15 }, line9qty: { row: 36, col: 53 }, line9weight: { row: 36, col: 63 },
+  line10units: { row: 38, col: 1 }, line10hm: { row: 38, col: 12 }, line10desc: { row: 38, col: 15 }, line10qty: { row: 38, col: 53 }, line10weight: { row: 38, col: 63 },
+  line11units: { row: 40, col: 1 }, line11hm: { row: 40, col: 12 }, line11desc: { row: 40, col: 15 }, line11qty: { row: 40, col: 53 }, line11weight: { row: 40, col: 63 },
+  line12units: { row: 42, col: 1 }, line12hm: { row: 42, col: 12 }, line12desc: { row: 42, col: 15 }, line12qty: { row: 42, col: 53 }, line12weight: { row: 42, col: 63 },
+  line13units: { row: 44, col: 1 }, line13hm: { row: 44, col: 12 }, line13desc: { row: 44, col: 15 }, line13qty: { row: 44, col: 53 }, line13weight: { row: 44, col: 63 },
+  line14units: { row: 46, col: 1 }, line14hm: { row: 46, col: 12 }, line14desc: { row: 46, col: 15 }, line14qty: { row: 46, col: 53 }, line14weight: { row: 46, col: 63 },
+
+  // Bottom signature area
+  bottomShipper:      { row: 56, col: 3 },
+  bottomCarrier:      { row: 56, col: 46 }
 };
 
 // BOL Alignment System — same pattern as labels
@@ -2302,6 +2306,10 @@ app.get('/api/print/bol/:id', function(req, res) {
     place('line' + n + 'weight', line.weight);
   }
 
+  // Bottom signature area — auto-populate
+  place('bottomShipper', bol.fromShipper || '');
+  place('bottomCarrier', 'Independence Environmental Services');
+
   // Build HTML
   var html = '<!DOCTYPE html><html><head><title>Print BOL</title><style>';
   html += '@page { margin: 0; size: 8.5in 11in; }';
@@ -2323,7 +2331,7 @@ app.get('/api/print/bol/:id', function(req, res) {
   html += '<span style="margin-left:20px;font-size:12px;color:#666">8.5x11 Straight Bill of Lading - Epson LQ-590II. Set paper size to 8.5x11 and margins to None.</span>';
   html += '</div>';
 
-  // Calculate max width for description fields: from col 17 to col 55 = 38 chars at CPI 10
+  // Calculate max width for description fields: from col 15 to col 53 = 38 chars at CPI 10
   var descWidthIn = 38 / CPI;
 
   html += '<div class="page">';

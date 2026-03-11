@@ -3114,7 +3114,8 @@
         date:'Date',pageNum:'Page #',pageOf:'Page Of',carrierName:'Carrier Name',scac:'SCAC',
         toConsignee:'TO: Consignee',toStreet:'TO: Street',toCity:'TO: City',toState:'TO: State',toZip:'TO: Zip',
         fromShipper:'FROM: Shipper',fromStreet:'FROM: Street',fromCity:'FROM: City',fromState:'FROM: State',fromZip:'FROM: Zip',
-        emergencyPhone:'Emergency Phone',bolNumber:'BOL #'
+        emergencyPhone:'Emergency Phone',bolNumber:'BOL #',
+        bottomShipper:'Bottom: Shipper',bottomCarrier:'Bottom: Carrier'
       };
       for(var li=1;li<=14;li++){
         FIELD_LABELS['line'+li+'units']='Line '+li+' Units';
@@ -3142,11 +3143,12 @@
         {title:'Header',fields:['date','pageNum','pageOf','carrierName','scac']},
         {title:'TO (Consignee)',fields:['toConsignee','toStreet','toCity','toState','toZip']},
         {title:'FROM (Shipper)',fields:['fromShipper','fromStreet','fromCity','fromState','fromZip','emergencyPhone']},
-        {title:'BOL #',fields:['bolNumber']}
+        {title:'BOL #',fields:['bolNumber']},
       ];
       for(var lg=1;lg<=14;lg++){
         groups.push({title:'Line '+lg,fields:['line'+lg+'units','line'+lg+'hm','line'+lg+'desc','line'+lg+'qty','line'+lg+'weight']});
       }
+      groups.push({title:'Bottom Signatures',fields:['bottomShipper','bottomCarrier']});
 
       return React.createElement('div',null,
         React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:8}},'Bill of Lading Alignment'),
