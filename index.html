@@ -2726,7 +2726,7 @@
         carrierName:'Independence Environmental Services, LLC',scac:'',
         toConsignee:'',toStreet:'',toCity:'',toState:'',toZip:'',
         fromShipper:'',fromStreet:'',fromCity:'',fromState:'',fromZip:'',
-        emergencyPhone:'',route:'',
+        emergencyPhone:'',bolNumber:'',
         lines:emptyLines,
         manifestId:null
       };
@@ -3008,10 +3008,10 @@
             )
           ),
 
-          // Route
+          // BOL Number
           React.createElement('div',{className:'form-group',style:{marginBottom:16}},
-            React.createElement('label',{style:{fontSize:12,fontWeight:600}},'Route'),
-            React.createElement('input',{value:form.route,onChange:function(e){updateField('route',e.target.value)},style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+            React.createElement('label',{style:{fontSize:12,fontWeight:600}},'BOL #'),
+            React.createElement('input',{value:form.bolNumber,onChange:function(e){updateField('bolNumber',e.target.value)},placeholder:'Enter BOL number',style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
           ),
 
           // Line items table
@@ -3120,7 +3120,7 @@
         date:'Date',pageNum:'Page #',pageOf:'Page Of',carrierName:'Carrier Name',scac:'SCAC',
         toConsignee:'TO: Consignee',toStreet:'TO: Street',toCity:'TO: City',toState:'TO: State',toZip:'TO: Zip',
         fromShipper:'FROM: Shipper',fromStreet:'FROM: Street',fromCity:'FROM: City',fromState:'FROM: State',fromZip:'FROM: Zip',
-        emergencyPhone:'Emergency Phone',route:'Route'
+        emergencyPhone:'Emergency Phone',bolNumber:'BOL #'
       };
       for(var li=1;li<=14;li++){
         FIELD_LABELS['line'+li+'units']='Line '+li+' Units';
@@ -3149,7 +3149,7 @@
         {title:'Header',fields:['date','pageNum','pageOf','carrierName','scac']},
         {title:'TO (Consignee)',fields:['toConsignee','toStreet','toCity','toState','toZip']},
         {title:'FROM (Shipper)',fields:['fromShipper','fromStreet','fromCity','fromState','fromZip','emergencyPhone']},
-        {title:'Route',fields:['route']}
+        {title:'BOL #',fields:['bolNumber']}
       ];
       for(var lg=1;lg<=14;lg++){
         groups.push({title:'Line '+lg,fields:['line'+lg+'units','line'+lg+'hm','line'+lg+'desc','line'+lg+'desc2','line'+lg+'qty','line'+lg+'weight']});

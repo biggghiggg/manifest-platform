@@ -2041,8 +2041,8 @@ var BOL_MAP = {
   fromZip:            { row: 15, col: 72 },
   emergencyPhone:     { row: 16, col: 60 },
 
-  // Route
-  route:              { row: 17, col: 8 },
+  // BOL Number
+  bolNumber:          { row: 17, col: 8 },
 
   // Line items (14 rows, 2 rows each for desc wrapping)
   // Columns: units(col 3), hm(col 14), desc(col 17), desc2(col 17, +1 row), qty(col 55), weight(col 65)
@@ -2147,7 +2147,7 @@ app.post('/api/bols/from-manifest/:manifestId', function(req, res) {
     fromState: manifest.generatorMailState || manifest.generatorState || '',
     fromZip: manifest.generatorMailZip || manifest.generatorZip || '',
     emergencyPhone: manifest.emergencyPhone || '',
-    route: '',
+    bolNumber: '',
     lines: []
   };
 
@@ -2283,7 +2283,8 @@ app.get('/api/print/bol/:id', function(req, res) {
   place('emergencyPhone', bol.emergencyPhone);
 
   // Route
-  place('route', bol.route);
+  // BOL Number - prints "BOL # " prefix
+  place('bolNumber', bol.bolNumber ? 'BOL # ' + bol.bolNumber : '');
 
   // Line items
   var lines = bol.lines || [];
