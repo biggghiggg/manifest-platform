@@ -2897,14 +2897,14 @@
       var lineNums=[];for(var li=0;li<14;li++)lineNums.push(li);
 
       return React.createElement('div',{className:'modal-overlay',onClick:function(e){if(e.target===e.currentTarget)onClose()}},
-        React.createElement('div',{className:'modal',style:{maxWidth:950,maxHeight:'90vh',overflow:'auto'}},
+        React.createElement('div',{className:'modal',style:{maxWidth:820,maxHeight:'90vh',overflow:'auto'}},
           React.createElement('h3',null,existing?'Edit Bill of Lading':'New Bill of Lading'),
 
           // Pull from Manifest
-          React.createElement('div',{style:{background:'#f0f9ff',padding:16,borderRadius:8,marginBottom:16,border:'1px solid #bae6fd'}},
-            React.createElement('h4',{style:{marginBottom:8,fontSize:14,color:'#0369a1'}},'Pull from Manifest'),
-            React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center'}},
-              React.createElement('select',{value:pullManifestId,onChange:function(e){setPullManifestId(e.target.value)},style:{padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13,flex:1}},
+          React.createElement('div',{style:{background:'#f0f9ff',padding:10,borderRadius:8,marginBottom:10,border:'1px solid #bae6fd'}},
+            React.createElement('h4',{style:{marginBottom:6,fontSize:12,color:'#0369a1'}},'Pull from Manifest'),
+            React.createElement('div',{style:{display:'flex',gap:6,alignItems:'center'}},
+              React.createElement('select',{value:pullManifestId,onChange:function(e){setPullManifestId(e.target.value)},style:{padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12,flex:1}},
                 React.createElement('option',{value:''},'-- Select Manifest --'),
                 (data.manifests||[]).map(function(m){return React.createElement('option',{key:m.id,value:m.id},(m.manifestTrackingNumber||'No #')+' - '+(m.generatorName||''))})
               ),
@@ -2928,127 +2928,127 @@
           ),
 
           // Header fields
-          React.createElement('div',{style:{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap'}},
-            React.createElement('div',{style:{flex:'0 0 150px'}},
-              React.createElement('label',{style:{fontSize:12,fontWeight:600}},'Date'),
+          React.createElement('div',{style:{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}},
+            React.createElement('div',{style:{flex:'0 0 130px'}},
+              React.createElement('label',{style:{fontSize:11,fontWeight:600}},'Date'),
               React.createElement('input',{type:'date',value:form.dateISO||'',onChange:function(e){
                 var v=e.target.value;
                 if(v){var parts=v.split('-');var nf=Object.assign({},form);nf.date=parts[1]+'/'+parts[2]+'/'+parts[0];nf.dateISO=v;setForm(nf)}
                 else{var nf2=Object.assign({},form);nf2.date='';nf2.dateISO='';setForm(nf2)}
-              },style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13}}),
-              React.createElement('input',{value:form.date,onChange:function(e){updateField('date',e.target.value)},placeholder:'MM/DD/YYYY',style:{width:'100%',marginTop:2,padding:'4px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:12}})
+              },style:{width:'100%',padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12}}),
+              React.createElement('input',{value:form.date,onChange:function(e){updateField('date',e.target.value)},placeholder:'MM/DD/YYYY',style:{width:'100%',marginTop:2,padding:'3px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:11}})
             ),
             React.createElement('div',{style:{flex:1}},
-              React.createElement('label',{style:{fontSize:12,fontWeight:600}},'Name of Carrier'),
-              React.createElement('input',{value:form.carrierName,onChange:function(e){updateField('carrierName',e.target.value)},style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              React.createElement('label',{style:{fontSize:11,fontWeight:600}},'Name of Carrier'),
+              React.createElement('input',{value:form.carrierName,onChange:function(e){updateField('carrierName',e.target.value)},style:{width:'100%',padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12}})
             ),
-            React.createElement('div',{style:{flex:'0 0 100px'}},
-              React.createElement('label',{style:{fontSize:12,fontWeight:600}},'SCAC'),
-              React.createElement('input',{value:form.scac,onChange:function(e){updateField('scac',e.target.value)},style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+            React.createElement('div',{style:{flex:'0 0 80px'}},
+              React.createElement('label',{style:{fontSize:11,fontWeight:600}},'SCAC'),
+              React.createElement('input',{value:form.scac,onChange:function(e){updateField('scac',e.target.value)},style:{width:'100%',padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12}})
             )
           ),
 
-          // FROM / TO addresses side by side
-          React.createElement('div',{style:{display:'flex',gap:16,marginBottom:16}},
-            // FROM (Shipper)
-            React.createElement('div',{style:{flex:1,background:'#fefce8',padding:12,borderRadius:8,border:'1px solid #fde68a'}},
-              React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:8,color:'#92400e'}},'FROM (Shipper)'),
-              React.createElement('div',{style:{marginBottom:8}},
-                React.createElement('select',{onChange:function(e){handlePullGen(e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #fde68a',borderRadius:4,fontSize:12,background:'#fef9c3',color:'#92400e'}},
-                  React.createElement('option',{value:''},'-- Pull from Generator --'),
-                  (data.generators||[]).map(function(g){return React.createElement('option',{key:g.id,value:g.id},g.name+(g.epaId?' ('+g.epaId+')':''))})
+          // TO / FROM addresses side by side (TO on left, FROM on right — matches actual BOL form)
+          React.createElement('div',{style:{display:'flex',gap:12,marginBottom:12}},
+            // TO (Consignee) - LEFT
+            React.createElement('div',{style:{flex:1,background:'#eff6ff',padding:10,borderRadius:8,border:'1px solid #bfdbfe'}},
+              React.createElement('h4',{style:{fontSize:12,fontWeight:600,marginBottom:6,color:'#1e40af'}},'TO (Consignee)'),
+              React.createElement('div',{style:{marginBottom:6}},
+                React.createElement('select',{onChange:function(e){handlePullFac(e.target.value)},style:{width:'100%',padding:'4px 6px',border:'1px solid #93c5fd',borderRadius:4,fontSize:11,background:'#dbeafe',color:'#1e40af'}},
+                  React.createElement('option',{value:''},'-- Pull from Facility --'),
+                  (data.facilities||[]).slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'')}).map(function(f){return React.createElement('option',{key:f.id,value:f.id},f.name)})
                 )
               ),
-              React.createElement('div',{className:'form-group',style:{marginBottom:6}},
-                React.createElement('label',{style:{fontSize:11}},'Shipper Name'),
-                React.createElement('input',{value:form.fromShipper,onChange:function(e){updateField('fromShipper',e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              React.createElement('div',{className:'form-group',style:{marginBottom:4}},
+                React.createElement('label',{style:{fontSize:10}},'Consignee Name'),
+                React.createElement('input',{value:form.toConsignee,onChange:function(e){updateField('toConsignee',e.target.value)},style:{width:'100%',padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12}})
               ),
-              React.createElement('div',{className:'form-group',style:{marginBottom:6}},
-                React.createElement('label',{style:{fontSize:11}},'Street'),
-                React.createElement('input',{value:form.fromStreet,onChange:function(e){updateField('fromStreet',e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              React.createElement('div',{className:'form-group',style:{marginBottom:4}},
+                React.createElement('label',{style:{fontSize:10}},'Street'),
+                React.createElement('input',{value:form.toStreet,onChange:function(e){updateField('toStreet',e.target.value)},style:{width:'100%',padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12}})
               ),
-              React.createElement('div',{style:{display:'flex',gap:6}},
-                React.createElement('input',{value:form.fromCity,onChange:function(e){updateField('fromCity',e.target.value)},placeholder:'City',style:{flex:2,padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}}),
-                React.createElement('input',{value:form.fromState,onChange:function(e){updateField('fromState',e.target.value)},placeholder:'ST',style:{flex:'0 0 40px',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}}),
-                React.createElement('input',{value:form.fromZip,onChange:function(e){updateField('fromZip',e.target.value)},placeholder:'Zip',style:{flex:1,padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
-              ),
-              React.createElement('div',{className:'form-group',style:{marginTop:6}},
-                React.createElement('label',{style:{fontSize:11}},'24hr Emergency Phone'),
-                React.createElement('input',{value:form.emergencyPhone,onChange:function(e){updateField('emergencyPhone',e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              React.createElement('div',{style:{display:'flex',gap:4}},
+                React.createElement('input',{value:form.toCity,onChange:function(e){updateField('toCity',e.target.value)},placeholder:'City',style:{flex:2,padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12}}),
+                React.createElement('input',{value:form.toState,onChange:function(e){updateField('toState',e.target.value)},placeholder:'ST',style:{flex:'0 0 36px',padding:'4px 4px',border:'1px solid #ddd',borderRadius:4,fontSize:12}}),
+                React.createElement('input',{value:form.toZip,onChange:function(e){updateField('toZip',e.target.value)},placeholder:'Zip',style:{flex:'0 0 60px',padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12}})
               )
             ),
-            // TO (Consignee)
-            React.createElement('div',{style:{flex:1,background:'#eff6ff',padding:12,borderRadius:8,border:'1px solid #bfdbfe'}},
-              React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:8,color:'#1e40af'}},'TO (Consignee)'),
-              React.createElement('div',{style:{marginBottom:8}},
-                React.createElement('select',{onChange:function(e){handlePullFac(e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #93c5fd',borderRadius:4,fontSize:12,background:'#dbeafe',color:'#1e40af'}},
-                  React.createElement('option',{value:''},'-- Pull from Facility --'),
-                  (data.facilities||[]).map(function(f){return React.createElement('option',{key:f.id,value:f.id},f.name)})
+            // FROM (Shipper) - RIGHT
+            React.createElement('div',{style:{flex:1,background:'#fefce8',padding:10,borderRadius:8,border:'1px solid #fde68a'}},
+              React.createElement('h4',{style:{fontSize:12,fontWeight:600,marginBottom:6,color:'#92400e'}},'FROM (Shipper)'),
+              React.createElement('div',{style:{marginBottom:6}},
+                React.createElement('select',{onChange:function(e){handlePullGen(e.target.value)},style:{width:'100%',padding:'4px 6px',border:'1px solid #fde68a',borderRadius:4,fontSize:11,background:'#fef9c3',color:'#92400e'}},
+                  React.createElement('option',{value:''},'-- Pull from Generator --'),
+                  (data.generators||[]).slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'')}).map(function(g){return React.createElement('option',{key:g.id,value:g.id},g.name+(g.epaId?' ('+g.epaId+')':''))})
                 )
               ),
-              React.createElement('div',{className:'form-group',style:{marginBottom:6}},
-                React.createElement('label',{style:{fontSize:11}},'Consignee Name'),
-                React.createElement('input',{value:form.toConsignee,onChange:function(e){updateField('toConsignee',e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              React.createElement('div',{className:'form-group',style:{marginBottom:4}},
+                React.createElement('label',{style:{fontSize:10}},'Shipper Name'),
+                React.createElement('input',{value:form.fromShipper,onChange:function(e){updateField('fromShipper',e.target.value)},style:{width:'100%',padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12}})
               ),
-              React.createElement('div',{className:'form-group',style:{marginBottom:6}},
-                React.createElement('label',{style:{fontSize:11}},'Street'),
-                React.createElement('input',{value:form.toStreet,onChange:function(e){updateField('toStreet',e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              React.createElement('div',{className:'form-group',style:{marginBottom:4}},
+                React.createElement('label',{style:{fontSize:10}},'Street'),
+                React.createElement('input',{value:form.fromStreet,onChange:function(e){updateField('fromStreet',e.target.value)},style:{width:'100%',padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12}})
               ),
-              React.createElement('div',{style:{display:'flex',gap:6}},
-                React.createElement('input',{value:form.toCity,onChange:function(e){updateField('toCity',e.target.value)},placeholder:'City',style:{flex:2,padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}}),
-                React.createElement('input',{value:form.toState,onChange:function(e){updateField('toState',e.target.value)},placeholder:'ST',style:{flex:'0 0 40px',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}}),
-                React.createElement('input',{value:form.toZip,onChange:function(e){updateField('toZip',e.target.value)},placeholder:'Zip',style:{flex:1,padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              React.createElement('div',{style:{display:'flex',gap:4}},
+                React.createElement('input',{value:form.fromCity,onChange:function(e){updateField('fromCity',e.target.value)},placeholder:'City',style:{flex:2,padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12}}),
+                React.createElement('input',{value:form.fromState,onChange:function(e){updateField('fromState',e.target.value)},placeholder:'ST',style:{flex:'0 0 36px',padding:'4px 4px',border:'1px solid #ddd',borderRadius:4,fontSize:12}}),
+                React.createElement('input',{value:form.fromZip,onChange:function(e){updateField('fromZip',e.target.value)},placeholder:'Zip',style:{flex:'0 0 60px',padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12}})
+              ),
+              React.createElement('div',{className:'form-group',style:{marginTop:4}},
+                React.createElement('label',{style:{fontSize:10}},'24hr Emergency Phone'),
+                React.createElement('input',{value:form.emergencyPhone,onChange:function(e){updateField('emergencyPhone',e.target.value)},style:{width:'100%',padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12}})
               )
             )
           ),
 
           // BOL Number
-          React.createElement('div',{className:'form-group',style:{marginBottom:16}},
-            React.createElement('label',{style:{fontSize:12,fontWeight:600}},'BOL #'),
-            React.createElement('input',{value:form.bolNumber,onChange:function(e){updateField('bolNumber',e.target.value)},placeholder:'Enter BOL number',style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+          React.createElement('div',{className:'form-group',style:{marginBottom:12}},
+            React.createElement('label',{style:{fontSize:11,fontWeight:600}},'BOL #'),
+            React.createElement('input',{value:form.bolNumber,onChange:function(e){updateField('bolNumber',e.target.value)},placeholder:'Enter BOL number',style:{width:200,padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12}})
           ),
 
           // Line items table
-          React.createElement('h4',{style:{fontSize:14,fontWeight:600,marginBottom:8}},'Line Items (14 rows)'),
-          React.createElement('div',{style:{overflowX:'auto',marginBottom:16}},
-            React.createElement('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:12}},
+          React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:6}},'Line Items (14 rows)'),
+          React.createElement('div',{style:{marginBottom:12}},
+            React.createElement('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:11,tableLayout:'fixed'}},
               React.createElement('thead',null,
                 React.createElement('tr',{style:{background:'#f9fafb'}},
-                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:25}},'#'),
-                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'center',borderBottom:'2px solid #e5e7eb',width:40}},'Num'),
-                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:55}},'Type'),
-                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:80}},'Size'),
-                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'center',borderBottom:'2px solid #e5e7eb',width:30}},'HM'),
-                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb'}},'Basic Description'),
-                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:90}},'Qty'),
-                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:80}},'Weight')
+                  React.createElement('th',{style:{padding:'4px 2px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:20}},'#'),
+                  React.createElement('th',{style:{padding:'4px 2px',textAlign:'center',borderBottom:'2px solid #e5e7eb',width:32}},'Num'),
+                  React.createElement('th',{style:{padding:'4px 2px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:48}},'Type'),
+                  React.createElement('th',{style:{padding:'4px 2px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:65}},'Size'),
+                  React.createElement('th',{style:{padding:'4px 2px',textAlign:'center',borderBottom:'2px solid #e5e7eb',width:26}},'HM'),
+                  React.createElement('th',{style:{padding:'4px 2px',textAlign:'left',borderBottom:'2px solid #e5e7eb'}},'Basic Description'),
+                  React.createElement('th',{style:{padding:'4px 2px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:50}},'Qty'),
+                  React.createElement('th',{style:{padding:'4px 2px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:68}},'Weight')
                 )
               ),
               React.createElement('tbody',null,
                 lineNums.map(function(idx){
                   var line=form.lines[idx]||{};
                   return React.createElement('tr',{key:idx,style:{borderBottom:'1px solid #f3f4f6'}},
-                    React.createElement('td',{style:{padding:'3px 4px',color:'#9ca3af',fontSize:11}},idx+1),
-                    React.createElement('td',{style:{padding:'3px 2px'}},
-                      React.createElement('input',{value:line.containerNum||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'containerNum',e.target.value)}}(),style:{width:'100%',padding:'3px 4px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12,textAlign:'center'}})
+                    React.createElement('td',{style:{padding:'2px 2px',color:'#9ca3af',fontSize:10}},idx+1),
+                    React.createElement('td',{style:{padding:'2px 1px'}},
+                      React.createElement('input',{value:line.containerNum||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'containerNum',e.target.value)}}(),style:{width:'100%',padding:'2px 3px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:11,textAlign:'center'}})
                     ),
-                    React.createElement('td',{style:{padding:'3px 2px'}},
-                      React.createElement('select',{value:line.containerType||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'containerType',e.target.value)}}(),style:{width:'100%',padding:'3px 2px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:11}},
+                    React.createElement('td',{style:{padding:'2px 1px'}},
+                      React.createElement('select',{value:line.containerType||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'containerType',e.target.value)}}(),style:{width:'100%',padding:'2px 1px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:10}},
                         React.createElement('option',{value:''},'--'),
                         CONTAINER_TYPES.map(function(ct){return React.createElement('option',{key:ct.code,value:ct.code},ct.code)})
                       )
                     ),
-                    React.createElement('td',{style:{padding:'3px 2px'}},
-                      React.createElement('select',{value:line.containerSize||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'containerSize',e.target.value)}}(),style:{width:'100%',padding:'3px 2px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:10}},
+                    React.createElement('td',{style:{padding:'2px 1px'}},
+                      React.createElement('select',{value:line.containerSize||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'containerSize',e.target.value)}}(),style:{width:'100%',padding:'2px 1px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:9}},
                         React.createElement('option',{value:''},'--'),
                         CONTAINER_SIZES.map(function(sz){return React.createElement('option',{key:sz,value:sz},sz)})
                       )
                     ),
-                    React.createElement('td',{style:{padding:'3px 2px',textAlign:'center'}},
+                    React.createElement('td',{style:{padding:'2px 1px',textAlign:'center'}},
                       React.createElement('input',{type:'checkbox',checked:line.hm==='X',onChange:function(){var ii=idx;return function(e){updateLine(ii,'hm',e.target.checked?'X':'')}}()})
                     ),
-                    React.createElement('td',{style:{padding:'3px 2px'}},
-                      React.createElement('div',{style:{display:'flex',gap:3,alignItems:'center'}},
+                    React.createElement('td',{style:{padding:'2px 1px'}},
+                      React.createElement('div',{style:{display:'flex',gap:2,alignItems:'center'}},
                         React.createElement('select',{value:'',onChange:function(){var ii=idx;return function(e){
                           var wsId=e.target.value;if(!wsId)return;
                           var ws=null;for(var wi=0;wi<(data.wasteStreams||[]).length;wi++){if(data.wasteStreams[wi].id===wsId){ws=data.wasteStreams[wi];break}}
@@ -3072,14 +3072,14 @@
                           React.createElement('option',{value:''},'WS'),
                           (data.wasteStreams||[]).map(function(ws){return React.createElement('option',{key:ws.id,value:ws.id},(ws.profileId?ws.profileId+' - ':'')+ws.name)})
                         ),
-                        React.createElement('input',{value:line.desc||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'desc',e.target.value)}}(),style:{width:'100%',padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12,flex:1}})
+                        React.createElement('input',{value:line.desc||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'desc',e.target.value)}}(),style:{width:'100%',padding:'2px 4px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:11,flex:1}})
                       )
                     ),
-                    React.createElement('td',{style:{padding:'3px 2px'}},
-                      React.createElement('input',{value:line.qty||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'qty',e.target.value)}}(),style:{width:'100%',padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12}})
+                    React.createElement('td',{style:{padding:'2px 1px'}},
+                      React.createElement('input',{value:line.qty||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'qty',e.target.value)}}(),style:{width:'100%',padding:'2px 4px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:11}})
                     ),
-                    React.createElement('td',{style:{padding:'3px 2px'}},
-                      React.createElement('select',{value:line.weight||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'weight',e.target.value)}}(),style:{width:'100%',padding:'3px 2px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:11}},
+                    React.createElement('td',{style:{padding:'2px 1px'}},
+                      React.createElement('select',{value:line.weight||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'weight',e.target.value)}}(),style:{width:'100%',padding:'2px 1px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:10}},
                         React.createElement('option',{value:''},'--'),
                         React.createElement('option',{value:'Pounds'},'Pounds'),
                         React.createElement('option',{value:'Gallons'},'Gallons')
