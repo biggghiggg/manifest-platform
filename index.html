@@ -3130,6 +3130,7 @@
       function handleUndo(){api.post('/api/alignment-bol/undo').then(function(d){if(d.fields)setAlignData(d.fields);setStatus('Restored previous settings');setTimeout(function(){setStatus('')},2000)})}
       function handleReset(){api.post('/api/alignment-bol/reset').then(function(){setAlignData({});setStatus('Reset to defaults');setTimeout(function(){setStatus('')},2000);api.get('/api/alignment-bol').then(function(d){if(d.fields)setAlignData(d.fields)})})}
       function handleBakeDefaults(){if(!confirm('This will save your current BOL alignment positions as the new defaults. Continue?'))return;api.post('/api/alignment-bol/bake-defaults').then(function(r){if(r&&r.ok){setStatus('Current BOL settings saved as new defaults!');api.get('/api/alignment-bol').then(function(d){if(d.fields)setAlignData(d.fields)})}else{setStatus('ERROR: Failed to save defaults')}setTimeout(function(){setStatus('')},3000)})}
+      function handleCopyLine1(){if(!confirm('Copy Line 1 alignment offsets to Lines 2-14?'))return;api.post('/api/alignment-bol/copy-line1').then(function(r){if(r&&r.ok){setAlignData(r.fields);setHasPrevious(true);setStatus('Line 1 offsets applied to all lines!');setTimeout(function(){setStatus('')},3000)}else{setStatus('ERROR: Copy failed')}})}
       function updateField(fk,dim,val){
         var v=parseInt(val);if(isNaN(v))return;
         if(v>=0&&v<=100){var nd=Object.assign({},alignData);nd[fk]=Object.assign({},alignData[fk]||{row:1,col:1});nd[fk][dim]=v;setAlignData(nd)}
@@ -3158,6 +3159,7 @@
           React.createElement('button',{className:'btn',onClick:handleUndo,style:{padding:'10px 24px',background:hasPrevious?'#f59e0b':'#999',cursor:hasPrevious?'pointer':'not-allowed',color:'#fff'},disabled:!hasPrevious},'Undo (Previous Settings)'),
           React.createElement('button',{className:'btn',onClick:handleReset,style:{padding:'10px 24px',background:'#666'}},'Reset to Defaults'),
           React.createElement('button',{className:'btn',onClick:handleBakeDefaults,style:{padding:'10px 24px',background:'#2563eb',color:'#fff'}},'Set Current as Default'),
+          React.createElement('button',{className:'btn',onClick:handleCopyLine1,style:{padding:'10px 24px',background:'#15803d',color:'#fff'}},'Copy Line 1 to All'),
           status?React.createElement('span',{style:{color:'#4ade80',fontWeight:600,alignSelf:'center'}},status):null,
           selected?React.createElement('span',{style:{color:'#60a5fa',fontWeight:600,alignSelf:'center',marginLeft:8}},'Selected: '+(FIELD_LABELS[selected]||selected)):React.createElement('span',{style:{color:'#999',alignSelf:'center',marginLeft:8}},'Click a field to select it')
         ),

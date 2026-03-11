@@ -2230,6 +2230,45 @@ app.post('/api/alignment-bol/undo', function(req, res) {
   res.json({ ok: true, fields: getActiveBolMap() });
 });
 
+app.post('/api/alignment-bol/copy-line1', function(req, res) {
+  var active = getActiveBolMap();
+  var base = getBaseBolMap();
+  // Calculate line 1 offsets from base
+  var suffixes = ['units', 'hm', 'desc', 'qty', 'weight'];
+  var offsets = {};
+  for (var si = 0; si < suffixes.length; si++) {
+    var key1 = 'line1' + suffixes[si];
+    if (active[key1] && base[key1]) {
+      offsets[suffixes[si]] = {
+        rowOff: active[key1].row - base[key1].row,
+        colOff: active[key1].col - base[key1].col
+      };
+    }
+  }
+  // Apply those offsets to lines 2-14
+  previousAlignmentBol = customAlignmentBol ? JSON.parse(JSON.stringify(customAlignmentBol)) : null;
+  data.previousAlignmentBol = previousAlignmentBol;
+  var newFields = {};
+  var keys = Object.keys(active);
+  for (var ki = 0; ki < keys.length; ki++) {
+    newFields[keys[ki]] = { row: active[keys[ki]].row, col: active[keys[ki]].col };
+  }
+  for (var ln = 2; ln <= 14; ln++) {
+    for (var sj = 0; sj < suffixes.length; sj++) {
+      var fieldKey = 'line' + ln + suffixes[sj];
+      var baseKey = fieldKey;
+      if (newFields[fieldKey] && base[baseKey] && offsets[suffixes[sj]]) {
+        newFields[fieldKey].row = base[baseKey].row + offsets[suffixes[sj]].rowOff;
+        newFields[fieldKey].col = base[baseKey].col + offsets[suffixes[sj]].colOff;
+      }
+    }
+  }
+  customAlignmentBol = newFields;
+  data.customAlignmentBol = customAlignmentBol;
+  saveData(data);
+  res.json({ ok: true, fields: getActiveBolMap() });
+});
+
 app.post('/api/alignment-bol/bake-defaults', function(req, res) {
   savedDefaultsBol = JSON.parse(JSON.stringify(getActiveBolMap()));
   data.savedDefaultsBol = savedDefaultsBol;
