@@ -3113,42 +3113,8 @@
     function BolAlignmentEditor(){
       var s1=useState({});var alignData=s1[0];var setAlignData=s1[1];
       var s2=useState(null);var selected=s2[0];var setSelected=s2[1];
-      var s3=useState(false);var hasPrevious=s3[0];var setHasPrevious=s3[1];
-      var s4=useState(false);var hasSavedDefaults=s4[0];var setHasSavedDefaults=s4[1];
-      var s5=useState({});var defaults=s5[0];var setDefaults=s5[1];
-
-      function loadAlignment(){
-        api.get('/api/alignment-bol').then(function(d){
-          setAlignData(d.fields||{});
-          setDefaults(d.defaults||{});
-          setHasPrevious(d.hasPrevious||false);
-          setHasSavedDefaults(d.hasSavedDefaults||false);
-        });
-      }
-      useEffect(function(){loadAlignment()},[]);
-
-      function save(){
-        api.put('/api/alignment-bol',{fields:alignData}).then(function(){loadAlignment()});
-      }
-      function reset(){
-        if(!confirm('Reset BOL alignment to defaults?'))return;
-        api.post('/api/alignment-bol/reset',{}).then(function(d){loadAlignment()});
-      }
-      function undo(){
-        api.post('/api/alignment-bol/undo',{}).then(function(d){loadAlignment()});
-      }
-      function bakeDefaults(){
-        if(!confirm('Save current BOL positions as new defaults?'))return;
-        api.post('/api/alignment-bol/bake-defaults',{}).then(function(d){loadAlignment()});
-      }
-      function updateField(fieldKey,dimension,value){
-        var v=parseInt(value);
-        if(isNaN(v)||v<0||v>100)return;
-        var nd=Object.assign({},alignData);
-        nd[fieldKey]=Object.assign({},alignData[fieldKey]||{row:1,col:1});
-        nd[fieldKey][dimension]=v;
-        setAlignData(nd);
-      }
+      var s3=useState('');var status=s3[0];var setStatus=s3[1];
+      var s4=useState(false);var hasPrevious=s4[0];var setHasPrevious=s4[1];
 
       var FIELD_LABELS={
         date:'Date',pageNum:'Page #',pageOf:'Page Of',carrierName:'Carrier Name',scac:'SCAC',
@@ -3156,7 +3122,6 @@
         fromShipper:'FROM: Shipper',fromStreet:'FROM: Street',fromCity:'FROM: City',fromState:'FROM: State',fromZip:'FROM: Zip',
         emergencyPhone:'Emergency Phone',route:'Route'
       };
-      // Add line item labels
       for(var li=1;li<=14;li++){
         FIELD_LABELS['line'+li+'units']='Line '+li+' Units';
         FIELD_LABELS['line'+li+'hm']='Line '+li+' HM';
@@ -3166,53 +3131,80 @@
         FIELD_LABELS['line'+li+'weight']='Line '+li+' Weight';
       }
 
+      useEffect(function(){api.get('/api/alignment-bol').then(function(d){if(d.fields)setAlignData(d.fields);if(d.hasPrevious)setHasPrevious(true)})},[]);
+      function handleSave(){api.put('/api/alignment-bol',{fields:alignData}).then(function(r){if(r&&r.ok){setHasPrevious(true);setStatus('Saved!');setTimeout(function(){setStatus('')},3000)}else{setStatus('ERROR: Save failed!')}})}
+      function handleUndo(){api.post('/api/alignment-bol/undo').then(function(d){if(d.fields)setAlignData(d.fields);setStatus('Restored previous settings');setTimeout(function(){setStatus('')},2000)})}
+      function handleReset(){api.post('/api/alignment-bol/reset').then(function(){setAlignData({});setStatus('Reset to defaults');setTimeout(function(){setStatus('')},2000);api.get('/api/alignment-bol').then(function(d){if(d.fields)setAlignData(d.fields)})})}
+      function handleBakeDefaults(){if(!confirm('This will save your current BOL alignment positions as the new defaults. Continue?'))return;api.post('/api/alignment-bol/bake-defaults').then(function(r){if(r&&r.ok){setStatus('Current BOL settings saved as new defaults!');api.get('/api/alignment-bol').then(function(d){if(d.fields)setAlignData(d.fields)})}else{setStatus('ERROR: Failed to save defaults')}setTimeout(function(){setStatus('')},3000)})}
+      function updateField(fk,dim,val){
+        var v=parseInt(val);if(isNaN(v))return;
+        if(v>=0&&v<=100){var nd=Object.assign({},alignData);nd[fk]=Object.assign({},alignData[fk]||{row:1,col:1});nd[fk][dim]=v;setAlignData(nd)}
+      }
+      function nudge(fk,dim,amt){
+        var current=alignData[fk]||{row:1,col:1};var nv=(current[dim]||0)+amt;
+        if(nv>=0&&nv<=100)updateField(fk,dim,nv);
+      }
+
       var groups=[
         {title:'Header',fields:['date','pageNum','pageOf','carrierName','scac']},
         {title:'TO (Consignee)',fields:['toConsignee','toStreet','toCity','toState','toZip']},
         {title:'FROM (Shipper)',fields:['fromShipper','fromStreet','fromCity','fromState','fromZip','emergencyPhone']},
         {title:'Route',fields:['route']}
       ];
-      // Add line item groups
       for(var lg=1;lg<=14;lg++){
         groups.push({title:'Line '+lg,fields:['line'+lg+'units','line'+lg+'hm','line'+lg+'desc','line'+lg+'desc2','line'+lg+'qty','line'+lg+'weight']});
       }
 
       return React.createElement('div',null,
         React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:8}},'Bill of Lading Alignment'),
-        React.createElement('p',{style:{color:'#666',marginBottom:16}},'Adjust field positions on the 8.5x11 BOL form. Use arrows or type values. Save when done, then print a test.'),
-
-        React.createElement('div',{style:{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}},
-          React.createElement('button',{onClick:save,style:{padding:'8px 16px',background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer',fontWeight:600}},'Save Alignment'),
-          hasPrevious?React.createElement('button',{onClick:undo,style:{padding:'8px 16px',background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Undo Last Change'):null,
-          React.createElement('button',{onClick:reset,style:{padding:'8px 16px',background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Reset to Defaults'),
-          React.createElement('button',{onClick:bakeDefaults,style:{padding:'8px 16px',background:'#10b981',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Set Current as Default')
+        React.createElement('p',{style:{color:'#666',marginBottom:16}},'Adjust field positions on the 8.5x11 BOL form. Use Up/Down and Left/Right arrows. Save when done, then print a test.'),
+        React.createElement('div',{style:{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap'}},
+          React.createElement('button',{className:'btn btn-primary',onClick:handleSave,style:{padding:'10px 24px',fontSize:16}},'Save Alignment'),
+          React.createElement('button',{className:'btn',onClick:handleUndo,style:{padding:'10px 24px',background:hasPrevious?'#f59e0b':'#999',cursor:hasPrevious?'pointer':'not-allowed',color:'#fff'},disabled:!hasPrevious},'Undo (Previous Settings)'),
+          React.createElement('button',{className:'btn',onClick:handleReset,style:{padding:'10px 24px',background:'#666'}},'Reset to Defaults'),
+          React.createElement('button',{className:'btn',onClick:handleBakeDefaults,style:{padding:'10px 24px',background:'#2563eb',color:'#fff'}},'Set Current as Default'),
+          status?React.createElement('span',{style:{color:'#4ade80',fontWeight:600,alignSelf:'center'}},status):null,
+          selected?React.createElement('span',{style:{color:'#60a5fa',fontWeight:600,alignSelf:'center',marginLeft:8}},'Selected: '+(FIELD_LABELS[selected]||selected)):React.createElement('span',{style:{color:'#999',alignSelf:'center',marginLeft:8}},'Click a field to select it')
         ),
-
         groups.map(function(group){
-          return React.createElement('div',{key:group.title,style:{marginBottom:16,border:'1px solid #e5e7eb',borderRadius:8,overflow:'hidden'}},
-            React.createElement('div',{style:{background:'#f9fafb',padding:'8px 12px',fontWeight:600,fontSize:13,borderBottom:'1px solid #e5e7eb'}},group.title),
+          return React.createElement('div',{key:group.title,className:'card',style:{marginBottom:12,padding:16}},
+            React.createElement('h4',{style:{marginBottom:12,borderBottom:'1px solid #eee',paddingBottom:8}},group.title),
             React.createElement('table',{style:{width:'100%',borderCollapse:'collapse'}},
+              React.createElement('thead',null,
+                React.createElement('tr',null,
+                  React.createElement('th',{style:{textAlign:'left',padding:'4px 8px',width:'40%'}},'Field'),
+                  React.createElement('th',{style:{textAlign:'center',padding:'4px 8px',width:'30%'}},'Up / Down'),
+                  React.createElement('th',{style:{textAlign:'center',padding:'4px 8px',width:'30%'}},'Left / Right')
+                )
+              ),
               React.createElement('tbody',null,
-                group.fields.map(function(fieldKey){
-                  var pos=alignData[fieldKey]||{row:1,col:1};
-                  var def=defaults[fieldKey]||{row:1,col:1};
-                  var changed=pos.row!==def.row||pos.col!==def.col;
-                  return React.createElement('tr',{key:fieldKey,style:{borderBottom:'1px solid #f3f4f6',background:changed?'#fefce8':'transparent'}},
-                    React.createElement('td',{style:{padding:'6px 12px',fontSize:13,fontWeight:500,width:'30%'}},FIELD_LABELS[fieldKey]||fieldKey),
-                    React.createElement('td',{style:{padding:'4px 8px',fontSize:12}},
-                      React.createElement('span',{style:{marginRight:4}},'Row:'),
-                      React.createElement('button',{onClick:function(){var fk=fieldKey;return function(){updateField(fk,'row',((alignData[fk]||{row:1}).row)-1)}}(),style:{padding:'2px 6px',cursor:'pointer'}},'▲'),
-                      React.createElement('input',{type:'number',value:pos.row,onChange:function(){var fk=fieldKey;return function(e){updateField(fk,'row',e.target.value)}}(),style:{width:45,textAlign:'center',margin:'0 4px',padding:'2px',border:'1px solid #ddd',borderRadius:3}}),
-                      React.createElement('button',{onClick:function(){var fk=fieldKey;return function(){updateField(fk,'row',((alignData[fk]||{row:1}).row)+1)}}(),style:{padding:'2px 6px',cursor:'pointer'}},'▼')
-                    ),
-                    React.createElement('td',{style:{padding:'4px 8px',fontSize:12}},
-                      React.createElement('span',{style:{marginRight:4}},'Col:'),
-                      React.createElement('button',{onClick:function(){var fk=fieldKey;return function(){updateField(fk,'col',((alignData[fk]||{col:1}).col)-1)}}(),style:{padding:'2px 6px',cursor:'pointer'}},'◄'),
-                      React.createElement('input',{type:'number',value:pos.col,onChange:function(){var fk=fieldKey;return function(e){updateField(fk,'col',e.target.value)}}(),style:{width:45,textAlign:'center',margin:'0 4px',padding:'2px',border:'1px solid #ddd',borderRadius:3}}),
-                      React.createElement('button',{onClick:function(){var fk=fieldKey;return function(){updateField(fk,'col',((alignData[fk]||{col:1}).col)+1)}}(),style:{padding:'2px 6px',cursor:'pointer'}},'►')
-                    )
-                  );
-                })
+                (function(){
+                  var rows=[];
+                  for(var fi=0;fi<group.fields.length;fi++){
+                    (function(fk){
+                      var pos=alignData[fk]||{row:1,col:1};
+                      var isSelected=selected===fk;
+                      rows.push(React.createElement('tr',{key:fk,onClick:function(){setSelected(fk)},style:{background:isSelected?'rgba(233,69,96,0.1)':'transparent',cursor:'pointer',borderBottom:'1px solid #f0f0f0'}},
+                        React.createElement('td',{style:{padding:'6px 8px',fontSize:13,fontWeight:isSelected?700:400}},FIELD_LABELS[fk]||fk),
+                        React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
+                          React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',-1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9650)),
+                            React.createElement('input',{type:'number',value:pos.row||1,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'row',e.target.value)},style:{width:45,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9660))
+                          )
+                        ),
+                        React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
+                          React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',-1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9668)),
+                            React.createElement('input',{type:'number',value:pos.col||1,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'col',e.target.value)},style:{width:45,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9658))
+                          )
+                        )
+                      ));
+                    })(group.fields[fi]);
+                  }
+                  return rows;
+                })()
               )
             )
           );
