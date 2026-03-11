@@ -2755,6 +2755,14 @@
         nf.lines=newLines;
         setForm(nf);
       }
+      function updateLineMulti(idx,updates){
+        var nf=Object.assign({},form);
+        var newLines=nf.lines.map(function(l){return Object.assign({},l)});
+        var keys=Object.keys(updates);
+        for(var uk=0;uk<keys.length;uk++){newLines[idx][keys[uk]]=updates[keys[uk]]}
+        nf.lines=newLines;
+        setForm(nf);
+      }
 
       // Pull from manifest
       function handlePullManifest(){
@@ -3029,7 +3037,32 @@
                       React.createElement('input',{type:'checkbox',checked:line.hm==='X',onChange:function(){var ii=idx;return function(e){updateLine(ii,'hm',e.target.checked?'X':'')}}()})
                     ),
                     React.createElement('td',{style:{padding:'3px 2px'}},
-                      React.createElement('input',{value:line.desc||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'desc',e.target.value)}}(),style:{width:'100%',padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12}})
+                      React.createElement('div',{style:{display:'flex',gap:3,alignItems:'center'}},
+                        React.createElement('select',{value:'',onChange:function(){var ii=idx;return function(e){
+                          var wsId=e.target.value;if(!wsId)return;
+                          var ws=null;for(var wi=0;wi<(data.wasteStreams||[]).length;wi++){if(data.wasteStreams[wi].id===wsId){ws=data.wasteStreams[wi];break}}
+                          if(!ws)return;
+                          var dp=[];
+                          var idN=(ws.unNum||'').trim();
+                          var vId=idN.match(/^(UN|NA)\s*\d{4,5}$/i)||idN.match(/^\d{4,5}$/);
+                          if(vId)dp.push(idN.match(/^(UN|NA)/i)?idN:'UN'+idN);
+                          var dd=(ws.dotDescription||'').replace(/\b(UN|NA)\s*\d{4,5}\b/gi,'').replace(/,\s*,/g,',').replace(/^[\s,]+|[\s,]+$/g,'').trim();
+                          var hc=(ws.hazardClass||'').trim();
+                          var ppg=(ws.packingGroup||'').trim();
+                          if(hc&&hc.match(/^\d(\.\d)?$/)){dd=dd.replace(new RegExp(',\\s*'+hc.replace('.','\\.')+'\\s*(?=,|$)'),'').replace(/^[\s,]+|[\s,]+$/g,'').trim()}
+                          if(ppg&&ppg.match(/^(I{1,3})$/i)){dd=dd.replace(new RegExp(',\\s*'+ppg+'\\s*$','i'),'').replace(/^[\s,]+|[\s,]+$/g,'').trim()}
+                          if(dd)dp.push(dd);
+                          if(hc&&hc.match(/^\d(\.\d)?$/))dp.push(hc);
+                          if(ppg&&ppg.match(/^(I{1,3}|PG\s*(I{1,3})|1|2|3)$/i))dp.push(ppg.match(/^(I{1,3})$/)?'PG '+ppg:ppg);
+                          var desc=dp.join(', ');
+                          updateLineMulti(ii,{desc:desc,hm:ws.hm||'X'});
+                          e.target.value='';
+                        }}(),style:{width:28,padding:'2px',border:'1px solid #d1d5db',borderRadius:3,fontSize:10,color:'#6b7280',flexShrink:0}},
+                          React.createElement('option',{value:''},'WS'),
+                          (data.wasteStreams||[]).map(function(ws){return React.createElement('option',{key:ws.id,value:ws.id},(ws.profileId?ws.profileId+' - ':'')+ws.name)})
+                        ),
+                        React.createElement('input',{value:line.desc||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'desc',e.target.value)}}(),style:{width:'100%',padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12,flex:1}})
+                      )
                     ),
                     React.createElement('td',{style:{padding:'3px 2px'}},
                       React.createElement('input',{value:line.qty||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'qty',e.target.value)}}(),style:{width:'100%',padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12}})
