@@ -1334,6 +1334,40 @@ var RAW_22A_MAP = {
 var BUILD_VERSION = 'v76-2026-03-10';
 app.get('/api/version', function(req, res) { res.json({ version: BUILD_VERSION }); });
 
+// Debug: show profile linking for a generator by name
+app.get('/api/debug/generator-profiles/:name', function(req, res) {
+  var searchName = decodeURIComponent(req.params.name).toLowerCase().trim();
+  // Find generator
+  var gen = null;
+  for (var i = 0; i < (data.generators || []).length; i++) {
+    if ((data.generators[i].name || '').toLowerCase().trim() === searchName) { gen = data.generators[i]; break; }
+  }
+  // Find profiles in profiles table for this generator name
+  var matchingProfiles = (data.profiles || []).filter(function(p) {
+    return p.generatorName && p.generatorName.toLowerCase().trim() === searchName;
+  });
+  // Find waste streams
+  var allWs = data.wasteStreams || [];
+  var profLinkedNames = {};
+  matchingProfiles.forEach(function(p) { if (p.wasteStreamName) profLinkedNames[p.wasteStreamName] = true; });
+  var wsMatches = allWs.map(function(w) {
+    var reasons = [];
+    if (gen && (gen.profileIds || []).indexOf(w.id) >= 0) reasons.push('profileIds');
+    if (gen && gen.epaId && w.generatorEpaId && w.generatorEpaId.toUpperCase() === gen.epaId.toUpperCase()) reasons.push('epaId');
+    if (w.generatorName && w.generatorName.toLowerCase().trim() === searchName) reasons.push('generatorName');
+    if (profLinkedNames[w.name]) reasons.push('profilesTable');
+    return reasons.length > 0 ? { wsId: w.id, wsName: w.name, wsProfileId: w.profileId, wsGeneratorName: w.generatorName || '', wsGeneratorEpaId: w.generatorEpaId || '', matchedBy: reasons } : null;
+  }).filter(Boolean);
+  res.json({
+    searchName: searchName,
+    generator: gen ? { id: gen.id, name: gen.name, epaId: gen.epaId, profileIds: gen.profileIds || [] } : null,
+    profileRecords: matchingProfiles.map(function(p) { return { profileId: p.profileId, wasteStreamName: p.wasteStreamName, generatorName: p.generatorName }; }),
+    matchedWasteStreams: wsMatches,
+    totalWasteStreams: allWs.length,
+    totalProfiles: (data.profiles || []).length
+  });
+});
+
 // Debug endpoint - inspect manifest waste line data
 app.get('/api/debug/manifest/:id', function(req, res) {
   var manifest = null;

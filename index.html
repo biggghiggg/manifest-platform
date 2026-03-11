@@ -512,7 +512,7 @@
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                 <h4>Box 9 - Waste Description ({(form.wasteLines||[]).length} lines{(form.wasteLines||[]).length > 4 ? ' - ' + (Math.ceil(((form.wasteLines||[]).length - 4) / 8) + 1) + ' pages' : ''})</h4>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  {preGen ? <span style={{fontSize:11,color:'#16a34a',fontWeight:600}}>{(function(){ var pIds=preGen.profileIds||[]; var gEpa=(preGen.epaId||'').toUpperCase(); var gName=(preGen.name||'').toLowerCase().trim(); var plnk={}; (data.profiles||[]).forEach(function(p){if(p.generatorName&&p.generatorName.toLowerCase().trim()===gName&&p.wasteStreamName)plnk[p.wasteStreamName]=true}); return data.wasteStreams.filter(function(w){ if(pIds.indexOf(w.id)>=0)return true; if(gEpa&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===gEpa)return true; if(gName&&w.generatorName&&w.generatorName.toLowerCase().trim()===gName)return true; if(plnk[w.name])return true; return false; }).length; })()} linked profiles for {preGen.name||'generator'}</span> : null}
+                  {preGen ? <span style={{fontSize:11,color:'#16a34a',fontWeight:600}}>{(function(){ var s={}; var gn=(preGen.name||'').toLowerCase().trim(); (preGen.profileIds||[]).forEach(function(id){s[id]=true}); (data.profiles||[]).filter(function(p){return p.generatorName&&p.generatorName.toLowerCase().trim()===gn}).forEach(function(p){for(var i=0;i<data.wasteStreams.length;i++){var w=data.wasteStreams[i];if((p.wasteStreamName&&w.name===p.wasteStreamName)||(p.profileId&&(w.id===p.profileId||w.profileId===p.profileId))){s[w.id]=true;break}}}); var ge=(preGen.epaId||'').toUpperCase(); data.wasteStreams.forEach(function(w){if(ge&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===ge)s[w.id]=true;if(gn&&w.generatorName&&w.generatorName.toLowerCase().trim()===gn)s[w.id]=true}); return Object.keys(s).length; })()} linked profiles for {preGen.name||'generator'}</span> : null}
                   <button className="btn btn-sm btn-secondary" type="button" onClick={function(){setForm(function(f){var ls=(f.wasteLines||[]).slice();ls.push(Object.assign({},emptyWaste));return Object.assign({},f,{wasteLines:ls})})}}>+ Add Waste Line</button>
                 </div>
               </div>
@@ -569,33 +569,39 @@
                             <option value="">Load...</option>
                             {(function() {
                               var sortByName = function(a, b) { return (a.name || '').localeCompare(b.name || ''); };
-                              var genPIds = preGen ? (preGen.profileIds || []) : [];
-                              var genEpa = preGen ? (preGen.epaId || '').toUpperCase() : '';
-                              var genNameLower = preGen ? (preGen.name || '').toLowerCase().trim() : '';
-                              // Build a set of waste stream names linked via the profiles table
-                              var profLinkedNames = {};
-                              if (preGen) {
-                                (data.profiles || []).forEach(function(p) {
-                                  if (p.generatorName && p.generatorName.toLowerCase().trim() === genNameLower && p.wasteStreamName) {
-                                    profLinkedNames[p.wasteStreamName] = true;
-                                  }
-                                });
+                              if (!preGen) {
+                                return data.wasteStreams.slice().sort(sortByName).map(function(w) { return <option key={w.id} value={w.id}>{w.name}</option>; });
                               }
-                              var linked = preGen ? data.wasteStreams.filter(function(w) {
-                                if (genPIds.indexOf(w.id) >= 0) return true;
-                                if (genEpa && w.generatorEpaId && w.generatorEpaId.toUpperCase() === genEpa) return true;
-                                if (genNameLower && w.generatorName && w.generatorName.toLowerCase().trim() === genNameLower) return true;
-                                if (profLinkedNames[w.name]) return true;
-                                return false;
-                              }).sort(sortByName) : [];
-                              var linkedIds = linked.map(function(w) { return w.id; });
-                              var others = linked.length > 0 ? data.wasteStreams.filter(function(w) { return linkedIds.indexOf(w.id) < 0; }).sort(sortByName) : data.wasteStreams.slice().sort(sortByName);
+                              // Find all waste stream IDs that belong to this generator
+                              var linkedSet = {};
+                              var genNameLower = (preGen.name || '').toLowerCase().trim();
+                              // 1) From generator.profileIds
+                              (preGen.profileIds || []).forEach(function(id) { linkedSet[id] = true; });
+                              // 2) From profiles table: find profiles for this generator, then match to waste streams
+                              var genProfiles = (data.profiles || []).filter(function(p) {
+                                return p.generatorName && p.generatorName.toLowerCase().trim() === genNameLower;
+                              });
+                              genProfiles.forEach(function(p) {
+                                for (var wi = 0; wi < data.wasteStreams.length; wi++) {
+                                  var w = data.wasteStreams[wi];
+                                  if (p.wasteStreamName && w.name === p.wasteStreamName) { linkedSet[w.id] = true; break; }
+                                  if (p.profileId && (w.id === p.profileId || w.profileId === p.profileId)) { linkedSet[w.id] = true; break; }
+                                }
+                              });
+                              // 3) Direct match on waste stream fields
+                              var genEpa = (preGen.epaId || '').toUpperCase();
+                              data.wasteStreams.forEach(function(w) {
+                                if (genEpa && w.generatorEpaId && w.generatorEpaId.toUpperCase() === genEpa) linkedSet[w.id] = true;
+                                if (genNameLower && w.generatorName && w.generatorName.toLowerCase().trim() === genNameLower) linkedSet[w.id] = true;
+                              });
+                              var linked = data.wasteStreams.filter(function(w) { return linkedSet[w.id]; }).sort(sortByName);
+                              var others = data.wasteStreams.filter(function(w) { return !linkedSet[w.id]; }).sort(sortByName);
                               var opts = [];
                               if (linked.length > 0) {
                                 opts.push(<optgroup key="linked" label={"--- " + (preGen.name || 'Generator') + " Profiles ---"}>{linked.map(function(w) { return <option key={w.id} value={w.id}>{w.name}</option>; })}</optgroup>);
                                 opts.push(<optgroup key="other" label="--- All Profiles ---">{others.map(function(w) { return <option key={w.id} value={w.id}>{w.name}</option>; })}</optgroup>);
                               } else {
-                                for (var wi = 0; wi < others.length; wi++) { var w = others[wi]; opts.push(<option key={w.id} value={w.id}>{w.name}</option>); }
+                                others.forEach(function(w) { opts.push(<option key={w.id} value={w.id}>{w.name}</option>); });
                               }
                               return opts;
                             })()}
@@ -903,24 +909,26 @@
                                       <option value="">Load...</option>
                                       {(function() {
                                         var sortFn = function(a, b) { return (a.name || '').localeCompare(b.name || ''); };
-                                        var gPIds = preGen ? (preGen.profileIds || []) : [];
-                                        var gEpa = preGen ? (preGen.epaId || '').toUpperCase() : '';
-                                        var gNameLower = preGen ? (preGen.name || '').toLowerCase().trim() : '';
-                                        var profLnkNames = {};
-                                        if (preGen) {
-                                          (data.profiles || []).forEach(function(p) {
-                                            if (p.generatorName && p.generatorName.toLowerCase().trim() === gNameLower && p.wasteStreamName) {
-                                              profLnkNames[p.wasteStreamName] = true;
-                                            }
-                                          });
+                                        if (!preGen) {
+                                          return data.wasteStreams.slice().sort(sortFn).map(function(w) { return <option key={w.id} value={w.id}>{w.name}</option>; });
                                         }
-                                        var lnk = preGen ? data.wasteStreams.filter(function(w) {
-                                          if (gPIds.indexOf(w.id) >= 0) return true;
-                                          if (gEpa && w.generatorEpaId && w.generatorEpaId.toUpperCase() === gEpa) return true;
-                                          if (gNameLower && w.generatorName && w.generatorName.toLowerCase().trim() === gNameLower) return true;
-                                          if (profLnkNames[w.name]) return true;
-                                          return false;
-                                        }).sort(sortFn) : [];
+                                        var lnkSet = {};
+                                        var gNameLower = (preGen.name || '').toLowerCase().trim();
+                                        (preGen.profileIds || []).forEach(function(id) { lnkSet[id] = true; });
+                                        var gProfs = (data.profiles || []).filter(function(p) { return p.generatorName && p.generatorName.toLowerCase().trim() === gNameLower; });
+                                        gProfs.forEach(function(p) {
+                                          for (var wi = 0; wi < data.wasteStreams.length; wi++) {
+                                            var w = data.wasteStreams[wi];
+                                            if (p.wasteStreamName && w.name === p.wasteStreamName) { lnkSet[w.id] = true; break; }
+                                            if (p.profileId && (w.id === p.profileId || w.profileId === p.profileId)) { lnkSet[w.id] = true; break; }
+                                          }
+                                        });
+                                        var gEpa = (preGen.epaId || '').toUpperCase();
+                                        data.wasteStreams.forEach(function(w) {
+                                          if (gEpa && w.generatorEpaId && w.generatorEpaId.toUpperCase() === gEpa) lnkSet[w.id] = true;
+                                          if (gNameLower && w.generatorName && w.generatorName.toLowerCase().trim() === gNameLower) lnkSet[w.id] = true;
+                                        });
+                                        var lnk = data.wasteStreams.filter(function(w) { return lnkSet[w.id]; }).sort(sortFn);
                                         var lnkIds = lnk.map(function(w) { return w.id; });
                                         var oth = lnk.length > 0 ? data.wasteStreams.filter(function(w) { return lnkIds.indexOf(w.id) < 0; }).sort(sortFn) : data.wasteStreams.slice().sort(sortFn);
                                         var o = [];
@@ -1246,21 +1254,21 @@
                 for(var ii=0;ii<items.length;ii++){
                   (function(item){
                     var isExpanded=expandedId===item.id;
-                    var pIds=item.profileIds||[];
                     var ws=data.wasteStreams||[];
-                    var itemEpaUpper=(item.epaId||'').toUpperCase();
-                    var itemNameLower=(item.name||'').toLowerCase().trim();
-                    var itemProfNames={};
-                    if(type==='generators'){(data.profiles||[]).forEach(function(p){if(p.generatorName&&p.generatorName.toLowerCase().trim()===itemNameLower&&p.wasteStreamName)itemProfNames[p.wasteStreamName]=true})}
-                    var linkedWastes=type==='generators'?ws.filter(function(w){
-                      if(pIds.indexOf(w.id)>=0) return true;
-                      if(itemEpaUpper&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===itemEpaUpper) return true;
-                      if(itemNameLower&&w.generatorName&&w.generatorName.toLowerCase().trim()===itemNameLower) return true;
-                      if(itemProfNames[w.name]) return true;
-                      return false;
-                    }):[];
-                    var linkedIds=linkedWastes.map(function(w){return w.id});
-                    var availableWastes=type==='generators'?ws.filter(function(w){return linkedIds.indexOf(w.id)<0}):[];
+                    var linkedWastes=[];
+                    var availableWastes=[];
+                    if(type==='generators'){
+                      var lSet={};
+                      var iNameLower=(item.name||'').toLowerCase().trim();
+                      (item.profileIds||[]).forEach(function(id){lSet[id]=true});
+                      (data.profiles||[]).filter(function(p){return p.generatorName&&p.generatorName.toLowerCase().trim()===iNameLower}).forEach(function(p){
+                        for(var wi=0;wi<ws.length;wi++){var w=ws[wi];if((p.wasteStreamName&&w.name===p.wasteStreamName)||(p.profileId&&(w.id===p.profileId||w.profileId===p.profileId))){lSet[w.id]=true;break}}
+                      });
+                      var iEpa=(item.epaId||'').toUpperCase();
+                      ws.forEach(function(w){if(iEpa&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===iEpa)lSet[w.id]=true;if(iNameLower&&w.generatorName&&w.generatorName.toLowerCase().trim()===iNameLower)lSet[w.id]=true});
+                      linkedWastes=ws.filter(function(w){return lSet[w.id]});
+                      availableWastes=ws.filter(function(w){return !lSet[w.id]});
+                    }
                     rows.push(React.createElement('tr',{key:item.id},
                       React.createElement('td',{style:{fontWeight:600,cursor:type==='generators'?'pointer':'default',color:type==='generators'?'#e94560':'inherit'},onClick:type==='generators'?function(){setExpandedId(isExpanded?null:item.id)}:undefined},(type==='generators'?(isExpanded?'v ':'> '):'')+item.name),
                       React.createElement('td',null,item.epaId||'-'),
@@ -1328,18 +1336,15 @@
               React.createElement('strong',null,'City/State/Zip:'),
               React.createElement('span',null,[viewItem.city,viewItem.state,viewItem.zip].filter(Boolean).join(', ')||'-'),
               (function(){
-                var vEpaUpper=(viewItem.epaId||'').toUpperCase();
                 var vNameLower=(viewItem.name||'').toLowerCase().trim();
-                var vPIds=viewItem.profileIds||[];
-                var vProfNames={};
-                (data.profiles||[]).forEach(function(p){if(p.generatorName&&p.generatorName.toLowerCase().trim()===vNameLower&&p.wasteStreamName)vProfNames[p.wasteStreamName]=true});
-                var allLinked=(data.wasteStreams||[]).filter(function(w){
-                  if(vPIds.indexOf(w.id)>=0) return true;
-                  if(vEpaUpper&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===vEpaUpper) return true;
-                  if(vNameLower&&w.generatorName&&w.generatorName.toLowerCase().trim()===vNameLower) return true;
-                  if(vProfNames[w.name]) return true;
-                  return false;
+                var vSet={};
+                (viewItem.profileIds||[]).forEach(function(id){vSet[id]=true});
+                (data.profiles||[]).filter(function(p){return p.generatorName&&p.generatorName.toLowerCase().trim()===vNameLower}).forEach(function(p){
+                  for(var wi=0;wi<(data.wasteStreams||[]).length;wi++){var w=data.wasteStreams[wi];if((p.wasteStreamName&&w.name===p.wasteStreamName)||(p.profileId&&(w.id===p.profileId||w.profileId===p.profileId))){vSet[w.id]=true;break}}
                 });
+                var vEpa=(viewItem.epaId||'').toUpperCase();
+                (data.wasteStreams||[]).forEach(function(w){if(vEpa&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===vEpa)vSet[w.id]=true;if(vNameLower&&w.generatorName&&w.generatorName.toLowerCase().trim()===vNameLower)vSet[w.id]=true});
+                var allLinked=(data.wasteStreams||[]).filter(function(w){return vSet[w.id]});
                 var profileElements=[];
                 profileElements.push(React.createElement('strong',{key:'hdr',style:{gridColumn:'1/-1',marginTop:12,borderBottom:'1px solid #eee',paddingBottom:4}},'Linked Profiles ('+allLinked.length+')'));
                 if(allLinked.length>0){
