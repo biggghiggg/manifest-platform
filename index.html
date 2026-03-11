@@ -1187,7 +1187,17 @@
       function handleSave(formData){var p=editing?api.put('/api/'+type+'/'+editing.id,formData):api.post('/api/'+type,formData);p.then(function(){reload();setShowModal(false);setEditing(null)})}
       function handleDelete(id){if(confirm('Delete this '+label.singular.toLowerCase()+'?')){api.del('/api/'+type+'/'+id).then(reload)}}
       function handleClearAll(){if(confirm('DELETE ALL GENERATORS? This cannot be undone!')){if(confirm('Are you really sure? This will remove all '+data.generators.length+' generators.')){api.del('/api/generators').then(reload)}}}
-      function addProfileToGenerator(gen,profileId){var updatedIds=(gen.profileIds||[]).slice();if(updatedIds.indexOf(profileId)<0){updatedIds.push(profileId)}api.put('/api/generators/'+gen.id,Object.assign({},gen,{profileIds:updatedIds})).then(reload)}
+      function addProfileToGenerator(gen,profileId){
+        // Re-fetch the generator from current data to avoid stale closure
+        var freshGen = null;
+        for (var fg = 0; fg < (data.generators || []).length; fg++) {
+          if (data.generators[fg].id === gen.id) { freshGen = data.generators[fg]; break; }
+        }
+        if (!freshGen) freshGen = gen;
+        var updatedIds = (freshGen.profileIds || []).slice();
+        if (updatedIds.indexOf(profileId) < 0) { updatedIds.push(profileId); }
+        api.put('/api/generators/' + freshGen.id, Object.assign({}, freshGen, { profileIds: updatedIds })).then(reload);
+      }
       function removeProfileFromGenerator(gen,profileId){var updatedIds=(gen.profileIds||[]).slice().filter(function(id){return id!==profileId});api.put('/api/generators/'+gen.id,Object.assign({},gen,{profileIds:updatedIds})).then(reload)}
       return React.createElement('div',null,
         React.createElement('div',{className:'section-header'},
@@ -1219,8 +1229,16 @@
                     var isExpanded=expandedId===item.id;
                     var pIds=item.profileIds||[];
                     var ws=data.wasteStreams||[];
-                    var linkedWastes=type==='generators'?ws.filter(function(w){return pIds.indexOf(w.id)>=0}):[];
-                    var availableWastes=type==='generators'?ws.filter(function(w){return pIds.indexOf(w.id)<0}):[];
+                    var itemEpaUpper=(item.epaId||'').toUpperCase();
+                    var itemNameLower=(item.name||'').toLowerCase().trim();
+                    var linkedWastes=type==='generators'?ws.filter(function(w){
+                      if(pIds.indexOf(w.id)>=0) return true;
+                      if(itemEpaUpper&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===itemEpaUpper) return true;
+                      if(itemNameLower&&w.generatorName&&w.generatorName.toLowerCase().trim()===itemNameLower) return true;
+                      return false;
+                    }):[];
+                    var linkedIds=linkedWastes.map(function(w){return w.id});
+                    var availableWastes=type==='generators'?ws.filter(function(w){return linkedIds.indexOf(w.id)<0}):[];
                     rows.push(React.createElement('tr',{key:item.id},
                       React.createElement('td',{style:{fontWeight:600,cursor:type==='generators'?'pointer':'default',color:type==='generators'?'#e94560':'inherit'},onClick:type==='generators'?function(){setExpandedId(isExpanded?null:item.id)}:undefined},(type==='generators'?(isExpanded?'v ':'> '):'')+item.name),
                       React.createElement('td',null,item.epaId||'-'),
@@ -1287,13 +1305,21 @@
               React.createElement('span',null,viewItem.siteAddress||'-'),
               React.createElement('strong',null,'City/State/Zip:'),
               React.createElement('span',null,[viewItem.city,viewItem.state,viewItem.zip].filter(Boolean).join(', ')||'-'),
-              React.createElement('strong',{style:{gridColumn:'1/-1',marginTop:12,borderBottom:'1px solid #eee',paddingBottom:4}},'Linked Profiles ('+((viewItem.profileIds||[]).length)+')'),
               (function(){
+                var vEpaUpper=(viewItem.epaId||'').toUpperCase();
+                var vNameLower=(viewItem.name||'').toLowerCase().trim();
+                var vPIds=viewItem.profileIds||[];
+                var allLinked=(data.wasteStreams||[]).filter(function(w){
+                  if(vPIds.indexOf(w.id)>=0) return true;
+                  if(vEpaUpper&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===vEpaUpper) return true;
+                  if(vNameLower&&w.generatorName&&w.generatorName.toLowerCase().trim()===vNameLower) return true;
+                  return false;
+                });
                 var profileElements=[];
-                if((viewItem.profileIds||[]).length>0){
-                  var linkedProfs=(data.wasteStreams||[]).filter(function(w){return(viewItem.profileIds||[]).indexOf(w.id)>=0});
-                  for(var pi=0;pi<linkedProfs.length;pi++){
-                    var w=linkedProfs[pi];
+                profileElements.push(React.createElement('strong',{key:'hdr',style:{gridColumn:'1/-1',marginTop:12,borderBottom:'1px solid #eee',paddingBottom:4}},'Linked Profiles ('+allLinked.length+')'));
+                if(allLinked.length>0){
+                  for(var pi=0;pi<allLinked.length;pi++){
+                    var w=allLinked[pi];
                     profileElements.push(React.createElement('span',{key:w.id+'-l',style:{color:'#666'}},w.profileId?'#'+w.profileId:''));
                     profileElements.push(React.createElement('span',{key:w.id+'-n'},w.name));
                   }

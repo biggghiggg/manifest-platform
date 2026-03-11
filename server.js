@@ -409,6 +409,43 @@ app.post('/api/import/quickbooks', upload.single('file'), function(req, res) {
   if (changed) saveData(data);
 })();
 
+// Manual re-link endpoint - triggers the backfill on demand
+app.post('/api/relink-profiles', function(req, res) {
+  var profiles = data.profiles || [];
+  var generators = data.generators || [];
+  var wasteStreams = data.wasteStreams || [];
+  var linked = 0;
+  for (var pi = 0; pi < profiles.length; pi++) {
+    var prof = profiles[pi];
+    if (!prof.generatorName) continue;
+    var profGenLower = prof.generatorName.toLowerCase().trim();
+    var matchedGen = null;
+    for (var gi = 0; gi < generators.length; gi++) {
+      if (generators[gi].name && generators[gi].name.toLowerCase().trim() === profGenLower) {
+        matchedGen = generators[gi]; break;
+      }
+    }
+    if (!matchedGen) continue;
+    var matchedWs = null;
+    for (var wi = 0; wi < wasteStreams.length; wi++) {
+      if (wasteStreams[wi].name && wasteStreams[wi].name === prof.wasteStreamName) {
+        matchedWs = wasteStreams[wi]; break;
+      }
+    }
+    if (!matchedWs) continue;
+    if (!matchedWs.generatorName && prof.generatorName) {
+      matchedWs.generatorName = prof.generatorName;
+    }
+    if (!matchedGen.profileIds) matchedGen.profileIds = [];
+    if (matchedGen.profileIds.indexOf(matchedWs.id) < 0) {
+      matchedGen.profileIds.push(matchedWs.id);
+      linked++;
+    }
+  }
+  if (linked > 0) saveData(data);
+  res.json({ success: true, linked: linked });
+});
+
 // Auto-link a waste stream to its matching generator by EPA ID or name (case-insensitive)
 function autoLinkWasteStreamToGenerator(ws) {
   if (!ws || !data.generators) return;
