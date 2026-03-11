@@ -1853,7 +1853,7 @@ app.get('/api/print/label/:id', function(req, res) {
 
   var copies = parseInt(req.query.copies) || 1;
   if (copies < 1) copies = 1;
-  if (copies > 20) copies = 20;
+  if (copies > 100) copies = 100;
   for (var ci = 0; ci < copies; ci++) {
     html += '<div class="page">';
     for (var pi = 0; pi < placements.length; pi++) {

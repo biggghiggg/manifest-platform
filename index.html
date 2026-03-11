@@ -223,21 +223,30 @@
           if (data.generators[gi].epaId === manifest.generatorEpaId) { initPreGen = data.generators[gi]; break; }
         }
       }
-      var preGenState = useState(initPreGen); var preGen = preGenState[0]; var setPreGen = preGenState[1];
-      var isEdit = !!manifest && !preGen;
+      // Track selected generator ID in state for profile filtering
+      var selGenIdState = useState(initPreGen ? initPreGen.id : null); var selGenId = selGenIdState[0]; var setSelGenId = selGenIdState[1];
+      var isEdit = !!manifest && !initPreGen;
       var emptyWaste = { hm: '', description: '', containerNum: '', containerType: '', containerSize: '', qty: '', unit: '', wasteCodes: '', profileId: '' };
       var contState = useState(false); var showContinuation = contState[0]; var setShowContinuation = contState[1];
       var savedIdState = useState(isEdit && manifest ? manifest.id : null); var savedId = savedIdState[0]; var setSavedId = savedIdState[1];
 
+      // Compute preGen from selGenId on every render - always fresh
+      var preGen = null;
+      if (selGenId) {
+        for (var pgi = 0; pgi < (data.generators || []).length; pgi++) {
+          if (data.generators[pgi].id === selGenId) { preGen = data.generators[pgi]; break; }
+        }
+      }
+
       var formState = useState(function() {
-        if (preGen) {
+        if (initPreGen) {
           return {
             manifestTrackingNum: '', emergencyPhone: '800-255-3924',
-            generatorEpaId: preGen.epaId || '', generatorName: preGen.name || '',
-            generatorAddress: preGen.mailAddress || preGen.siteAddress || '',
-            generatorCityStZip: preGen.mailCity ? [preGen.mailCity, preGen.mailState, preGen.mailZip].filter(Boolean).join(', ') : [preGen.city, preGen.state, preGen.zip].filter(Boolean).join(', '),
-            generatorPhone: preGen.phone || '',
-            genSiteAddress: preGen.siteAddress || '', genSiteCityStZip: [preGen.city, preGen.state, preGen.zip].filter(Boolean).join(', '),
+            generatorEpaId: initPreGen.epaId || '', generatorName: initPreGen.name || '',
+            generatorAddress: initPreGen.mailAddress || initPreGen.siteAddress || '',
+            generatorCityStZip: initPreGen.mailCity ? [initPreGen.mailCity, initPreGen.mailState, initPreGen.mailZip].filter(Boolean).join(', ') : [initPreGen.city, initPreGen.state, initPreGen.zip].filter(Boolean).join(', '),
+            generatorPhone: initPreGen.phone || '',
+            genSiteAddress: initPreGen.siteAddress || '', genSiteCityStZip: [initPreGen.city, initPreGen.state, initPreGen.zip].filter(Boolean).join(', '),
             transporter1Name: '', transporter1EpaId: '',
             transporter2Name: '', transporter2EpaId: '',
             facilityName: '', facilityAddress: '', facilityCityStZip: '', facilityPhone: '', facilityEpaId: '',
@@ -293,7 +302,7 @@
       function loadGenerator(id) {
         var gen = data.generators.find(function(g) { return g.id === id; });
         if (!gen) return;
-        setPreGen(gen);
+        setSelGenId(gen.id);
         setForm(function(f) {
           return Object.assign({}, f, {
             generatorName: gen.name || '',
@@ -2270,9 +2279,7 @@
                   React.createElement('td',null,l.genName||''),
                   React.createElement('td',null,l.physicalState||'--'),
                   React.createElement('td',{style:{textAlign:'right'}},
-                    React.createElement('select',{value:getLabelCopies(l.id),onChange:function(){var lid=l.id;return function(e){setLabelCopy(lid,e.target.value)}}(),style:{padding:'2px 4px',fontSize:11,marginRight:4,borderRadius:3,border:'1px solid #ccc'}},
-                      React.createElement('option',{value:1},'1'),React.createElement('option',{value:2},'2'),React.createElement('option',{value:3},'3'),React.createElement('option',{value:4},'4'),React.createElement('option',{value:5},'5'),React.createElement('option',{value:10},'10')
-                    ),
+                    React.createElement('input',{type:'number',min:1,max:100,value:getLabelCopies(l.id),onChange:function(){var lid=l.id;return function(e){setLabelCopy(lid,e.target.value)}}(),style:{width:50,padding:'2px 4px',fontSize:11,marginRight:4,borderRadius:3,border:'1px solid #ccc',textAlign:'center'}}),
                     React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){handlePrintSingle(l.id)},style:{marginRight:4}},'Print'),
                     React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){openEdit(l)},style:{marginRight:4}},'Edit'),
                     React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){handleDelete(l.id)}},'Del')
@@ -2309,9 +2316,7 @@
                     React.createElement('td',null,l.epaWasteNum||''),
                     React.createElement('td',null,l.physicalState||'--'),
                     React.createElement('td',{style:{textAlign:'right'}},
-                      React.createElement('select',{value:getLabelCopies(l.id),onChange:function(){var lid=l.id;return function(e){setLabelCopy(lid,e.target.value)}}(),style:{padding:'2px 4px',fontSize:11,marginRight:4,borderRadius:3,border:'1px solid #ccc'}},
-                        React.createElement('option',{value:1},'1'),React.createElement('option',{value:2},'2'),React.createElement('option',{value:3},'3'),React.createElement('option',{value:4},'4'),React.createElement('option',{value:5},'5'),React.createElement('option',{value:10},'10')
-                      ),
+                      React.createElement('input',{type:'number',min:1,max:100,value:getLabelCopies(l.id),onChange:function(){var lid=l.id;return function(e){setLabelCopy(lid,e.target.value)}}(),style:{width:50,padding:'2px 4px',fontSize:11,marginRight:4,borderRadius:3,border:'1px solid #ccc',textAlign:'center'}}),
                       React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){handlePrintSingle(l.id)},style:{marginRight:4}},'Print'),
                       React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){openEdit(l)},style:{marginRight:4}},'Edit'),
                       React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){handleDelete(l.id)}},'Del')
