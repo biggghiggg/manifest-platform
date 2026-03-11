@@ -1511,12 +1511,14 @@ app.post('/api/alignment22a/bake-defaults', function(req, res) {
 var LABEL_MAP = {
   dotShippingName1:  { row: 14, col: 3 },   // Fill area below "SHIPPING NAME" header
   dotShippingName2:  { row: 15, col: 3 },
+  profileNumber:     { row: 16, col: 25 },  // Waste profile # centered below DOT name
   genPhone:          { row: 18, col: 42 },  // Right of "TELEPHONE"
   genName:           { row: 19, col: 10 },  // Right of "NAME"
   genAddress:        { row: 20, col: 14 },  // Right of "ADDRESS"
   genCityStateZip:   { row: 21, col: 10 },  // Right of "CITY"
   epaId:             { row: 24, col: 8 },   // Below "EPA ID#:"
   epaWasteNum:       { row: 24, col: 35 },  // Below "E.P.A. WASTE#:"
+  epaWasteNum2:      { row: 25, col: 35 },  // Overflow waste codes (4th+)
   stateWasteCode:    { row: 25, col: 55 },  // Below "STATE WASTE CODE:"
   accumStartDate:    { row: 27, col: 20 },  // Right of "START DATE"
   manifestTrackNo:   { row: 27, col: 48 },  // Right of "TRACKING NO."
@@ -1666,12 +1668,25 @@ app.post('/api/labels/from-manifest/:manifestId', function(req, res) {
     // Parse waste codes
     var wasteCodes = (manifest['waste' + w + 'WasteCodes'] || '').trim();
 
+    // Look up profile number from waste stream if profileId is set
+    var profileNum = manifest['waste' + w + 'ProfileId'] || '';
+    if (profileNum) {
+      // Check if it matches a waste stream's profileId for the full number
+      for (var ws = 0; ws < (data.wasteStreams || []).length; ws++) {
+        if (data.wasteStreams[ws].id === profileNum || data.wasteStreams[ws].profileId === profileNum) {
+          profileNum = data.wasteStreams[ws].profileId || profileNum;
+          break;
+        }
+      }
+    }
+
     var label = {
       id: Date.now().toString() + '-' + w,
       createdAt: new Date().toISOString(),
       manifestId: manifest.id,
       wasteLineNum: w,
       dotShippingName: desc,
+      profileNumber: profileNum,
       genName: manifest.generatorName || '',
       genAddress: manifest.generatorMailAddr || '',
       genCityStateZip: cityStateZip,
@@ -1747,14 +1762,29 @@ app.get('/api/print/label/:id', function(req, res) {
   place('genCityStateZip', label.genCityStateZip);
   place('genPhone', label.genPhone);
 
-  // EPA / Waste
+  // Profile number (below DOT shipping name, centered)
+  place('profileNumber', label.profileNumber);
+
+  // EPA / Waste - split codes: first 3 on main line, rest on overflow line
   place('epaId', label.epaId);
-  place('epaWasteNum', label.epaWasteNum);
+  var allWasteCodes = (label.epaWasteNum || '').trim();
+  if (allWasteCodes) {
+    var codeList = allWasteCodes.replace(/([A-Za-z]\d{3})/g, ' $1').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+    if (codeList.length > 3) {
+      place('epaWasteNum', codeList.slice(0, 3).join(' '));
+      place('epaWasteNum2', codeList.slice(3).join(' '));
+    } else {
+      place('epaWasteNum', allWasteCodes);
+    }
+  }
   place('stateWasteCode', label.stateWasteCode);
 
   // Dates / Manifest
   place('accumStartDate', label.accumStartDate);
-  place('manifestTrackNo', label.manifestTrackNo);
+  // Manifest tracking number prints slightly larger (11pt)
+  if (label.manifestTrackNo && M.manifestTrackNo) {
+    placements.push({ row: M.manifestTrackNo.row, col: M.manifestTrackNo.col, text: String(label.manifestTrackNo), medium: true });
+  }
 
   // Extract UN/NA number from DOT shipping name for large display in contents area
   var unNumber = '';
@@ -1806,7 +1836,7 @@ app.get('/api/print/label/:id', function(req, res) {
   html += 'body { margin: 0; padding: 0; }';
   html += '.page { position: relative; width: 6in; height: 6in; overflow: hidden; page-break-after: always; }';
   html += '.page:last-child { page-break-after: auto; }';
-  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 9pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
   html += '.toolbar .print-btn { background: #f59e0b; color: white; border: none; border-radius: 4px; }';
@@ -1828,6 +1858,8 @@ app.get('/api/print/label/:id', function(req, res) {
     if (p.large) {
       // Large UN/NA number: ~0.5in tall, bold, centered in contents area
       html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:36pt;font-weight:bold;letter-spacing:2px;">' + safeText + '</span>';
+    } else if (p.medium) {
+      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:11pt;font-weight:bold;">' + safeText + '</span>';
     } else {
       html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
     }
@@ -1856,7 +1888,7 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
   html += 'body { margin: 0; padding: 0; }';
   html += '.page { position: relative; width: 6in; height: 6in; overflow: hidden; page-break-after: always; }';
   html += '.page:last-child { page-break-after: auto; }';
-  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 9pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
   html += '.toolbar .print-btn { background: #f59e0b; color: white; border: none; border-radius: 4px; }';
@@ -1898,11 +1930,23 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
     placeB('genAddress', label.genAddress);
     placeB('genCityStateZip', label.genCityStateZip);
     placeB('genPhone', label.genPhone);
+    placeB('profileNumber', label.profileNumber);
     placeB('epaId', label.epaId);
-    placeB('epaWasteNum', label.epaWasteNum);
+    var bAllWC = (label.epaWasteNum || '').trim();
+    if (bAllWC) {
+      var bCodes = bAllWC.replace(/([A-Za-z]\d{3})/g, ' $1').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+      if (bCodes.length > 3) {
+        placeB('epaWasteNum', bCodes.slice(0, 3).join(' '));
+        placeB('epaWasteNum2', bCodes.slice(3).join(' '));
+      } else {
+        placeB('epaWasteNum', bAllWC);
+      }
+    }
     placeB('stateWasteCode', label.stateWasteCode);
     placeB('accumStartDate', label.accumStartDate);
-    placeB('manifestTrackNo', label.manifestTrackNo);
+    if (label.manifestTrackNo && M.manifestTrackNo) {
+      placements.push({ row: M.manifestTrackNo.row, col: M.manifestTrackNo.col, text: String(label.manifestTrackNo), medium: true });
+    }
 
     // Extract UN/NA number for large display
     var bUnNumber = '';
@@ -1952,6 +1996,8 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
       var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       if (p.large) {
         html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:36pt;font-weight:bold;letter-spacing:2px;">' + safeText + '</span>';
+      } else if (p.medium) {
+        html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:11pt;font-weight:bold;">' + safeText + '</span>';
       } else {
         html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
       }

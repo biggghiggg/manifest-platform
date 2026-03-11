@@ -2327,7 +2327,7 @@
       var onSave=props.onSave;
 
       var emptyLabel={
-        dotShippingName:'',genName:'',genAddress:'',genCityStateZip:'',genPhone:'',
+        dotShippingName:'',profileNumber:'',genName:'',genAddress:'',genCityStateZip:'',genPhone:'',
         epaId:'',epaWasteNum:'',stateWasteCode:'',accumStartDate:'',manifestTrackNo:'',
         contents:'',physicalState:'',
         hazProps:{flammable:false,corrosive:false,reactivity:false,toxic:false,other:false},
@@ -2364,8 +2364,13 @@
         if(manifest.generatorMailState)cityStateZip+=(cityStateZip?', ':'')+manifest.generatorMailState;
         if(manifest.generatorMailZip)cityStateZip+=' '+manifest.generatorMailZip;
         var wasteCodes=(manifest['waste'+w+'WasteCodes']||'').trim();
+        // Look up profile number from waste stream
+        var profId=manifest['waste'+w+'ProfileId']||'';
+        var profNum=profId;
+        if(profId){for(var wsi=0;wsi<(data.wasteStreams||[]).length;wsi++){var wss=data.wasteStreams[wsi];if(wss.id===profId||wss.profileId===profId){profNum=wss.profileId||profId;break}}}
         var nf=Object.assign({},form,{
           dotShippingName:desc,
+          profileNumber:profNum,
           genName:manifest.generatorName||'',
           genAddress:manifest.generatorMailAddr||'',
           genCityStateZip:cityStateZip,
@@ -2407,6 +2412,7 @@
         var allCodes=[fedCodes,stateCodes].filter(Boolean).join(' ').trim();
         var nf=Object.assign({},form,{
           dotShippingName:desc,
+          profileNumber:ws.profileId||'',
           epaWasteNum:fedCodes,
           stateWasteCode:stateCodes,
           contents:''
@@ -2484,6 +2490,10 @@
               React.createElement('textarea',{rows:2,value:form.dotShippingName,onChange:function(e){updateField('dotShippingName',e.target.value)}})
             ),
             React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'WASTE PROFILE #'),
+              React.createElement('input',{value:form.profileNumber||'',onChange:function(e){updateField('profileNumber',e.target.value)},placeholder:'e.g. 1139708'})
+            ),
+            React.createElement('div',{className:'form-group'},
               React.createElement('label',null,'GENERATOR NAME'),
               React.createElement('select',{value:'',onChange:function(e){
                 var gId=e.target.value;if(!gId)return;
@@ -2538,8 +2548,8 @@
               React.createElement('label',null,'ACCUMULATION START DATE'),
               React.createElement('input',{type:'date',value:form.accumStartDateISO||'',onChange:function(e){
                 var v=e.target.value;
-                if(v){var parts=v.split('-');updateField('accumStartDate',parts[1]+'/'+parts[2]+'/'+parts[0]);updateField('accumStartDateISO',v)}
-                else{updateField('accumStartDate','');updateField('accumStartDateISO','')}
+                if(v){var parts=v.split('-');var nf=Object.assign({},form);nf.accumStartDate=parts[1]+'/'+parts[2]+'/'+parts[0];nf.accumStartDateISO=v;setForm(nf)}
+                else{var nf2=Object.assign({},form);nf2.accumStartDate='';nf2.accumStartDateISO='';setForm(nf2)}
               },style:{padding:'8px 12px',border:'1px solid #ddd',borderRadius:6,fontSize:14}}),
               React.createElement('input',{value:form.accumStartDate,onChange:function(e){updateField('accumStartDate',e.target.value)},placeholder:'MM/DD/YYYY',style:{marginTop:2}})
             ),
@@ -2603,8 +2613,9 @@
 
       var FIELD_LABELS={
         dotShippingName1:'DOT Shipping Name Line 1',dotShippingName2:'DOT Shipping Name Line 2',
+        profileNumber:'Waste Profile #',
         genPhone:'Telephone',genName:'Generator Name',genAddress:'Generator Address',genCityStateZip:'City/State/Zip',
-        epaId:'EPA ID #',epaWasteNum:'EPA Waste #',stateWasteCode:'State Waste Code',
+        epaId:'EPA ID #',epaWasteNum:'EPA Waste # (line 1)',epaWasteNum2:'EPA Waste # (overflow)',stateWasteCode:'State Waste Code',
         accumStartDate:'Accumulation Start Date',manifestTrackNo:'Manifest Tracking No.',
         contentsUN:'Contents - UN/NA Number (large)',contents1:'Contents Line 1',contents2:'Contents Line 2',
         physStateSolid:'Solid Checkbox',physStateLiquid:'Liquid Checkbox',physStateGas:'Gas Checkbox',
@@ -2627,9 +2638,9 @@
       }
 
       var groups=[
-        {title:'DOT Shipping Name',fields:['dotShippingName1','dotShippingName2']},
+        {title:'DOT Shipping Name',fields:['dotShippingName1','dotShippingName2','profileNumber']},
         {title:'Generator Information',fields:['genPhone','genName','genAddress','genCityStateZip']},
-        {title:'EPA / Waste Codes',fields:['epaId','epaWasteNum','stateWasteCode']},
+        {title:'EPA / Waste Codes',fields:['epaId','epaWasteNum','epaWasteNum2','stateWasteCode']},
         {title:'Dates / Tracking',fields:['accumStartDate','manifestTrackNo']},
         {title:'Contents / Composition',fields:['contentsUN','contents1','contents2']},
         {title:'Physical State Checkboxes',fields:['physStateSolid','physStateLiquid','physStateGas']},
