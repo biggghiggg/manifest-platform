@@ -2009,6 +2009,324 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
   res.type('html').send(html);
 });
 
+// ============================================================
+// BILL OF LADING (BOL) SYSTEM
+// ============================================================
+
+// BOL_MAP — Field positions for 8.5"x11" Labelmaster F375-3 Straight BOL
+// CPI=10 (85 cols across 8.5"), LPI=6 (66 rows across 11")
+// Positions are initial estimates — calibrate with alignment editor + test prints
+var BOL_MAP = {
+  // Header
+  date:               { row: 6, col: 72 },
+
+  // Page / Carrier
+  pageNum:            { row: 8, col: 11 },
+  pageOf:             { row: 8, col: 18 },
+  carrierName:        { row: 8, col: 35 },
+  scac:               { row: 8, col: 62 },
+
+  // TO (Consignee) — left column
+  toConsignee:        { row: 10, col: 5 },
+  toStreet:           { row: 11, col: 5 },
+  toCity:             { row: 12, col: 5 },
+  toState:            { row: 12, col: 25 },
+  toZip:              { row: 12, col: 35 },
+
+  // FROM (Shipper) — right column
+  fromShipper:        { row: 10, col: 48 },
+  fromStreet:         { row: 11, col: 48 },
+  fromCity:           { row: 12, col: 48 },
+  fromState:          { row: 12, col: 65 },
+  fromZip:            { row: 12, col: 72 },
+  emergencyPhone:     { row: 13, col: 60 },
+
+  // Route
+  route:              { row: 14, col: 8 },
+
+  // Line items (14 rows) — each row is 1 line on the form
+  // Columns: units(col 3), hm(col 14), desc(col 17), qty(col 55), weight(col 65)
+  line1units: { row: 17, col: 3 },  line1hm: { row: 17, col: 14 }, line1desc: { row: 17, col: 17 }, line1qty: { row: 17, col: 55 }, line1weight: { row: 17, col: 65 },
+  line2units: { row: 18, col: 3 },  line2hm: { row: 18, col: 14 }, line2desc: { row: 18, col: 17 }, line2qty: { row: 18, col: 55 }, line2weight: { row: 18, col: 65 },
+  line3units: { row: 19, col: 3 },  line3hm: { row: 19, col: 14 }, line3desc: { row: 19, col: 17 }, line3qty: { row: 19, col: 55 }, line3weight: { row: 19, col: 65 },
+  line4units: { row: 20, col: 3 },  line4hm: { row: 20, col: 14 }, line4desc: { row: 20, col: 17 }, line4qty: { row: 20, col: 55 }, line4weight: { row: 20, col: 65 },
+  line5units: { row: 21, col: 3 },  line5hm: { row: 21, col: 14 }, line5desc: { row: 21, col: 17 }, line5qty: { row: 21, col: 55 }, line5weight: { row: 21, col: 65 },
+  line6units: { row: 22, col: 3 },  line6hm: { row: 22, col: 14 }, line6desc: { row: 22, col: 17 }, line6qty: { row: 22, col: 55 }, line6weight: { row: 22, col: 65 },
+  line7units: { row: 23, col: 3 },  line7hm: { row: 23, col: 14 }, line7desc: { row: 23, col: 17 }, line7qty: { row: 23, col: 55 }, line7weight: { row: 23, col: 65 },
+  line8units: { row: 24, col: 3 },  line8hm: { row: 24, col: 14 }, line8desc: { row: 24, col: 17 }, line8qty: { row: 24, col: 55 }, line8weight: { row: 24, col: 65 },
+  line9units: { row: 25, col: 3 },  line9hm: { row: 25, col: 14 }, line9desc: { row: 25, col: 17 }, line9qty: { row: 25, col: 55 }, line9weight: { row: 25, col: 65 },
+  line10units: { row: 26, col: 3 }, line10hm: { row: 26, col: 14 }, line10desc: { row: 26, col: 17 }, line10qty: { row: 26, col: 55 }, line10weight: { row: 26, col: 65 },
+  line11units: { row: 27, col: 3 }, line11hm: { row: 27, col: 14 }, line11desc: { row: 27, col: 17 }, line11qty: { row: 27, col: 55 }, line11weight: { row: 27, col: 65 },
+  line12units: { row: 28, col: 3 }, line12hm: { row: 28, col: 14 }, line12desc: { row: 28, col: 17 }, line12qty: { row: 28, col: 55 }, line12weight: { row: 28, col: 65 },
+  line13units: { row: 29, col: 3 }, line13hm: { row: 29, col: 14 }, line13desc: { row: 29, col: 17 }, line13qty: { row: 29, col: 55 }, line13weight: { row: 29, col: 65 },
+  line14units: { row: 30, col: 3 }, line14hm: { row: 30, col: 14 }, line14desc: { row: 30, col: 17 }, line14qty: { row: 30, col: 55 }, line14weight: { row: 30, col: 65 }
+};
+
+// BOL Alignment System — same pattern as labels
+var savedDefaultsBol = data.savedDefaultsBol || null;
+var customAlignmentBol = data.customAlignmentBol || null;
+var previousAlignmentBol = data.previousAlignmentBol || null;
+
+function getBaseBolMap() {
+  return savedDefaultsBol || BOL_MAP;
+}
+
+function getActiveBolMap() {
+  var base = getBaseBolMap();
+  if (!customAlignmentBol) return JSON.parse(JSON.stringify(base));
+  var merged = {};
+  var keys = Object.keys(base);
+  for (var i = 0; i < keys.length; i++) {
+    merged[keys[i]] = customAlignmentBol[keys[i]] || base[keys[i]];
+  }
+  return merged;
+}
+
+// Initialize BOL array
+if (!data.bols) { data.bols = []; saveData(data); }
+
+// ---- BOL CRUD Endpoints ----
+
+app.get('/api/bols', function(req, res) {
+  res.json(data.bols || []);
+});
+
+app.post('/api/bols', function(req, res) {
+  var bol = req.body;
+  bol.id = Date.now().toString();
+  bol.createdAt = new Date().toISOString();
+  if (!data.bols) data.bols = [];
+  data.bols.push(bol);
+  saveData(data);
+  res.json(bol);
+});
+
+app.put('/api/bols/:id', function(req, res) {
+  var idx = -1;
+  for (var i = 0; i < (data.bols || []).length; i++) {
+    if (data.bols[i].id === req.params.id) { idx = i; break; }
+  }
+  if (idx === -1) return res.status(404).json({ error: 'BOL not found' });
+  data.bols[idx] = Object.assign(data.bols[idx], req.body);
+  saveData(data);
+  res.json(data.bols[idx]);
+});
+
+app.delete('/api/bols/:id', function(req, res) {
+  data.bols = (data.bols || []).filter(function(b) { return b.id !== req.params.id; });
+  saveData(data);
+  res.json({ ok: true });
+});
+
+// ---- Generate BOL from Manifest ----
+
+app.post('/api/bols/from-manifest/:manifestId', function(req, res) {
+  var manifest = null;
+  for (var i = 0; i < (data.manifests || []).length; i++) {
+    if (data.manifests[i].id === req.params.manifestId) { manifest = data.manifests[i]; break; }
+  }
+  if (!manifest) return res.status(404).json({ error: 'Manifest not found' });
+
+  var bol = {
+    id: Date.now().toString(),
+    createdAt: new Date().toISOString(),
+    manifestId: manifest.id,
+    date: new Date().toLocaleDateString('en-US'),
+    pageNum: '1',
+    pageOf: '1',
+    carrierName: manifest.transporter1Company || '',
+    scac: '',
+    toConsignee: manifest.facilityName || '',
+    toStreet: manifest.facilityAddress || '',
+    toCity: manifest.facilityCity || '',
+    toState: manifest.facilityState || '',
+    toZip: manifest.facilityZip || '',
+    fromShipper: manifest.generatorName || '',
+    fromStreet: manifest.generatorMailAddr || manifest.generatorSiteAddr || '',
+    fromCity: manifest.generatorMailCity || manifest.generatorCity || '',
+    fromState: manifest.generatorMailState || manifest.generatorState || '',
+    fromZip: manifest.generatorMailZip || manifest.generatorZip || '',
+    emergencyPhone: manifest.emergencyPhone || '',
+    route: '',
+    lines: []
+  };
+
+  // Map waste lines to BOL line items
+  for (var w = 1; w <= 4; w++) {
+    var desc = manifest['waste' + w + 'Description'] || '';
+    if (!desc) continue;
+    var qty = manifest['waste' + w + 'Qty'] || '';
+    var containerNum = manifest['waste' + w + 'ContainerNum'] || '';
+    var containerType = manifest['waste' + w + 'ContainerType'] || '';
+    var unit = manifest['waste' + w + 'Unit'] || '';
+    var hm = manifest['waste' + w + 'HM'] || 'X';
+
+    bol.lines.push({
+      units: containerNum ? containerNum + ' ' + containerType : '',
+      hm: hm,
+      desc: desc,
+      qty: qty + (unit ? ' ' + unit : ''),
+      weight: ''
+    });
+  }
+
+  // Pad lines array to 14
+  while (bol.lines.length < 14) {
+    bol.lines.push({ units: '', hm: '', desc: '', qty: '', weight: '' });
+  }
+
+  if (!data.bols) data.bols = [];
+  data.bols.push(bol);
+  saveData(data);
+  res.json(bol);
+});
+
+// ---- BOL Alignment Endpoints ----
+
+app.get('/api/alignment-bol', function(req, res) {
+  customAlignmentBol = data.customAlignmentBol || null;
+  previousAlignmentBol = data.previousAlignmentBol || null;
+  savedDefaultsBol = data.savedDefaultsBol || null;
+  res.json({
+    fields: getActiveBolMap(),
+    defaults: getBaseBolMap(),
+    hasPrevious: !!previousAlignmentBol,
+    hasSavedDefaults: !!savedDefaultsBol
+  });
+});
+
+app.put('/api/alignment-bol', function(req, res) {
+  previousAlignmentBol = customAlignmentBol ? JSON.parse(JSON.stringify(customAlignmentBol)) : null;
+  data.previousAlignmentBol = previousAlignmentBol;
+  customAlignmentBol = req.body.fields || null;
+  data.customAlignmentBol = customAlignmentBol;
+  saveData(data);
+  res.json({ ok: true, fields: getActiveBolMap() });
+});
+
+app.post('/api/alignment-bol/reset', function(req, res) {
+  previousAlignmentBol = customAlignmentBol ? JSON.parse(JSON.stringify(customAlignmentBol)) : null;
+  data.previousAlignmentBol = previousAlignmentBol;
+  customAlignmentBol = null;
+  data.customAlignmentBol = null;
+  saveData(data);
+  res.json({ ok: true, fields: getActiveBolMap() });
+});
+
+app.post('/api/alignment-bol/undo', function(req, res) {
+  if (!previousAlignmentBol) return res.status(400).json({ error: 'No previous state' });
+  customAlignmentBol = JSON.parse(JSON.stringify(previousAlignmentBol));
+  data.customAlignmentBol = customAlignmentBol;
+  previousAlignmentBol = null;
+  data.previousAlignmentBol = null;
+  saveData(data);
+  res.json({ ok: true, fields: getActiveBolMap() });
+});
+
+app.post('/api/alignment-bol/bake-defaults', function(req, res) {
+  savedDefaultsBol = JSON.parse(JSON.stringify(getActiveBolMap()));
+  data.savedDefaultsBol = savedDefaultsBol;
+  customAlignmentBol = null;
+  data.customAlignmentBol = null;
+  previousAlignmentBol = null;
+  data.previousAlignmentBol = null;
+  saveData(data);
+  res.json({ ok: true, fields: getActiveBolMap() });
+});
+
+// ---- BOL Print Endpoints ----
+
+app.get('/api/print/bol/:id', function(req, res) {
+  var bol = null;
+  for (var i = 0; i < (data.bols || []).length; i++) {
+    if (data.bols[i].id === req.params.id) { bol = data.bols[i]; break; }
+  }
+  if (!bol) return res.status(404).send('BOL not found');
+
+  customAlignmentBol = data.customAlignmentBol || null;
+  savedDefaultsBol = data.savedDefaultsBol || null;
+  var M = getActiveBolMap();
+  var CPI = 10;
+  var LPI = 6;
+  var colOffsetIn = parseFloat(req.query.colOffset) || 0;
+  var rowOffsetIn = parseFloat(req.query.rowOffset) || 0;
+
+  var placements = [];
+  function place(fieldKey, text) {
+    if (!text || !M[fieldKey]) return;
+    placements.push({ row: M[fieldKey].row, col: M[fieldKey].col, text: String(text) });
+  }
+
+  // Header
+  place('date', bol.date);
+  place('pageNum', bol.pageNum);
+  place('pageOf', bol.pageOf);
+  place('carrierName', bol.carrierName);
+  place('scac', bol.scac);
+
+  // TO (Consignee)
+  place('toConsignee', bol.toConsignee);
+  place('toStreet', bol.toStreet);
+  place('toCity', bol.toCity);
+  place('toState', bol.toState);
+  place('toZip', bol.toZip);
+
+  // FROM (Shipper)
+  place('fromShipper', bol.fromShipper);
+  place('fromStreet', bol.fromStreet);
+  place('fromCity', bol.fromCity);
+  place('fromState', bol.fromState);
+  place('fromZip', bol.fromZip);
+  place('emergencyPhone', bol.emergencyPhone);
+
+  // Route
+  place('route', bol.route);
+
+  // Line items
+  var lines = bol.lines || [];
+  for (var ln = 0; ln < 14; ln++) {
+    var line = lines[ln] || {};
+    var n = ln + 1;
+    place('line' + n + 'units', line.units);
+    place('line' + n + 'hm', line.hm);
+    place('line' + n + 'desc', line.desc);
+    place('line' + n + 'qty', line.qty);
+    place('line' + n + 'weight', line.weight);
+  }
+
+  // Build HTML
+  var html = '<!DOCTYPE html><html><head><title>Print BOL</title><style>';
+  html += '@page { margin: 0; size: 8.5in 11in; }';
+  html += '@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } }';
+  html += 'body { margin: 0; padding: 0; }';
+  html += '.page { position: relative; width: 8.5in; height: 11in; overflow: hidden; page-break-after: always; }';
+  html += '.page:last-child { page-break-after: auto; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
+  html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
+  html += '.toolbar .print-btn { background: #2563eb; color: white; border: none; border-radius: 4px; }';
+  html += '.toolbar .close-btn { background: #6b7280; color: white; border: none; border-radius: 4px; }';
+  html += '</style></head><body>';
+
+  html += '<div class="no-print toolbar">';
+  html += '<button class="print-btn" onclick="window.print()">Print BOL</button>';
+  html += '<button class="close-btn" onclick="window.close()">Close</button>';
+  html += '<span style="margin-left:20px;font-size:12px;color:#666">8.5x11 Straight Bill of Lading - Epson LQ-590II. Set paper size to 8.5x11 and margins to None.</span>';
+  html += '</div>';
+
+  html += '<div class="page">';
+  for (var pi = 0; pi < placements.length; pi++) {
+    var p = placements[pi];
+    var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
+    var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
+    var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
+  }
+  html += '</div>';
+  html += '</body></html>';
+  res.type('html').send(html);
+});
+
 // Alignment test print - prints a grid pattern to calibrate field positions
 app.get('/api/print/alignment-test', function(req, res) {
   // Re-sync alignment from data object

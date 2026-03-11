@@ -133,6 +133,7 @@
             React.createElement('button',{className:'nav-tab'+(tab==='profiles'?' active':''),onClick:function(){setTab('profiles')}},'Profiles'),
             React.createElement('button',{className:'nav-tab'+(tab==='import'?' active':''),onClick:function(){setTab('import')}},'Import'),
             React.createElement('button',{className:'nav-tab'+(tab==='labels'?' active':''),onClick:function(){setTab('labels')}},'Labels'),
+            React.createElement('button',{className:'nav-tab'+(tab==='bols'?' active':''),onClick:function(){setTab('bols')}},'BOL'),
             React.createElement('button',{className:'nav-tab'+(tab==='alignment'?' active':''),onClick:function(){setTab('alignment')},style:{color:tab==='alignment'?'#fff':'rgba(255,255,255,0.4)'}},'Alignment')
           ),
           React.createElement('span',{className:'status-dot '+(connected?'connected':'disconnected'),title:connected?'Connected':'Disconnected'})
@@ -146,6 +147,7 @@
           tab==='profiles'?React.createElement(ProfilesTab,{data:data,reload:loadAllData}):null,
           tab==='import'?React.createElement(ImportTab,{reload:loadAllData}):null,
           tab==='labels'?React.createElement(LabelsTab,{data:data,reload:loadAllData}):null,
+          tab==='bols'?React.createElement(BolsTab,{data:data,reload:loadAllData}):null,
           tab==='alignment'?React.createElement(AlignmentTabs,null):null
         )
       );
@@ -2603,6 +2605,567 @@
     }
 
     // ==========================================
+    // BILL OF LADING (BOL) TAB
+    // ==========================================
+
+    function BolsTab(props){
+      var data=props.data;var reload=props.reload;
+      var s1=useState([]);var bols=s1[0];var setBols=s1[1];
+      var s2=useState(false);var showForm=s2[0];var setShowForm=s2[1];
+      var s3=useState(null);var editBol=s3[0];var setEditBol=s3[1];
+      var s4=useState('');var genManifestId=s4[0];var setGenManifestId=s4[1];
+
+      function loadBols(){api.get('/api/bols').then(function(d){setBols(d||[])})}
+      useEffect(function(){loadBols()},[]);
+
+      function handleDelete(id){
+        if(!confirm('Delete this BOL?'))return;
+        api.del('/api/bols/'+id).then(function(){loadBols()});
+      }
+      function handlePrint(id){window.open('/api/print/bol/'+id,'_blank')}
+      function handleGenerate(){
+        if(!genManifestId)return;
+        api.post('/api/bols/from-manifest/'+genManifestId,{}).then(function(){loadBols();setGenManifestId('')});
+      }
+
+      // Group BOLs by manifest
+      var grouped={};var standalone=[];
+      for(var i=0;i<bols.length;i++){
+        var b=bols[i];
+        if(b.manifestId){
+          if(!grouped[b.manifestId])grouped[b.manifestId]=[];
+          grouped[b.manifestId].push(b);
+        }else{standalone.push(b)}
+      }
+
+      return React.createElement('div',null,
+        React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}},
+          React.createElement('h2',{style:{fontSize:22,fontWeight:700}},'Bills of Lading'),
+          React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center'}},
+            React.createElement('select',{value:genManifestId,onChange:function(e){setGenManifestId(e.target.value)},style:{padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13}},
+              React.createElement('option',{value:''},'-- Select Manifest --'),
+              (data.manifests||[]).map(function(m){return React.createElement('option',{key:m.id,value:m.id},(m.manifestTrackingNumber||'No #')+' - '+(m.generatorName||''))})
+            ),
+            React.createElement('button',{className:'btn btn-primary',onClick:handleGenerate,disabled:!genManifestId,style:{padding:'6px 14px',fontSize:13}},'Generate from Manifest'),
+            React.createElement('button',{className:'btn btn-primary',onClick:function(){setEditBol(null);setShowForm(true)},style:{padding:'6px 14px',fontSize:13}},'New BOL')
+          )
+        ),
+
+        bols.length===0?React.createElement('p',{style:{color:'#666',textAlign:'center',padding:40}},'No BOLs yet. Create one manually or generate from a manifest.'):null,
+
+        // Standalone BOLs
+        standalone.length>0?React.createElement('div',{style:{marginBottom:20}},
+          React.createElement('h3',{style:{fontSize:16,fontWeight:600,marginBottom:8,color:'#6b7280'}},'Standalone BOLs'),
+          standalone.map(function(b){
+            return React.createElement('div',{key:b.id,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',background:'#fff',border:'1px solid #e5e7eb',borderRadius:8,marginBottom:6}},
+              React.createElement('div',null,
+                React.createElement('strong',null,b.fromShipper||'No shipper'),
+                React.createElement('span',{style:{margin:'0 8px',color:'#9ca3af'}},'→'),
+                React.createElement('strong',null,b.toConsignee||'No consignee'),
+                React.createElement('span',{style:{marginLeft:12,color:'#6b7280',fontSize:13}},b.date||'')
+              ),
+              React.createElement('div',{style:{display:'flex',gap:6}},
+                React.createElement('button',{onClick:function(){handlePrint(b.id)},style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print'),
+                React.createElement('button',{onClick:function(){var bb=b;return function(){setEditBol(bb);setShowForm(true)}}(),style:{padding:'4px 10px',fontSize:12,background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Edit'),
+                React.createElement('button',{onClick:function(){var bb=b;return function(){handleDelete(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Delete')
+              )
+            );
+          })
+        ):null,
+
+        // Grouped by manifest
+        Object.keys(grouped).map(function(mId){
+          var mBols=grouped[mId];
+          var manifest=null;
+          for(var mi=0;mi<(data.manifests||[]).length;mi++){if(data.manifests[mi].id===mId){manifest=data.manifests[mi];break}}
+          var mLabel=manifest?(manifest.manifestTrackingNumber||'No #')+' - '+(manifest.generatorName||''):'Manifest '+mId;
+          return React.createElement('div',{key:mId,style:{marginBottom:20,border:'1px solid #e5e7eb',borderRadius:8,overflow:'hidden'}},
+            React.createElement('div',{style:{background:'#f9fafb',padding:'10px 16px',borderBottom:'1px solid #e5e7eb',display:'flex',justifyContent:'space-between',alignItems:'center'}},
+              React.createElement('strong',{style:{fontSize:14}},mLabel),
+              React.createElement('span',{style:{fontSize:12,color:'#6b7280'}},mBols.length+' BOL(s)')
+            ),
+            mBols.map(function(b){
+              return React.createElement('div',{key:b.id,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',borderBottom:'1px solid #f3f4f6'}},
+                React.createElement('div',null,
+                  React.createElement('span',{style:{fontWeight:500}},b.fromShipper||'No shipper'),
+                  React.createElement('span',{style:{margin:'0 8px',color:'#9ca3af'}},'→'),
+                  React.createElement('span',null,b.toConsignee||'No consignee'),
+                  React.createElement('span',{style:{marginLeft:12,color:'#6b7280',fontSize:13}},b.date||''),
+                  React.createElement('span',{style:{marginLeft:8,color:'#6b7280',fontSize:12}},(b.lines||[]).filter(function(l){return l.desc}).length+' line(s)')
+                ),
+                React.createElement('div',{style:{display:'flex',gap:6}},
+                  React.createElement('button',{onClick:function(){var bb=b;return function(){handlePrint(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print'),
+                  React.createElement('button',{onClick:function(){var bb=b;return function(){setEditBol(bb);setShowForm(true)}}(),style:{padding:'4px 10px',fontSize:12,background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Edit'),
+                  React.createElement('button',{onClick:function(){var bb=b;return function(){handleDelete(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Delete')
+                )
+              );
+            })
+          );
+        }),
+
+        showForm?React.createElement(BolFormModal,{bol:editBol,data:data,onClose:function(){setShowForm(false)},onSave:function(){setShowForm(false);loadBols()}}):null
+      );
+    }
+
+    // ==========================================
+    // BOL FORM MODAL
+    // ==========================================
+
+    function BolFormModal(props){
+      var existing=props.bol;
+      var data=props.data;
+      var onClose=props.onClose;
+      var onSave=props.onSave;
+
+      var emptyLine={units:'',hm:'',desc:'',qty:'',weight:''};
+      var emptyLines=[];
+      for(var el=0;el<14;el++)emptyLines.push(Object.assign({},emptyLine));
+
+      var emptyBol={
+        date:'',dateISO:'',pageNum:'1',pageOf:'1',
+        carrierName:'',scac:'',
+        toConsignee:'',toStreet:'',toCity:'',toState:'',toZip:'',
+        fromShipper:'',fromStreet:'',fromCity:'',fromState:'',fromZip:'',
+        emergencyPhone:'',route:'',
+        lines:emptyLines,
+        manifestId:null
+      };
+
+      var initForm;
+      if(existing){
+        var existLines=existing.lines||[];
+        while(existLines.length<14)existLines.push(Object.assign({},emptyLine));
+        initForm=Object.assign({},emptyBol,existing,{lines:existLines.map(function(l){return Object.assign({},emptyLine,l)})});
+      }else{
+        initForm=Object.assign({},emptyBol,{lines:emptyLines.map(function(l){return Object.assign({},l)})});
+      }
+
+      var s1=useState(initForm);var form=s1[0];var setForm=s1[1];
+      var s2=useState('');var pullManifestId=s2[0];var setPullManifestId=s2[1];
+      var s3=useState('');var pullWsId=s3[0];var setPullWsId=s3[1];
+      var s4=useState(0);var pullWsLine=s4[0];var setPullWsLine=s4[1];
+
+      function updateField(key,val){
+        var nf=Object.assign({},form);nf[key]=val;setForm(nf);
+      }
+      function updateLine(idx,key,val){
+        var nf=Object.assign({},form);
+        var newLines=nf.lines.map(function(l){return Object.assign({},l)});
+        newLines[idx][key]=val;
+        nf.lines=newLines;
+        setForm(nf);
+      }
+
+      // Pull from manifest
+      function handlePullManifest(){
+        if(!pullManifestId)return;
+        var manifest=null;
+        for(var i=0;i<(data.manifests||[]).length;i++){
+          if(data.manifests[i].id===pullManifestId){manifest=data.manifests[i];break}
+        }
+        if(!manifest)return;
+        var nf=Object.assign({},form);
+        nf.manifestId=manifest.id;
+        nf.date=new Date().toLocaleDateString('en-US');
+        nf.carrierName=manifest.transporter1Company||'';
+        nf.toConsignee=manifest.facilityName||'';
+        nf.toStreet=manifest.facilityAddress||'';
+        nf.toCity=manifest.facilityCity||'';
+        nf.toState=manifest.facilityState||'';
+        nf.toZip=manifest.facilityZip||'';
+        nf.fromShipper=manifest.generatorName||'';
+        nf.fromStreet=manifest.generatorMailAddr||manifest.generatorSiteAddr||'';
+        nf.fromCity=manifest.generatorMailCity||manifest.generatorCity||'';
+        nf.fromState=manifest.generatorMailState||manifest.generatorState||'';
+        nf.fromZip=manifest.generatorMailZip||manifest.generatorZip||'';
+        nf.emergencyPhone=manifest.emergencyPhone||'';
+        // Map waste lines
+        var newLines=[];
+        var wlc=parseInt(manifest.wasteLineCount)||4;
+        for(var w=1;w<=wlc;w++){
+          var desc=manifest['waste'+w+'Description']||'';
+          if(!desc){newLines.push(Object.assign({},emptyLine));continue}
+          var cNum=manifest['waste'+w+'ContainerNum']||'';
+          var cType=manifest['waste'+w+'ContainerType']||'';
+          var qty=manifest['waste'+w+'Qty']||'';
+          var unit=manifest['waste'+w+'Unit']||'';
+          var hm=manifest['waste'+w+'HM']||'X';
+          newLines.push({
+            units:cNum?(cNum+' '+cType).trim():'',
+            hm:hm,
+            desc:desc,
+            qty:qty+(unit?' '+unit:''),
+            weight:''
+          });
+        }
+        while(newLines.length<14)newLines.push(Object.assign({},emptyLine));
+        nf.lines=newLines;
+        setForm(nf);
+      }
+
+      // Pull from waste stream into a specific line
+      function handlePullWs(){
+        if(!pullWsId)return;
+        var ws=null;
+        for(var i=0;i<(data.wasteStreams||[]).length;i++){
+          if(data.wasteStreams[i].id===pullWsId){ws=data.wasteStreams[i];break}
+        }
+        if(!ws)return;
+        // Build DOT description
+        var descParts=[];
+        var idNum=(ws.unNum||'').trim();
+        var validId=idNum.match(/^(UN|NA)\s*\d{4,5}$/i)||idNum.match(/^\d{4,5}$/);
+        if(validId)descParts.push(idNum.match(/^(UN|NA)/i)?idNum:'UN'+idNum);
+        var dotDesc=(ws.dotDescription||'').replace(/\b(UN|NA)\s*\d{4,5}\b/gi,'').replace(/,\s*,/g,',').replace(/^[\s,]+|[\s,]+$/g,'').trim();
+        var hzClass=(ws.hazardClass||'').trim();
+        var pg=(ws.packingGroup||'').trim();
+        if(hzClass&&hzClass.match(/^\d(\.\d)?$/)){dotDesc=dotDesc.replace(new RegExp(',\\s*'+hzClass.replace('.','\\.')+'\\s*(?=,|$)'),'').replace(/^[\s,]+|[\s,]+$/g,'').trim()}
+        if(pg&&pg.match(/^(I{1,3})$/i)){dotDesc=dotDesc.replace(new RegExp(',\\s*'+pg+'\\s*$','i'),'').replace(/^[\s,]+|[\s,]+$/g,'').trim()}
+        if(dotDesc)descParts.push(dotDesc);
+        if(hzClass&&hzClass.match(/^\d(\.\d)?$/))descParts.push(hzClass);
+        if(pg&&pg.match(/^(I{1,3}|PG\s*(I{1,3})|1|2|3)$/i))descParts.push(pg.match(/^(I{1,3})$/)?'PG '+pg:pg);
+        var desc=descParts.join(', ');
+
+        var lineIdx=parseInt(pullWsLine)||0;
+        var nf=Object.assign({},form);
+        var newLines=nf.lines.map(function(l){return Object.assign({},l)});
+        newLines[lineIdx]=Object.assign({},newLines[lineIdx],{
+          desc:desc,
+          hm:ws.hm||'X'
+        });
+        nf.lines=newLines;
+        setForm(nf);
+      }
+
+      // Pull generator into FROM fields
+      function handlePullGen(genId){
+        if(!genId)return;
+        var gen=null;
+        for(var i=0;i<(data.generators||[]).length;i++){
+          if(data.generators[i].id===genId){gen=data.generators[i];break}
+        }
+        if(!gen)return;
+        var nf=Object.assign({},form,{
+          fromShipper:gen.name||'',
+          fromStreet:gen.mailAddress||gen.siteAddress||'',
+          fromCity:gen.mailCity||gen.city||'',
+          fromState:gen.mailState||gen.state||'',
+          fromZip:gen.mailZip||gen.zip||'',
+          emergencyPhone:gen.emergencyPhone||gen.phone||''
+        });
+        setForm(nf);
+      }
+
+      // Pull facility into TO fields
+      function handlePullFac(facId){
+        if(!facId)return;
+        var fac=null;
+        for(var i=0;i<(data.facilities||[]).length;i++){
+          if(data.facilities[i].id===facId){fac=data.facilities[i];break}
+        }
+        if(!fac)return;
+        var nf=Object.assign({},form,{
+          toConsignee:fac.name||'',
+          toStreet:fac.mailAddress||fac.siteAddress||'',
+          toCity:fac.mailCity||fac.city||'',
+          toState:fac.mailState||fac.state||'',
+          toZip:fac.mailZip||fac.zip||''
+        });
+        setForm(nf);
+      }
+
+      function handleSave(){
+        var payload=Object.assign({},form);
+        if(existing&&existing.id){
+          api.put('/api/bols/'+existing.id,payload).then(function(){onSave()});
+        }else{
+          api.post('/api/bols',payload).then(function(){onSave()});
+        }
+      }
+
+      var lineNums=[];for(var li=0;li<14;li++)lineNums.push(li);
+
+      return React.createElement('div',{className:'modal-overlay',onClick:function(e){if(e.target===e.currentTarget)onClose()}},
+        React.createElement('div',{className:'modal',style:{maxWidth:950,maxHeight:'90vh',overflow:'auto'}},
+          React.createElement('h3',null,existing?'Edit Bill of Lading':'New Bill of Lading'),
+
+          // Pull from Manifest
+          React.createElement('div',{style:{background:'#f0f9ff',padding:16,borderRadius:8,marginBottom:16,border:'1px solid #bae6fd'}},
+            React.createElement('h4',{style:{marginBottom:8,fontSize:14,color:'#0369a1'}},'Pull from Manifest'),
+            React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center'}},
+              React.createElement('select',{value:pullManifestId,onChange:function(e){setPullManifestId(e.target.value)},style:{padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13,flex:1}},
+                React.createElement('option',{value:''},'-- Select Manifest --'),
+                (data.manifests||[]).map(function(m){return React.createElement('option',{key:m.id,value:m.id},(m.manifestTrackingNumber||'No #')+' - '+(m.generatorName||''))})
+              ),
+              React.createElement('button',{onClick:handlePullManifest,disabled:!pullManifestId,style:{padding:'6px 14px',fontSize:13,background:'#0369a1',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Pull')
+            )
+          ),
+
+          // Pull from Waste Stream
+          React.createElement('div',{style:{background:'#f0fdf4',padding:16,borderRadius:8,marginBottom:16,border:'1px solid #bbf7d0'}},
+            React.createElement('h4',{style:{marginBottom:8,fontSize:14,color:'#15803d'}},'Pull Line Item from Waste Stream'),
+            React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center'}},
+              React.createElement('select',{value:pullWsId,onChange:function(e){setPullWsId(e.target.value)},style:{padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13,flex:1}},
+                React.createElement('option',{value:''},'-- Select Waste Stream --'),
+                (data.wasteStreams||[]).map(function(ws){return React.createElement('option',{key:ws.id,value:ws.id},(ws.profileId?ws.profileId+' - ':'')+ws.name)})
+              ),
+              React.createElement('select',{value:pullWsLine,onChange:function(e){setPullWsLine(e.target.value)},style:{padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13,width:80}},
+                lineNums.map(function(n){return React.createElement('option',{key:n,value:n},'Line '+(n+1))})
+              ),
+              React.createElement('button',{onClick:handlePullWs,disabled:!pullWsId,style:{padding:'6px 14px',fontSize:13,background:'#15803d',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Pull')
+            )
+          ),
+
+          // Generator dropdown (FROM)
+          React.createElement('div',{style:{display:'flex',gap:16,marginBottom:16}},
+            React.createElement('div',{style:{flex:1}},
+              React.createElement('label',{style:{fontSize:12,fontWeight:600,color:'#374151'}},'Pick Generator (FROM)'),
+              React.createElement('select',{onChange:function(e){handlePullGen(e.target.value)},style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13,marginTop:4}},
+                React.createElement('option',{value:''},'-- Select Generator --'),
+                (data.generators||[]).map(function(g){return React.createElement('option',{key:g.id,value:g.id},g.name+(g.epaId?' ('+g.epaId+')':''))})
+              )
+            ),
+            React.createElement('div',{style:{flex:1}},
+              React.createElement('label',{style:{fontSize:12,fontWeight:600,color:'#374151'}},'Pick Facility (TO)'),
+              React.createElement('select',{onChange:function(e){handlePullFac(e.target.value)},style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13,marginTop:4}},
+                React.createElement('option',{value:''},'-- Select Facility --'),
+                (data.facilities||[]).map(function(f){return React.createElement('option',{key:f.id,value:f.id},f.name)})
+              )
+            )
+          ),
+
+          // Header fields
+          React.createElement('div',{style:{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap'}},
+            React.createElement('div',{style:{flex:'0 0 150px'}},
+              React.createElement('label',{style:{fontSize:12,fontWeight:600}},'Date'),
+              React.createElement('input',{type:'date',value:form.dateISO||'',onChange:function(e){
+                var v=e.target.value;
+                if(v){var parts=v.split('-');var nf=Object.assign({},form);nf.date=parts[1]+'/'+parts[2]+'/'+parts[0];nf.dateISO=v;setForm(nf)}
+                else{var nf2=Object.assign({},form);nf2.date='';nf2.dateISO='';setForm(nf2)}
+              },style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13}}),
+              React.createElement('input',{value:form.date,onChange:function(e){updateField('date',e.target.value)},placeholder:'MM/DD/YYYY',style:{width:'100%',marginTop:2,padding:'4px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:12}})
+            ),
+            React.createElement('div',{style:{flex:1}},
+              React.createElement('label',{style:{fontSize:12,fontWeight:600}},'Name of Carrier'),
+              React.createElement('input',{value:form.carrierName,onChange:function(e){updateField('carrierName',e.target.value)},style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+            ),
+            React.createElement('div',{style:{flex:'0 0 100px'}},
+              React.createElement('label',{style:{fontSize:12,fontWeight:600}},'SCAC'),
+              React.createElement('input',{value:form.scac,onChange:function(e){updateField('scac',e.target.value)},style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+            )
+          ),
+
+          // FROM / TO addresses side by side
+          React.createElement('div',{style:{display:'flex',gap:16,marginBottom:16}},
+            // FROM (Shipper)
+            React.createElement('div',{style:{flex:1,background:'#fefce8',padding:12,borderRadius:8,border:'1px solid #fde68a'}},
+              React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:8,color:'#92400e'}},'FROM (Shipper)'),
+              React.createElement('div',{className:'form-group',style:{marginBottom:6}},
+                React.createElement('label',{style:{fontSize:11}},'Shipper Name'),
+                React.createElement('input',{value:form.fromShipper,onChange:function(e){updateField('fromShipper',e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              ),
+              React.createElement('div',{className:'form-group',style:{marginBottom:6}},
+                React.createElement('label',{style:{fontSize:11}},'Street'),
+                React.createElement('input',{value:form.fromStreet,onChange:function(e){updateField('fromStreet',e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              ),
+              React.createElement('div',{style:{display:'flex',gap:6}},
+                React.createElement('input',{value:form.fromCity,onChange:function(e){updateField('fromCity',e.target.value)},placeholder:'City',style:{flex:2,padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}}),
+                React.createElement('input',{value:form.fromState,onChange:function(e){updateField('fromState',e.target.value)},placeholder:'ST',style:{flex:'0 0 40px',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}}),
+                React.createElement('input',{value:form.fromZip,onChange:function(e){updateField('fromZip',e.target.value)},placeholder:'Zip',style:{flex:1,padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              ),
+              React.createElement('div',{className:'form-group',style:{marginTop:6}},
+                React.createElement('label',{style:{fontSize:11}},'24hr Emergency Phone'),
+                React.createElement('input',{value:form.emergencyPhone,onChange:function(e){updateField('emergencyPhone',e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              )
+            ),
+            // TO (Consignee)
+            React.createElement('div',{style:{flex:1,background:'#eff6ff',padding:12,borderRadius:8,border:'1px solid #bfdbfe'}},
+              React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:8,color:'#1e40af'}},'TO (Consignee)'),
+              React.createElement('div',{className:'form-group',style:{marginBottom:6}},
+                React.createElement('label',{style:{fontSize:11}},'Consignee Name'),
+                React.createElement('input',{value:form.toConsignee,onChange:function(e){updateField('toConsignee',e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              ),
+              React.createElement('div',{className:'form-group',style:{marginBottom:6}},
+                React.createElement('label',{style:{fontSize:11}},'Street'),
+                React.createElement('input',{value:form.toStreet,onChange:function(e){updateField('toStreet',e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              ),
+              React.createElement('div',{style:{display:'flex',gap:6}},
+                React.createElement('input',{value:form.toCity,onChange:function(e){updateField('toCity',e.target.value)},placeholder:'City',style:{flex:2,padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}}),
+                React.createElement('input',{value:form.toState,onChange:function(e){updateField('toState',e.target.value)},placeholder:'ST',style:{flex:'0 0 40px',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}}),
+                React.createElement('input',{value:form.toZip,onChange:function(e){updateField('toZip',e.target.value)},placeholder:'Zip',style:{flex:1,padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+              )
+            )
+          ),
+
+          // Route
+          React.createElement('div',{className:'form-group',style:{marginBottom:16}},
+            React.createElement('label',{style:{fontSize:12,fontWeight:600}},'Route'),
+            React.createElement('input',{value:form.route,onChange:function(e){updateField('route',e.target.value)},style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
+          ),
+
+          // Line items table
+          React.createElement('h4',{style:{fontSize:14,fontWeight:600,marginBottom:8}},'Line Items (14 rows)'),
+          React.createElement('div',{style:{overflowX:'auto',marginBottom:16}},
+            React.createElement('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:12}},
+              React.createElement('thead',null,
+                React.createElement('tr',{style:{background:'#f9fafb'}},
+                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:30}},'#'),
+                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:100}},'Units/Type'),
+                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'center',borderBottom:'2px solid #e5e7eb',width:30}},'HM'),
+                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb'}},'Basic Description'),
+                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:90}},'Qty'),
+                  React.createElement('th',{style:{padding:'6px 4px',textAlign:'left',borderBottom:'2px solid #e5e7eb',width:80}},'Weight')
+                )
+              ),
+              React.createElement('tbody',null,
+                lineNums.map(function(idx){
+                  var line=form.lines[idx]||{};
+                  return React.createElement('tr',{key:idx,style:{borderBottom:'1px solid #f3f4f6'}},
+                    React.createElement('td',{style:{padding:'3px 4px',color:'#9ca3af',fontSize:11}},idx+1),
+                    React.createElement('td',{style:{padding:'3px 2px'}},
+                      React.createElement('input',{value:line.units||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'units',e.target.value)}}(),style:{width:'100%',padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12}})
+                    ),
+                    React.createElement('td',{style:{padding:'3px 2px',textAlign:'center'}},
+                      React.createElement('input',{type:'checkbox',checked:line.hm==='X',onChange:function(){var ii=idx;return function(e){updateLine(ii,'hm',e.target.checked?'X':'')}}()})
+                    ),
+                    React.createElement('td',{style:{padding:'3px 2px'}},
+                      React.createElement('input',{value:line.desc||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'desc',e.target.value)}}(),style:{width:'100%',padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12}})
+                    ),
+                    React.createElement('td',{style:{padding:'3px 2px'}},
+                      React.createElement('input',{value:line.qty||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'qty',e.target.value)}}(),style:{width:'100%',padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12}})
+                    ),
+                    React.createElement('td',{style:{padding:'3px 2px'}},
+                      React.createElement('input',{value:line.weight||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'weight',e.target.value)}}(),style:{width:'100%',padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12}})
+                    )
+                  );
+                })
+              )
+            )
+          ),
+
+          // Save / Cancel
+          React.createElement('div',{style:{display:'flex',justifyContent:'flex-end',gap:8,marginTop:16}},
+            React.createElement('button',{onClick:onClose,style:{padding:'8px 20px',background:'#6b7280',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Cancel'),
+            React.createElement('button',{onClick:handleSave,style:{padding:'8px 20px',background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer',fontWeight:600}},existing?'Update BOL':'Create BOL')
+          )
+        )
+      );
+    }
+
+    // ==========================================
+    // BOL ALIGNMENT EDITOR
+    // ==========================================
+
+    function BolAlignmentEditor(){
+      var s1=useState({});var alignData=s1[0];var setAlignData=s1[1];
+      var s2=useState(null);var selected=s2[0];var setSelected=s2[1];
+      var s3=useState(false);var hasPrevious=s3[0];var setHasPrevious=s3[1];
+      var s4=useState(false);var hasSavedDefaults=s4[0];var setHasSavedDefaults=s4[1];
+      var s5=useState({});var defaults=s5[0];var setDefaults=s5[1];
+
+      function loadAlignment(){
+        api.get('/api/alignment-bol').then(function(d){
+          setAlignData(d.fields||{});
+          setDefaults(d.defaults||{});
+          setHasPrevious(d.hasPrevious||false);
+          setHasSavedDefaults(d.hasSavedDefaults||false);
+        });
+      }
+      useEffect(function(){loadAlignment()},[]);
+
+      function save(){
+        api.put('/api/alignment-bol',{fields:alignData}).then(function(){loadAlignment()});
+      }
+      function reset(){
+        if(!confirm('Reset BOL alignment to defaults?'))return;
+        api.post('/api/alignment-bol/reset',{}).then(function(d){loadAlignment()});
+      }
+      function undo(){
+        api.post('/api/alignment-bol/undo',{}).then(function(d){loadAlignment()});
+      }
+      function bakeDefaults(){
+        if(!confirm('Save current BOL positions as new defaults?'))return;
+        api.post('/api/alignment-bol/bake-defaults',{}).then(function(d){loadAlignment()});
+      }
+      function updateField(fieldKey,dimension,value){
+        var v=parseInt(value);
+        if(isNaN(v)||v<0||v>100)return;
+        var nd=Object.assign({},alignData);
+        nd[fieldKey]=Object.assign({},alignData[fieldKey]||{row:1,col:1});
+        nd[fieldKey][dimension]=v;
+        setAlignData(nd);
+      }
+
+      var FIELD_LABELS={
+        date:'Date',pageNum:'Page #',pageOf:'Page Of',carrierName:'Carrier Name',scac:'SCAC',
+        toConsignee:'TO: Consignee',toStreet:'TO: Street',toCity:'TO: City',toState:'TO: State',toZip:'TO: Zip',
+        fromShipper:'FROM: Shipper',fromStreet:'FROM: Street',fromCity:'FROM: City',fromState:'FROM: State',fromZip:'FROM: Zip',
+        emergencyPhone:'Emergency Phone',route:'Route'
+      };
+      // Add line item labels
+      for(var li=1;li<=14;li++){
+        FIELD_LABELS['line'+li+'units']='Line '+li+' Units';
+        FIELD_LABELS['line'+li+'hm']='Line '+li+' HM';
+        FIELD_LABELS['line'+li+'desc']='Line '+li+' Desc';
+        FIELD_LABELS['line'+li+'qty']='Line '+li+' Qty';
+        FIELD_LABELS['line'+li+'weight']='Line '+li+' Weight';
+      }
+
+      var groups=[
+        {title:'Header',fields:['date','pageNum','pageOf','carrierName','scac']},
+        {title:'TO (Consignee)',fields:['toConsignee','toStreet','toCity','toState','toZip']},
+        {title:'FROM (Shipper)',fields:['fromShipper','fromStreet','fromCity','fromState','fromZip','emergencyPhone']},
+        {title:'Route',fields:['route']}
+      ];
+      // Add line item groups
+      for(var lg=1;lg<=14;lg++){
+        groups.push({title:'Line '+lg,fields:['line'+lg+'units','line'+lg+'hm','line'+lg+'desc','line'+lg+'qty','line'+lg+'weight']});
+      }
+
+      return React.createElement('div',null,
+        React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:8}},'Bill of Lading Alignment'),
+        React.createElement('p',{style:{color:'#666',marginBottom:16}},'Adjust field positions on the 8.5x11 BOL form. Use arrows or type values. Save when done, then print a test.'),
+
+        React.createElement('div',{style:{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}},
+          React.createElement('button',{onClick:save,style:{padding:'8px 16px',background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer',fontWeight:600}},'Save Alignment'),
+          hasPrevious?React.createElement('button',{onClick:undo,style:{padding:'8px 16px',background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Undo Last Change'):null,
+          React.createElement('button',{onClick:reset,style:{padding:'8px 16px',background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Reset to Defaults'),
+          React.createElement('button',{onClick:bakeDefaults,style:{padding:'8px 16px',background:'#10b981',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Set Current as Default')
+        ),
+
+        groups.map(function(group){
+          return React.createElement('div',{key:group.title,style:{marginBottom:16,border:'1px solid #e5e7eb',borderRadius:8,overflow:'hidden'}},
+            React.createElement('div',{style:{background:'#f9fafb',padding:'8px 12px',fontWeight:600,fontSize:13,borderBottom:'1px solid #e5e7eb'}},group.title),
+            React.createElement('table',{style:{width:'100%',borderCollapse:'collapse'}},
+              React.createElement('tbody',null,
+                group.fields.map(function(fieldKey){
+                  var pos=alignData[fieldKey]||{row:1,col:1};
+                  var def=defaults[fieldKey]||{row:1,col:1};
+                  var changed=pos.row!==def.row||pos.col!==def.col;
+                  return React.createElement('tr',{key:fieldKey,style:{borderBottom:'1px solid #f3f4f6',background:changed?'#fefce8':'transparent'}},
+                    React.createElement('td',{style:{padding:'6px 12px',fontSize:13,fontWeight:500,width:'30%'}},FIELD_LABELS[fieldKey]||fieldKey),
+                    React.createElement('td',{style:{padding:'4px 8px',fontSize:12}},
+                      React.createElement('span',{style:{marginRight:4}},'Row:'),
+                      React.createElement('button',{onClick:function(){var fk=fieldKey;return function(){updateField(fk,'row',((alignData[fk]||{row:1}).row)-1)}}(),style:{padding:'2px 6px',cursor:'pointer'}},'▲'),
+                      React.createElement('input',{type:'number',value:pos.row,onChange:function(){var fk=fieldKey;return function(e){updateField(fk,'row',e.target.value)}}(),style:{width:45,textAlign:'center',margin:'0 4px',padding:'2px',border:'1px solid #ddd',borderRadius:3}}),
+                      React.createElement('button',{onClick:function(){var fk=fieldKey;return function(){updateField(fk,'row',((alignData[fk]||{row:1}).row)+1)}}(),style:{padding:'2px 6px',cursor:'pointer'}},'▼')
+                    ),
+                    React.createElement('td',{style:{padding:'4px 8px',fontSize:12}},
+                      React.createElement('span',{style:{marginRight:4}},'Col:'),
+                      React.createElement('button',{onClick:function(){var fk=fieldKey;return function(){updateField(fk,'col',((alignData[fk]||{col:1}).col)-1)}}(),style:{padding:'2px 6px',cursor:'pointer'}},'◄'),
+                      React.createElement('input',{type:'number',value:pos.col,onChange:function(){var fk=fieldKey;return function(e){updateField(fk,'col',e.target.value)}}(),style:{width:45,textAlign:'center',margin:'0 4px',padding:'2px',border:'1px solid #ddd',borderRadius:3}}),
+                      React.createElement('button',{onClick:function(){var fk=fieldKey;return function(){updateField(fk,'col',((alignData[fk]||{col:1}).col)+1)}}(),style:{padding:'2px 6px',cursor:'pointer'}},'►')
+                    )
+                  );
+                })
+              )
+            )
+          );
+        })
+      );
+    }
+
+    // ==========================================
     // LABEL ALIGNMENT EDITOR
     // ==========================================
     function LabelAlignmentEditor(){
@@ -2716,11 +3279,15 @@
           ),
           React.createElement('button',{onClick:function(){setTab('label')},style:{padding:'12px 20px',border:'none',background:'transparent',cursor:'pointer',fontSize:15,fontWeight:tab==='label'?700:400,color:tab==='label'?'#e94560':'#999',borderBottom:tab==='label'?'3px solid #e94560':'none',marginBottom:-2}},
             'Labels (6x6)'
+          ),
+          React.createElement('button',{onClick:function(){setTab('bol')},style:{padding:'12px 20px',border:'none',background:'transparent',cursor:'pointer',fontSize:15,fontWeight:tab==='bol'?700:400,color:tab==='bol'?'#e94560':'#999',borderBottom:tab==='bol'?'3px solid #e94560':'none',marginBottom:-2}},
+            'BOL (8.5x11)'
           )
         ),
         tab==='main'?React.createElement(AlignmentEditor,null):null,
         tab==='22a'?React.createElement(Alignment22AEditor,null):null,
-        tab==='label'?React.createElement(LabelAlignmentEditor,null):null
+        tab==='label'?React.createElement(LabelAlignmentEditor,null):null,
+        tab==='bol'?React.createElement(BolAlignmentEditor,null):null
       );
     }
 
