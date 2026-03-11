@@ -512,7 +512,7 @@
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                 <h4>Box 9 - Waste Description ({(form.wasteLines||[]).length} lines{(form.wasteLines||[]).length > 4 ? ' - ' + (Math.ceil(((form.wasteLines||[]).length - 4) / 8) + 1) + ' pages' : ''})</h4>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  {preGen ? <span style={{fontSize:11,color:'#16a34a',fontWeight:600}}>{(preGen.profileIds||[]).length} linked profiles for {preGen.name||'generator'}</span> : null}
+                  {preGen ? <span style={{fontSize:11,color:'#16a34a',fontWeight:600}}>{data.wasteStreams.filter(function(w){ var pIds=preGen.profileIds||[]; return (pIds.indexOf(w.id)>=0)||(preGen.epaId&&w.generatorEpaId&&w.generatorEpaId===preGen.epaId); }).length} linked profiles for {preGen.name||'generator'}</span> : null}
                   <button className="btn btn-sm btn-secondary" type="button" onClick={function(){setForm(function(f){var ls=(f.wasteLines||[]).slice();ls.push(Object.assign({},emptyWaste));return Object.assign({},f,{wasteLines:ls})})}}>+ Add Waste Line</button>
                 </div>
               </div>
@@ -570,8 +570,12 @@
                             {(function() {
                               var sortByName = function(a, b) { return (a.name || '').localeCompare(b.name || ''); };
                               var genPIds = preGen ? (preGen.profileIds || []) : [];
-                              var linked = genPIds.length > 0 ? data.wasteStreams.filter(function(w) { return genPIds.indexOf(w.id) >= 0; }).sort(sortByName) : [];
-                              var others = genPIds.length > 0 ? data.wasteStreams.filter(function(w) { return genPIds.indexOf(w.id) < 0; }).sort(sortByName) : data.wasteStreams.slice().sort(sortByName);
+                              var genEpa = preGen ? (preGen.epaId || '') : '';
+                              var linked = preGen ? data.wasteStreams.filter(function(w) {
+                                return (genPIds.indexOf(w.id) >= 0) || (genEpa && w.generatorEpaId && w.generatorEpaId === genEpa);
+                              }).sort(sortByName) : [];
+                              var linkedIds = linked.map(function(w) { return w.id; });
+                              var others = linked.length > 0 ? data.wasteStreams.filter(function(w) { return linkedIds.indexOf(w.id) < 0; }).sort(sortByName) : data.wasteStreams.slice().sort(sortByName);
                               var opts = [];
                               if (linked.length > 0) {
                                 opts.push(<optgroup key="linked" label={"--- " + (preGen.name || 'Generator') + " Profiles ---"}>{linked.map(function(w) { return <option key={w.id} value={w.id}>{w.name}</option>; })}</optgroup>);
@@ -886,8 +890,12 @@
                                       {(function() {
                                         var sortFn = function(a, b) { return (a.name || '').localeCompare(b.name || ''); };
                                         var gPIds = preGen ? (preGen.profileIds || []) : [];
-                                        var lnk = gPIds.length > 0 ? data.wasteStreams.filter(function(w) { return gPIds.indexOf(w.id) >= 0; }).sort(sortFn) : [];
-                                        var oth = gPIds.length > 0 ? data.wasteStreams.filter(function(w) { return gPIds.indexOf(w.id) < 0; }).sort(sortFn) : data.wasteStreams.slice().sort(sortFn);
+                                        var gEpa = preGen ? (preGen.epaId || '') : '';
+                                        var lnk = preGen ? data.wasteStreams.filter(function(w) {
+                                          return (gPIds.indexOf(w.id) >= 0) || (gEpa && w.generatorEpaId && w.generatorEpaId === gEpa);
+                                        }).sort(sortFn) : [];
+                                        var lnkIds = lnk.map(function(w) { return w.id; });
+                                        var oth = lnk.length > 0 ? data.wasteStreams.filter(function(w) { return lnkIds.indexOf(w.id) < 0; }).sort(sortFn) : data.wasteStreams.slice().sort(sortFn);
                                         var o = [];
                                         if (lnk.length > 0) {
                                           o.push(<optgroup key="linked" label={"--- " + (preGen.name || 'Generator') + " Profiles ---"}>{lnk.map(function(w) { return <option key={w.id} value={w.id}>{w.name}</option>; })}</optgroup>);
