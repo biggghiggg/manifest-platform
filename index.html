@@ -2927,18 +2927,6 @@
             )
           ),
 
-          // Generator dropdown (FROM)
-          React.createElement('div',{style:{display:'flex',gap:16,marginBottom:16}},
-            React.createElement('div',{style:{flex:1}},
-              React.createElement('label',{style:{fontSize:12,fontWeight:600,color:'#374151'}},'Pick Generator (FROM)'),
-              React.createElement('select',{onChange:function(e){handlePullGen(e.target.value)},style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13,marginTop:4}},
-                React.createElement('option',{value:''},'-- Select Generator --'),
-                (data.generators||[]).map(function(g){return React.createElement('option',{key:g.id,value:g.id},g.name+(g.epaId?' ('+g.epaId+')':''))})
-              )
-            ),
-            React.createElement('div',{style:{flex:1}})
-          ),
-
           // Header fields
           React.createElement('div',{style:{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap'}},
             React.createElement('div',{style:{flex:'0 0 150px'}},
@@ -2965,6 +2953,12 @@
             // FROM (Shipper)
             React.createElement('div',{style:{flex:1,background:'#fefce8',padding:12,borderRadius:8,border:'1px solid #fde68a'}},
               React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:8,color:'#92400e'}},'FROM (Shipper)'),
+              React.createElement('div',{style:{marginBottom:8}},
+                React.createElement('select',{onChange:function(e){handlePullGen(e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #fde68a',borderRadius:4,fontSize:12,background:'#fef9c3',color:'#92400e'}},
+                  React.createElement('option',{value:''},'-- Pull from Generator --'),
+                  (data.generators||[]).map(function(g){return React.createElement('option',{key:g.id,value:g.id},g.name+(g.epaId?' ('+g.epaId+')':''))})
+                )
+              ),
               React.createElement('div',{className:'form-group',style:{marginBottom:6}},
                 React.createElement('label',{style:{fontSize:11}},'Shipper Name'),
                 React.createElement('input',{value:form.fromShipper,onChange:function(e){updateField('fromShipper',e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
