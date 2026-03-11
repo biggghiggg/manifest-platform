@@ -2046,15 +2046,15 @@ var BOL_MAP = {
 
   // Line items (14 rows, 2 rows each on form; desc uses CSS wrapping)
   // Columns: units(col 1), hm(col 12), desc(col 15, CSS-wrapped), qty(col 53), weight(col 63)
-  line1units: { row: 20, col: 1 },  line1hm: { row: 20, col: 12 }, line1desc: { row: 20, col: 15 }, line1qty: { row: 20, col: 53 }, line1weight: { row: 20, col: 63 },
-  line2units: { row: 22, col: 1 },  line2hm: { row: 22, col: 12 }, line2desc: { row: 22, col: 15 }, line2qty: { row: 22, col: 53 }, line2weight: { row: 22, col: 63 },
-  line3units: { row: 24, col: 1 },  line3hm: { row: 24, col: 12 }, line3desc: { row: 24, col: 15 }, line3qty: { row: 24, col: 53 }, line3weight: { row: 24, col: 63 },
-  line4units: { row: 26, col: 1 },  line4hm: { row: 26, col: 12 }, line4desc: { row: 26, col: 15 }, line4qty: { row: 26, col: 53 }, line4weight: { row: 26, col: 63 },
-  line5units: { row: 28, col: 1 },  line5hm: { row: 28, col: 12 }, line5desc: { row: 28, col: 15 }, line5qty: { row: 28, col: 53 }, line5weight: { row: 28, col: 63 },
-  line6units: { row: 30, col: 1 },  line6hm: { row: 30, col: 12 }, line6desc: { row: 30, col: 15 }, line6qty: { row: 30, col: 53 }, line6weight: { row: 30, col: 63 },
-  line7units: { row: 32, col: 1 },  line7hm: { row: 32, col: 12 }, line7desc: { row: 32, col: 15 }, line7qty: { row: 32, col: 53 }, line7weight: { row: 32, col: 63 },
-  line8units: { row: 34, col: 1 },  line8hm: { row: 34, col: 12 }, line8desc: { row: 34, col: 15 }, line8qty: { row: 34, col: 53 }, line8weight: { row: 34, col: 63 },
-  line9units: { row: 36, col: 1 },  line9hm: { row: 36, col: 12 }, line9desc: { row: 36, col: 15 }, line9qty: { row: 36, col: 53 }, line9weight: { row: 36, col: 63 },
+  line1units: { row: 20, col: 3 },  line1hm: { row: 20, col: 12 }, line1desc: { row: 20, col: 15 }, line1qty: { row: 20, col: 53 }, line1weight: { row: 20, col: 63 },
+  line2units: { row: 22, col: 3 },  line2hm: { row: 22, col: 12 }, line2desc: { row: 22, col: 15 }, line2qty: { row: 22, col: 53 }, line2weight: { row: 22, col: 63 },
+  line3units: { row: 24, col: 3 },  line3hm: { row: 24, col: 12 }, line3desc: { row: 24, col: 15 }, line3qty: { row: 24, col: 53 }, line3weight: { row: 24, col: 63 },
+  line4units: { row: 26, col: 3 },  line4hm: { row: 26, col: 12 }, line4desc: { row: 26, col: 15 }, line4qty: { row: 26, col: 53 }, line4weight: { row: 26, col: 63 },
+  line5units: { row: 28, col: 3 },  line5hm: { row: 28, col: 12 }, line5desc: { row: 28, col: 15 }, line5qty: { row: 28, col: 53 }, line5weight: { row: 28, col: 63 },
+  line6units: { row: 30, col: 3 },  line6hm: { row: 30, col: 12 }, line6desc: { row: 30, col: 15 }, line6qty: { row: 30, col: 53 }, line6weight: { row: 30, col: 63 },
+  line7units: { row: 32, col: 3 },  line7hm: { row: 32, col: 12 }, line7desc: { row: 32, col: 15 }, line7qty: { row: 32, col: 53 }, line7weight: { row: 32, col: 63 },
+  line8units: { row: 34, col: 3 },  line8hm: { row: 34, col: 12 }, line8desc: { row: 34, col: 15 }, line8qty: { row: 34, col: 53 }, line8weight: { row: 34, col: 63 },
+  line9units: { row: 36, col: 3 },  line9hm: { row: 36, col: 12 }, line9desc: { row: 36, col: 15 }, line9qty: { row: 36, col: 53 }, line9weight: { row: 36, col: 63 },
   line10units: { row: 38, col: 1 }, line10hm: { row: 38, col: 12 }, line10desc: { row: 38, col: 15 }, line10qty: { row: 38, col: 53 }, line10weight: { row: 38, col: 63 },
   line11units: { row: 40, col: 1 }, line11hm: { row: 40, col: 12 }, line11desc: { row: 40, col: 15 }, line11qty: { row: 40, col: 53 }, line11weight: { row: 40, col: 63 },
   line12units: { row: 42, col: 1 }, line12hm: { row: 42, col: 12 }, line12desc: { row: 42, col: 15 }, line12qty: { row: 42, col: 53 }, line12weight: { row: 42, col: 63 },
@@ -2340,9 +2340,11 @@ app.get('/api/print/bol/:id', function(req, res) {
     var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
     var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
     var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    // Use wrapping class for description fields
+    // Use wrapping class for description fields, smaller font for units
     if (p.fieldKey && p.fieldKey.match(/line\d+desc$/)) {
       html += '<span class="field-wrap" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;width:' + descWidthIn.toFixed(4) + 'in;">' + safeText + '</span>';
+    } else if (p.fieldKey && p.fieldKey.match(/line\d+units$/)) {
+      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:8pt;">' + safeText + '</span>';
     } else {
       html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
     }
