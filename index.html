@@ -3085,7 +3085,11 @@
                       React.createElement('input',{value:line.qty||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'qty',e.target.value)}}(),style:{width:'100%',padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12}})
                     ),
                     React.createElement('td',{style:{padding:'3px 2px'}},
-                      React.createElement('input',{value:line.weight||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'weight',e.target.value)}}(),style:{width:'100%',padding:'3px 6px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:12}})
+                      React.createElement('select',{value:line.weight||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'weight',e.target.value)}}(),style:{width:'100%',padding:'3px 2px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:11}},
+                        React.createElement('option',{value:''},'--'),
+                        React.createElement('option',{value:'Pounds'},'Pounds'),
+                        React.createElement('option',{value:'Gallons'},'Gallons')
+                      )
                     )
                   );
                 })
@@ -3156,7 +3160,8 @@
       for(var li=1;li<=14;li++){
         FIELD_LABELS['line'+li+'units']='Line '+li+' Units';
         FIELD_LABELS['line'+li+'hm']='Line '+li+' HM';
-        FIELD_LABELS['line'+li+'desc']='Line '+li+' Desc';
+        FIELD_LABELS['line'+li+'desc']='Line '+li+' Desc (line 1)';
+        FIELD_LABELS['line'+li+'desc2']='Line '+li+' Desc (line 2)';
         FIELD_LABELS['line'+li+'qty']='Line '+li+' Qty';
         FIELD_LABELS['line'+li+'weight']='Line '+li+' Weight';
       }
@@ -3169,7 +3174,7 @@
       ];
       // Add line item groups
       for(var lg=1;lg<=14;lg++){
-        groups.push({title:'Line '+lg,fields:['line'+lg+'units','line'+lg+'hm','line'+lg+'desc','line'+lg+'qty','line'+lg+'weight']});
+        groups.push({title:'Line '+lg,fields:['line'+lg+'units','line'+lg+'hm','line'+lg+'desc','line'+lg+'desc2','line'+lg+'qty','line'+lg+'weight']});
       }
 
       return React.createElement('div',null,
