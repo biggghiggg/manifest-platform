@@ -366,6 +366,79 @@ app.post('/api/import/quickbooks', upload.single('file'), function(req, res) {
   }
 });
 
+// One-time backfill: link existing imported profiles to generators
+// Uses the profiles table (which has generatorName) to find matching waste streams and generators
+(function backfillProfileLinks() {
+  var profiles = data.profiles || [];
+  var generators = data.generators || [];
+  var wasteStreams = data.wasteStreams || [];
+  var changed = false;
+  for (var pi = 0; pi < profiles.length; pi++) {
+    var prof = profiles[pi];
+    if (!prof.generatorName) continue;
+    var profGenLower = prof.generatorName.toLowerCase().trim();
+    // Find the matching generator by name (case-insensitive)
+    var matchedGen = null;
+    for (var gi = 0; gi < generators.length; gi++) {
+      if (generators[gi].name && generators[gi].name.toLowerCase().trim() === profGenLower) {
+        matchedGen = generators[gi]; break;
+      }
+    }
+    if (!matchedGen) continue;
+    // Find the waste stream by name matching the profile's wasteStreamName
+    var matchedWs = null;
+    for (var wi = 0; wi < wasteStreams.length; wi++) {
+      if (wasteStreams[wi].name && wasteStreams[wi].name === prof.wasteStreamName) {
+        matchedWs = wasteStreams[wi]; break;
+      }
+    }
+    if (!matchedWs) continue;
+    // Also backfill generatorName on the waste stream if missing
+    if (!matchedWs.generatorName && prof.generatorName) {
+      matchedWs.generatorName = prof.generatorName;
+      changed = true;
+    }
+    // Link waste stream to generator's profileIds
+    if (!matchedGen.profileIds) matchedGen.profileIds = [];
+    if (matchedGen.profileIds.indexOf(matchedWs.id) < 0) {
+      matchedGen.profileIds.push(matchedWs.id);
+      changed = true;
+      console.log('Backfill: linked "' + matchedWs.name + '" to generator "' + matchedGen.name + '"');
+    }
+  }
+  if (changed) saveData(data);
+})();
+
+// Auto-link a waste stream to its matching generator by EPA ID or name (case-insensitive)
+function autoLinkWasteStreamToGenerator(ws) {
+  if (!ws || !data.generators) return;
+  var matchedGen = null;
+  // First try EPA ID match (most reliable)
+  if (ws.generatorEpaId) {
+    for (var i = 0; i < data.generators.length; i++) {
+      if (data.generators[i].epaId && data.generators[i].epaId.toUpperCase() === ws.generatorEpaId.toUpperCase()) {
+        matchedGen = data.generators[i]; break;
+      }
+    }
+  }
+  // Fallback: match by generator name (case-insensitive)
+  if (!matchedGen && ws.generatorName) {
+    var wsGenLower = ws.generatorName.toLowerCase().trim();
+    for (var j = 0; j < data.generators.length; j++) {
+      if (data.generators[j].name && data.generators[j].name.toLowerCase().trim() === wsGenLower) {
+        matchedGen = data.generators[j]; break;
+      }
+    }
+  }
+  if (matchedGen) {
+    if (!matchedGen.profileIds) matchedGen.profileIds = [];
+    if (matchedGen.profileIds.indexOf(ws.id) < 0) {
+      matchedGen.profileIds.push(ws.id);
+      console.log('Auto-linked waste stream "' + ws.name + '" to generator "' + matchedGen.name + '"');
+    }
+  }
+}
+
 // Waste Profile PDF Import
 app.post('/api/import/waste-profile', upload.single('file'), function(req, res) {
   try {
@@ -549,6 +622,10 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
 
         if (!data.wasteStreams) data.wasteStreams = [];
         data.wasteStreams.push(ewsWasteStream);
+
+        // Auto-link waste stream to matching generator by EPA ID or name
+        autoLinkWasteStreamToGenerator(ewsWasteStream);
+
         saveData(data);
         broadcast('update', { collection: 'wasteStreams', action: 'create', item: ewsWasteStream });
         saveProfilePDF(req.file, ewsProfileId, 'EWS', ewsWasteStream.name, ewsGenName, req.file.originalname);
@@ -806,6 +883,10 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
 
         if (!data.wasteStreams) data.wasteStreams = [];
         data.wasteStreams.push(smxWasteStream);
+
+        // Auto-link waste stream to matching generator by EPA ID or name
+        autoLinkWasteStreamToGenerator(smxWasteStream);
+
         saveData(data);
         broadcast('update', { collection: 'wasteStreams', action: 'create', item: smxWasteStream });
         saveProfilePDF(req.file, smxProfileId, 'Samex', smxWasteStream.name, smxGenName, req.file.originalname);
@@ -947,6 +1028,19 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
       var isAddGen = repGenName.match(/various\s*sites/i) || repGenName.match(/multiple\s*generators/i) || repGenName.match(/add\s*gen/i);
       var profileGenName = isAddGen ? 'Republic / USE Add Gens' : repGenName;
 
+      // Extract generator EPA ID from Section A
+      var repGenEpaId = '';
+      var repEpaMatch = fullText.match(/EPA\s*(?:ID|Identification)\s*(?:#|No\.?|Number)?[:\s]+([A-Z]{2}[A-Z0-9]{8,12})/i);
+      if (repEpaMatch) repGenEpaId = repEpaMatch[1].trim();
+      if (!repGenEpaId) {
+        // Look for standalone EPA ID pattern near generator section
+        var genSection = fullText.match(/(?:Generator|Section\s*A)[\s\S]{0,500}/i);
+        if (genSection) {
+          var epaInGen = genSection[0].match(/\b([A-Z]{2}[A-Z0-9]{8,12})\b/);
+          if (epaInGen) repGenEpaId = epaInGen[1].trim();
+        }
+      }
+
       var wasteStream = {
         id: Date.now().toString(),
         name: commonName || 'Imported Profile ' + profileId,
@@ -961,6 +1055,8 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
         stateWasteCodes: stateWasteCodes,
         ergNum: ergNum,
         profileId: profileId,
+        generatorName: isAddGen ? '' : repGenName,
+        generatorEpaId: repGenEpaId,
         createdAt: new Date().toISOString()
       };
 
@@ -981,6 +1077,10 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
 
       if (!data.wasteStreams) data.wasteStreams = [];
       data.wasteStreams.push(wasteStream);
+
+      // Auto-link waste stream to matching generator by EPA ID or name
+      autoLinkWasteStreamToGenerator(wasteStream);
+
       saveData(data);
       broadcast('update', { collection: 'wasteStreams', action: 'create', item: wasteStream });
       saveProfilePDF(req.file, profileId || wasteStream.id, 'Republic', wasteStream.name, profileGenName, req.file.originalname);

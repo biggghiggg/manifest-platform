@@ -512,7 +512,7 @@
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                 <h4>Box 9 - Waste Description ({(form.wasteLines||[]).length} lines{(form.wasteLines||[]).length > 4 ? ' - ' + (Math.ceil(((form.wasteLines||[]).length - 4) / 8) + 1) + ' pages' : ''})</h4>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  {preGen ? <span style={{fontSize:11,color:'#16a34a',fontWeight:600}}>{data.wasteStreams.filter(function(w){ var pIds=preGen.profileIds||[]; return (pIds.indexOf(w.id)>=0)||(preGen.epaId&&w.generatorEpaId&&w.generatorEpaId===preGen.epaId); }).length} linked profiles for {preGen.name||'generator'}</span> : null}
+                  {preGen ? <span style={{fontSize:11,color:'#16a34a',fontWeight:600}}>{data.wasteStreams.filter(function(w){ var pIds=preGen.profileIds||[]; var gEpa=(preGen.epaId||'').toUpperCase(); var gName=(preGen.name||'').toLowerCase().trim(); if(pIds.indexOf(w.id)>=0)return true; if(gEpa&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===gEpa)return true; if(gName&&w.generatorName&&w.generatorName.toLowerCase().trim()===gName)return true; return false; }).length} linked profiles for {preGen.name||'generator'}</span> : null}
                   <button className="btn btn-sm btn-secondary" type="button" onClick={function(){setForm(function(f){var ls=(f.wasteLines||[]).slice();ls.push(Object.assign({},emptyWaste));return Object.assign({},f,{wasteLines:ls})})}}>+ Add Waste Line</button>
                 </div>
               </div>
@@ -570,9 +570,13 @@
                             {(function() {
                               var sortByName = function(a, b) { return (a.name || '').localeCompare(b.name || ''); };
                               var genPIds = preGen ? (preGen.profileIds || []) : [];
-                              var genEpa = preGen ? (preGen.epaId || '') : '';
+                              var genEpa = preGen ? (preGen.epaId || '').toUpperCase() : '';
+                              var genNameLower = preGen ? (preGen.name || '').toLowerCase().trim() : '';
                               var linked = preGen ? data.wasteStreams.filter(function(w) {
-                                return (genPIds.indexOf(w.id) >= 0) || (genEpa && w.generatorEpaId && w.generatorEpaId === genEpa);
+                                if (genPIds.indexOf(w.id) >= 0) return true;
+                                if (genEpa && w.generatorEpaId && w.generatorEpaId.toUpperCase() === genEpa) return true;
+                                if (genNameLower && w.generatorName && w.generatorName.toLowerCase().trim() === genNameLower) return true;
+                                return false;
                               }).sort(sortByName) : [];
                               var linkedIds = linked.map(function(w) { return w.id; });
                               var others = linked.length > 0 ? data.wasteStreams.filter(function(w) { return linkedIds.indexOf(w.id) < 0; }).sort(sortByName) : data.wasteStreams.slice().sort(sortByName);
@@ -890,9 +894,13 @@
                                       {(function() {
                                         var sortFn = function(a, b) { return (a.name || '').localeCompare(b.name || ''); };
                                         var gPIds = preGen ? (preGen.profileIds || []) : [];
-                                        var gEpa = preGen ? (preGen.epaId || '') : '';
+                                        var gEpa = preGen ? (preGen.epaId || '').toUpperCase() : '';
+                                        var gNameLower = preGen ? (preGen.name || '').toLowerCase().trim() : '';
                                         var lnk = preGen ? data.wasteStreams.filter(function(w) {
-                                          return (gPIds.indexOf(w.id) >= 0) || (gEpa && w.generatorEpaId && w.generatorEpaId === gEpa);
+                                          if (gPIds.indexOf(w.id) >= 0) return true;
+                                          if (gEpa && w.generatorEpaId && w.generatorEpaId.toUpperCase() === gEpa) return true;
+                                          if (gNameLower && w.generatorName && w.generatorName.toLowerCase().trim() === gNameLower) return true;
+                                          return false;
                                         }).sort(sortFn) : [];
                                         var lnkIds = lnk.map(function(w) { return w.id; });
                                         var oth = lnk.length > 0 ? data.wasteStreams.filter(function(w) { return lnkIds.indexOf(w.id) < 0; }).sort(sortFn) : data.wasteStreams.slice().sort(sortFn);
@@ -1641,8 +1649,59 @@
       var s1=useState(null);var result=s1[0];var setResult=s1[1];
       var s2=useState(false);var uploading=s2[0];var setUploading=s2[1];
       var fileRef=useRef();
+      // TSDF quick-add state
+      var tsdfState=useState({name:'',epaId:'',siteAddress:'',city:'',state:'',zip:'',phone:''});var tsdfForm=tsdfState[0];var setTsdfForm=tsdfState[1];
+      var tsdfResultState=useState(null);var tsdfResult=tsdfResultState[0];var setTsdfResult=tsdfResultState[1];
+      function setTsdf(k,v){setTsdfForm(function(f){var n=Object.assign({},f);n[k]=v;return n})}
+      function saveTsdf(){
+        if(!tsdfForm.name){setTsdfResult({error:'Facility name is required'});return}
+        api.post('/api/facilities',tsdfForm).then(function(){
+          setTsdfResult({success:'Facility "'+tsdfForm.name+'" added successfully'});
+          setTsdfForm({name:'',epaId:'',siteAddress:'',city:'',state:'',zip:'',phone:''});
+          reload();
+        }).catch(function(err){setTsdfResult({error:'Failed to save: '+err.message})});
+      }
       function handleUpload(e){var file=e.target.files[0];if(!file)return;setUploading(true);setResult(null);var formData=new FormData();formData.append('file',file);fetch('/api/import/quickbooks',{method:'POST',body:formData}).then(function(res){return res.json()}).then(function(data){if(data.error){setResult({error:data.error})}else{setResult({success:true,imported:data.imported,skipped:data.skipped||0,total:data.total});reload()}setUploading(false);if(fileRef.current)fileRef.current.value=''}).catch(function(err){setResult({error:'Upload failed: '+err.message});setUploading(false);if(fileRef.current)fileRef.current.value=''})}
       return React.createElement('div',null,
+        React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:16}},'Add New TSDF (Facility)'),
+        React.createElement('div',{className:'card',style:{marginBottom:24}},
+          React.createElement('h4',{style:{marginBottom:12}},'Quick Add Facility'),
+          React.createElement('p',{style:{color:'#666',marginBottom:16}},'Add a new Treatment, Storage, and Disposal Facility for use on manifests.'),
+          React.createElement('div',{className:'form-grid'},
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Facility Name'),
+              React.createElement('input',{value:tsdfForm.name,onChange:function(e){setTsdf('name',e.target.value)},placeholder:'e.g. Clean Harbors Buttonwillow'})
+            ),
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'EPA ID'),
+              React.createElement('input',{value:tsdfForm.epaId,onChange:function(e){setTsdf('epaId',e.target.value)},placeholder:'e.g. CAD000000000'})
+            ),
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Address'),
+              React.createElement('input',{value:tsdfForm.siteAddress,onChange:function(e){setTsdf('siteAddress',e.target.value)}})
+            ),
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'City'),
+              React.createElement('input',{value:tsdfForm.city,onChange:function(e){setTsdf('city',e.target.value)}})
+            ),
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'State'),
+              React.createElement('input',{value:tsdfForm.state,onChange:function(e){setTsdf('state',e.target.value)},placeholder:'CA',style:{width:60}})
+            ),
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Zip'),
+              React.createElement('input',{value:tsdfForm.zip,onChange:function(e){setTsdf('zip',e.target.value)},style:{width:80}})
+            ),
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Phone'),
+              React.createElement('input',{value:tsdfForm.phone,onChange:function(e){setTsdf('phone',e.target.value)}})
+            )
+          ),
+          React.createElement('button',{className:'btn btn-primary',onClick:saveTsdf,style:{marginTop:12}},'Add Facility'),
+          tsdfResult&&tsdfResult.success?React.createElement('div',{style:{marginTop:12,padding:10,background:'#d1fae5',borderRadius:8,color:'#065f46'}},tsdfResult.success):null,
+          tsdfResult&&tsdfResult.error?React.createElement('div',{style:{marginTop:12,padding:10,background:'#fee2e2',borderRadius:8,color:'#991b1b'}},tsdfResult.error):null
+        ),
+
         React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:16}},'Import from QuickBooks'),
         React.createElement('div',{className:'card'},
           React.createElement('h4',{style:{marginBottom:12}},'Upload Customer List (Excel or CSV)'),
