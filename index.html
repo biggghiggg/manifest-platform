@@ -3132,11 +3132,11 @@
       function handleBakeDefaults(){if(!confirm('This will save your current BOL alignment positions as the new defaults. Continue?'))return;api.post('/api/alignment-bol/bake-defaults').then(function(r){if(r&&r.ok){setStatus('Current BOL settings saved as new defaults!');api.get('/api/alignment-bol').then(function(d){if(d.fields)setAlignData(d.fields)})}else{setStatus('ERROR: Failed to save defaults')}setTimeout(function(){setStatus('')},3000)})}
       function handleCopyLine1(){if(!confirm('Copy Line 1 alignment offsets to Lines 2-14?'))return;api.post('/api/alignment-bol/copy-line1').then(function(r){if(r&&r.ok){setAlignData(r.fields);setHasPrevious(true);setStatus('Line 1 offsets applied to all lines!');setTimeout(function(){setStatus('')},3000)}else{setStatus('ERROR: Copy failed')}})}
       function updateField(fk,dim,val){
-        var v=parseInt(val);if(isNaN(v))return;
+        var v=parseFloat(val);if(isNaN(v))return;
         if(v>=0&&v<=100){var nd=Object.assign({},alignData);nd[fk]=Object.assign({},alignData[fk]||{row:1,col:1});nd[fk][dim]=v;setAlignData(nd)}
       }
       function nudge(fk,dim,amt){
-        var current=alignData[fk]||{row:1,col:1};var nv=(current[dim]||0)+amt;
+        var current=alignData[fk]||{row:1,col:1};var nv=Math.round(((current[dim]||0)+amt)*10)/10;
         if(nv>=0&&nv<=100)updateField(fk,dim,nv);
       }
 
