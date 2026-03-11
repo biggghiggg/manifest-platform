@@ -1954,9 +1954,18 @@ app.get('/api/print/label/:id', function(req, res) {
 
   // Dates / Manifest
   place('accumStartDate', label.accumStartDate);
-  // Manifest tracking number prints slightly larger (11pt)
-  if (label.manifestTrackNo && M.manifestTrackNo) {
-    placements.push({ row: M.manifestTrackNo.row, col: M.manifestTrackNo.col, text: String(label.manifestTrackNo), medium: true });
+  // Manifest tracking number - fall back to manifest record if label doesn't have it
+  var labelTrackNo = label.manifestTrackNo || '';
+  if (!labelTrackNo && label.manifestId) {
+    for (var mti = 0; mti < (data.manifests || []).length; mti++) {
+      if (data.manifests[mti].id === label.manifestId) {
+        labelTrackNo = data.manifests[mti].manifestTrackingNum || data.manifests[mti].manifestTrackingNumber || '';
+        break;
+      }
+    }
+  }
+  if (labelTrackNo && M.manifestTrackNo) {
+    placements.push({ row: M.manifestTrackNo.row, col: M.manifestTrackNo.col, text: String(labelTrackNo), medium: true });
   }
 
   // Extract UN/NA number from DOT shipping name for large display in contents area
@@ -2127,8 +2136,18 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
     }
     placeB('stateWasteCode', label.stateWasteCode);
     placeB('accumStartDate', label.accumStartDate);
-    if (label.manifestTrackNo && M.manifestTrackNo) {
-      placements.push({ row: M.manifestTrackNo.row, col: M.manifestTrackNo.col, text: String(label.manifestTrackNo), medium: true });
+    // Manifest tracking number - fall back to manifest record if label doesn't have it
+    var bTrackNo = label.manifestTrackNo || '';
+    if (!bTrackNo && label.manifestId) {
+      for (var mti = 0; mti < (data.manifests || []).length; mti++) {
+        if (data.manifests[mti].id === label.manifestId) {
+          bTrackNo = data.manifests[mti].manifestTrackingNum || data.manifests[mti].manifestTrackingNumber || '';
+          break;
+        }
+      }
+    }
+    if (bTrackNo && M.manifestTrackNo) {
+      placements.push({ row: M.manifestTrackNo.row, col: M.manifestTrackNo.col, text: String(bTrackNo), medium: true });
     }
 
     // Extract UN/NA number for large display
