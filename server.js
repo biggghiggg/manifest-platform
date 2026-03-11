@@ -1763,7 +1763,7 @@ app.get('/api/print/label/:id', function(req, res) {
   place('genPhone', label.genPhone);
 
   // Profile number (below DOT shipping name, centered)
-  place('profileNumber', label.profileNumber);
+  place('profileNumber', label.profileNumber ? 'Profile # ' + label.profileNumber : '');
 
   // EPA / Waste - split codes: first 3 on main line, rest on overflow line
   place('epaId', label.epaId);
@@ -1859,7 +1859,7 @@ app.get('/api/print/label/:id', function(req, res) {
       // Large UN/NA number: ~0.5in tall, bold, centered in contents area
       html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:36pt;font-weight:bold;letter-spacing:2px;">' + safeText + '</span>';
     } else if (p.medium) {
-      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:11pt;font-weight:bold;">' + safeText + '</span>';
+      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:14pt;font-weight:bold;">' + safeText + '</span>';
     } else {
       html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
     }
@@ -1930,7 +1930,7 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
     placeB('genAddress', label.genAddress);
     placeB('genCityStateZip', label.genCityStateZip);
     placeB('genPhone', label.genPhone);
-    placeB('profileNumber', label.profileNumber);
+    placeB('profileNumber', label.profileNumber ? 'Profile # ' + label.profileNumber : '');
     placeB('epaId', label.epaId);
     var bAllWC = (label.epaWasteNum || '').trim();
     if (bAllWC) {
@@ -1997,7 +1997,7 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
       if (p.large) {
         html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:36pt;font-weight:bold;letter-spacing:2px;">' + safeText + '</span>';
       } else if (p.medium) {
-        html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:11pt;font-weight:bold;">' + safeText + '</span>';
+        html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:14pt;font-weight:bold;">' + safeText + '</span>';
       } else {
         html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
       }
