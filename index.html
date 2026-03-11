@@ -512,7 +512,7 @@
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                 <h4>Box 9 - Waste Description ({(form.wasteLines||[]).length} lines{(form.wasteLines||[]).length > 4 ? ' - ' + (Math.ceil(((form.wasteLines||[]).length - 4) / 8) + 1) + ' pages' : ''})</h4>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  {preGen ? <span style={{fontSize:11,color:'#16a34a',fontWeight:600}}>{data.wasteStreams.filter(function(w){ var pIds=preGen.profileIds||[]; var gEpa=(preGen.epaId||'').toUpperCase(); var gName=(preGen.name||'').toLowerCase().trim(); if(pIds.indexOf(w.id)>=0)return true; if(gEpa&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===gEpa)return true; if(gName&&w.generatorName&&w.generatorName.toLowerCase().trim()===gName)return true; return false; }).length} linked profiles for {preGen.name||'generator'}</span> : null}
+                  {preGen ? <span style={{fontSize:11,color:'#16a34a',fontWeight:600}}>{(function(){ var pIds=preGen.profileIds||[]; var gEpa=(preGen.epaId||'').toUpperCase(); var gName=(preGen.name||'').toLowerCase().trim(); var plnk={}; (data.profiles||[]).forEach(function(p){if(p.generatorName&&p.generatorName.toLowerCase().trim()===gName&&p.wasteStreamName)plnk[p.wasteStreamName]=true}); return data.wasteStreams.filter(function(w){ if(pIds.indexOf(w.id)>=0)return true; if(gEpa&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===gEpa)return true; if(gName&&w.generatorName&&w.generatorName.toLowerCase().trim()===gName)return true; if(plnk[w.name])return true; return false; }).length; })()} linked profiles for {preGen.name||'generator'}</span> : null}
                   <button className="btn btn-sm btn-secondary" type="button" onClick={function(){setForm(function(f){var ls=(f.wasteLines||[]).slice();ls.push(Object.assign({},emptyWaste));return Object.assign({},f,{wasteLines:ls})})}}>+ Add Waste Line</button>
                 </div>
               </div>
@@ -572,10 +572,20 @@
                               var genPIds = preGen ? (preGen.profileIds || []) : [];
                               var genEpa = preGen ? (preGen.epaId || '').toUpperCase() : '';
                               var genNameLower = preGen ? (preGen.name || '').toLowerCase().trim() : '';
+                              // Build a set of waste stream names linked via the profiles table
+                              var profLinkedNames = {};
+                              if (preGen) {
+                                (data.profiles || []).forEach(function(p) {
+                                  if (p.generatorName && p.generatorName.toLowerCase().trim() === genNameLower && p.wasteStreamName) {
+                                    profLinkedNames[p.wasteStreamName] = true;
+                                  }
+                                });
+                              }
                               var linked = preGen ? data.wasteStreams.filter(function(w) {
                                 if (genPIds.indexOf(w.id) >= 0) return true;
                                 if (genEpa && w.generatorEpaId && w.generatorEpaId.toUpperCase() === genEpa) return true;
                                 if (genNameLower && w.generatorName && w.generatorName.toLowerCase().trim() === genNameLower) return true;
+                                if (profLinkedNames[w.name]) return true;
                                 return false;
                               }).sort(sortByName) : [];
                               var linkedIds = linked.map(function(w) { return w.id; });
@@ -896,10 +906,19 @@
                                         var gPIds = preGen ? (preGen.profileIds || []) : [];
                                         var gEpa = preGen ? (preGen.epaId || '').toUpperCase() : '';
                                         var gNameLower = preGen ? (preGen.name || '').toLowerCase().trim() : '';
+                                        var profLnkNames = {};
+                                        if (preGen) {
+                                          (data.profiles || []).forEach(function(p) {
+                                            if (p.generatorName && p.generatorName.toLowerCase().trim() === gNameLower && p.wasteStreamName) {
+                                              profLnkNames[p.wasteStreamName] = true;
+                                            }
+                                          });
+                                        }
                                         var lnk = preGen ? data.wasteStreams.filter(function(w) {
                                           if (gPIds.indexOf(w.id) >= 0) return true;
                                           if (gEpa && w.generatorEpaId && w.generatorEpaId.toUpperCase() === gEpa) return true;
                                           if (gNameLower && w.generatorName && w.generatorName.toLowerCase().trim() === gNameLower) return true;
+                                          if (profLnkNames[w.name]) return true;
                                           return false;
                                         }).sort(sortFn) : [];
                                         var lnkIds = lnk.map(function(w) { return w.id; });
@@ -1231,10 +1250,13 @@
                     var ws=data.wasteStreams||[];
                     var itemEpaUpper=(item.epaId||'').toUpperCase();
                     var itemNameLower=(item.name||'').toLowerCase().trim();
+                    var itemProfNames={};
+                    if(type==='generators'){(data.profiles||[]).forEach(function(p){if(p.generatorName&&p.generatorName.toLowerCase().trim()===itemNameLower&&p.wasteStreamName)itemProfNames[p.wasteStreamName]=true})}
                     var linkedWastes=type==='generators'?ws.filter(function(w){
                       if(pIds.indexOf(w.id)>=0) return true;
                       if(itemEpaUpper&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===itemEpaUpper) return true;
                       if(itemNameLower&&w.generatorName&&w.generatorName.toLowerCase().trim()===itemNameLower) return true;
+                      if(itemProfNames[w.name]) return true;
                       return false;
                     }):[];
                     var linkedIds=linkedWastes.map(function(w){return w.id});
@@ -1309,10 +1331,13 @@
                 var vEpaUpper=(viewItem.epaId||'').toUpperCase();
                 var vNameLower=(viewItem.name||'').toLowerCase().trim();
                 var vPIds=viewItem.profileIds||[];
+                var vProfNames={};
+                (data.profiles||[]).forEach(function(p){if(p.generatorName&&p.generatorName.toLowerCase().trim()===vNameLower&&p.wasteStreamName)vProfNames[p.wasteStreamName]=true});
                 var allLinked=(data.wasteStreams||[]).filter(function(w){
                   if(vPIds.indexOf(w.id)>=0) return true;
                   if(vEpaUpper&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===vEpaUpper) return true;
                   if(vNameLower&&w.generatorName&&w.generatorName.toLowerCase().trim()===vNameLower) return true;
+                  if(vProfNames[w.name]) return true;
                   return false;
                 });
                 var profileElements=[];
