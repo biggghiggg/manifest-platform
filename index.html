@@ -216,13 +216,14 @@
       var onClose = props.onClose;
       var reload = props.reload;
       var onPreview = props.onPreview;
-      var preGen = manifest && manifest._preselectedGen ? manifest._preselectedGen : null;
+      var initPreGen = manifest && manifest._preselectedGen ? manifest._preselectedGen : null;
       // When editing, look up generator by EPA ID to get linked profiles
-      if (!preGen && manifest && manifest.generatorEpaId) {
+      if (!initPreGen && manifest && manifest.generatorEpaId) {
         for (var gi = 0; gi < (data.generators || []).length; gi++) {
-          if (data.generators[gi].epaId === manifest.generatorEpaId) { preGen = data.generators[gi]; break; }
+          if (data.generators[gi].epaId === manifest.generatorEpaId) { initPreGen = data.generators[gi]; break; }
         }
       }
+      var preGenState = useState(initPreGen); var preGen = preGenState[0]; var setPreGen = preGenState[1];
       var isEdit = !!manifest && !preGen;
       var emptyWaste = { hm: '', description: '', containerNum: '', containerType: '', containerSize: '', qty: '', unit: '', wasteCodes: '', profileId: '' };
       var contState = useState(false); var showContinuation = contState[0]; var setShowContinuation = contState[1];
@@ -292,6 +293,7 @@
       function loadGenerator(id) {
         var gen = data.generators.find(function(g) { return g.id === id; });
         if (!gen) return;
+        setPreGen(gen);
         setForm(function(f) {
           return Object.assign({}, f, {
             generatorName: gen.name || '',
