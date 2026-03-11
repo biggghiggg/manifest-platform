@@ -2291,7 +2291,8 @@ app.get('/api/print/bol/:id', function(req, res) {
   for (var ln = 0; ln < 14; ln++) {
     var line = lines[ln] || {};
     var n = ln + 1;
-    var unitsText = (line.containerNum && line.containerType) ? line.containerNum + '/' + line.containerType : (line.containerNum || line.containerType || '');
+    var unitsParts = [line.containerNum || '', line.containerType || '', line.containerSize ? line.containerSize.replace(/[^0-9]/g, '') : ''].filter(Boolean);
+    var unitsText = unitsParts.join('/');
     place('line' + n + 'units', unitsText);
     place('line' + n + 'hm', line.hm);
     // Description - use single field with CSS wrapping (no desc2)
