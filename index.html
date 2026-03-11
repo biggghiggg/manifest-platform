@@ -2078,8 +2078,8 @@
       function handleReset(){api.post('/api/alignment/reset').then(function(){setAlignData({});setColShift(0);setRowShift(0);setStatus('Reset to defaults');setTimeout(function(){setStatus('')},2000)})}
       function handleTestPrint(){window.open('/api/print/alignment-test','_blank')}
       function handleBakeDefaults(){if(!confirm('This will save your current alignment positions as the new defaults. Reset will go back to these positions instead of the original ones. Continue?'))return;api.post('/api/alignment/bake-defaults').then(function(r){if(r&&r.ok){setStatus('Current settings saved as new defaults!');setColShift(0);setRowShift(0);api.get('/api/alignment').then(function(d){if(d.fields)setAlignData(d.fields)})}else{setStatus('ERROR: Failed to save defaults')}setTimeout(function(){setStatus('')},3000)})}
-      function updateField(fk,dim,val){var v=parseInt(val);if(!isNaN(v)&&v>=1&&v<=100){var newData=Object.assign({},alignData);newData[fk]=Object.assign({},alignData[fk]||{row:1,col:1});newData[fk][dim]=v;setAlignData(newData)}}
-      function nudge(fk,dim,amt){var current=alignData[fk]||{row:1,col:1};var nv=current[dim]+amt;if(nv>=1&&nv<=100){updateField(fk,dim,nv)}}
+      function updateField(fk,dim,val){var v=parseFloat(val);if(!isNaN(v)&&v>=0&&v<=100){var newData=Object.assign({},alignData);newData[fk]=Object.assign({},alignData[fk]||{row:1,col:1});newData[fk][dim]=v;setAlignData(newData)}}
+      function nudge(fk,dim,amt){var current=alignData[fk]||{row:1,col:1};var nv=Math.round(((current[dim]||0)+amt)*10)/10;if(nv>=0&&nv<=100){updateField(fk,dim,nv)}}
 
       var groups=[
         {title:'Box 1 (EPA ID)',fields:['generatorEpaId','page','totalPages']},
@@ -2159,16 +2159,16 @@
                         React.createElement('td',{style:{padding:'6px 8px',fontSize:13,fontWeight:isSelected?700:400}},FIELD_LABELS[fk]||fk),
                         React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
                           React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
-                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',-1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9650)),
-                            React.createElement('input',{type:'number',value:pos.row,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'row',e.target.value)},style:{width:45,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
-                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9660))
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',-0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9650)),
+                            React.createElement('input',{type:'number',step:'0.5',value:pos.row,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'row',e.target.value)},style:{width:50,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9660))
                           )
                         ),
                         React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
                           React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
-                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',-1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9664)),
-                            React.createElement('input',{type:'number',value:pos.col,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'col',e.target.value)},style:{width:45,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
-                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9654))
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',-0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9664)),
+                            React.createElement('input',{type:'number',step:'0.5',value:pos.col,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'col',e.target.value)},style:{width:50,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9654))
                           )
                         )
                       ));
@@ -2217,15 +2217,15 @@
       function handleReset(){api.post('/api/alignment22a/reset').then(function(){setAlignData({});setColShift22(0);setRowShift22(0);setStatus('Reset to defaults');setTimeout(function(){setStatus('')},2000)})}
       function handleBakeDefaults(){if(!confirm('This will save your current 22A alignment positions as the new defaults. Reset will go back to these positions instead of the original ones. Continue?'))return;api.post('/api/alignment22a/bake-defaults').then(function(r){if(r&&r.ok){setStatus('Current 22A settings saved as new defaults!');api.get('/api/alignment22a').then(function(d){if(d.fields)setAlignData(d.fields)})}else{setStatus('ERROR: Failed to save defaults')}setTimeout(function(){setStatus('')},3000)})}
       function updateField(fk,dim,val){
-        var v=parseInt(val);if(isNaN(v))return;
+        var v=parseFloat(val);if(isNaN(v))return;
         if(dim==='rowOffset'){if(v>=-20&&v<=20){var nd=Object.assign({},alignData);nd[fk]=Object.assign({},alignData[fk]||{col:1,rowOffset:0});nd[fk][dim]=v;setAlignData(nd)}}
-        else if(v>=1&&v<=100){var nd2=Object.assign({},alignData);nd2[fk]=Object.assign({},alignData[fk]||{row:1,col:1,rowOffset:0});nd2[fk][dim]=v;setAlignData(nd2)}
+        else if(v>=0&&v<=100){var nd2=Object.assign({},alignData);nd2[fk]=Object.assign({},alignData[fk]||{row:1,col:1,rowOffset:0});nd2[fk][dim]=v;setAlignData(nd2)}
       }
       function nudge(fk,dim,amt){
         var def=WASTE_COL_FIELDS[fk]?{col:1,rowOffset:0}:{row:1,col:1};
-        var current=alignData[fk]||def;var nv=(current[dim]||0)+amt;
+        var current=alignData[fk]||def;var nv=Math.round(((current[dim]||0)+amt)*10)/10;
         if(dim==='rowOffset'){if(nv>=-20&&nv<=20)updateField(fk,dim,nv)}
-        else{if(nv>=1&&nv<=100)updateField(fk,dim,nv)}
+        else{if(nv>=0&&nv<=100)updateField(fk,dim,nv)}
       }
 
       var groups=[
@@ -2304,16 +2304,16 @@
                         React.createElement('td',{style:{padding:'6px 8px',fontSize:13,fontWeight:isSelected?700:400}},FIELD_LABELS[fk]||fk),
                         React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
                           React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
-                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,upDownDim,-1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9650)),
-                            React.createElement('input',{type:'number',value:upDownVal,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,upDownDim,e.target.value)},style:{width:45,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
-                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,upDownDim,1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9660))
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,upDownDim,-0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9650)),
+                            React.createElement('input',{type:'number',step:'0.5',value:upDownVal,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,upDownDim,e.target.value)},style:{width:50,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,upDownDim,0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9660))
                           )
                         ),
                         React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
                           React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
-                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',-1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9664)),
-                            React.createElement('input',{type:'number',value:pos.col,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'col',e.target.value)},style:{width:45,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
-                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9654))
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',-0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9664)),
+                            React.createElement('input',{type:'number',step:'0.5',value:pos.col,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'col',e.target.value)},style:{width:50,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9654))
                           )
                         )
                       ));
@@ -3412,11 +3412,11 @@
       function handleReset(){api.post('/api/alignment-label/reset').then(function(){setAlignData({});setColShiftLbl(0);setRowShiftLbl(0);setStatus('Reset to defaults');setTimeout(function(){setStatus('')},2000);api.get('/api/alignment-label').then(function(d){if(d.fields)setAlignData(d.fields);if(typeof d.colShift==='number')setColShiftLbl(d.colShift);if(typeof d.rowShift==='number')setRowShiftLbl(d.rowShift)})})}
       function handleBakeDefaults(){if(!confirm('This will save your current label alignment positions as the new defaults. Continue?'))return;api.post('/api/alignment-label/bake-defaults').then(function(r){if(r&&r.ok){setStatus('Current label settings saved as new defaults!');api.get('/api/alignment-label').then(function(d){if(d.fields)setAlignData(d.fields)})}else{setStatus('ERROR: Failed to save defaults')}setTimeout(function(){setStatus('')},3000)})}
       function updateField(fk,dim,val){
-        var v=parseInt(val);if(isNaN(v))return;
+        var v=parseFloat(val);if(isNaN(v))return;
         if(v>=0&&v<=100){var nd=Object.assign({},alignData);nd[fk]=Object.assign({},alignData[fk]||{row:1,col:1});nd[fk][dim]=v;setAlignData(nd)}
       }
       function nudge(fk,dim,amt){
-        var current=alignData[fk]||{row:1,col:1};var nv=(current[dim]||0)+amt;
+        var current=alignData[fk]||{row:1,col:1};var nv=Math.round(((current[dim]||0)+amt)*10)/10;
         if(nv>=0&&nv<=100)updateField(fk,dim,nv);
       }
 
@@ -3489,16 +3489,16 @@
                         React.createElement('td',{style:{padding:'6px 8px',fontSize:13,fontWeight:isSelected?700:400}},FIELD_LABELS[fk]||fk),
                         React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
                           React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
-                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',-1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9650)),
-                            React.createElement('input',{type:'number',value:pos.row||1,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'row',e.target.value)},style:{width:45,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
-                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9660))
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',-0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9650)),
+                            React.createElement('input',{type:'number',step:'0.5',value:pos.row||1,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'row',e.target.value)},style:{width:50,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9660))
                           )
                         ),
                         React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
                           React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
-                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',-1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9664)),
-                            React.createElement('input',{type:'number',value:pos.col||1,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'col',e.target.value)},style:{width:45,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
-                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',1)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9654))
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',-0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9664)),
+                            React.createElement('input',{type:'number',step:'0.5',value:pos.col||1,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'col',e.target.value)},style:{width:50,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9654))
                           )
                         )
                       ));
