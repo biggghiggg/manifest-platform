@@ -2381,7 +2381,7 @@ app.get('/api/print/bol/:id', function(req, res) {
     var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     // Use wrapping class for description fields, smaller font for units
     if (p.fieldKey && p.fieldKey.match(/line\d+desc$/)) {
-      html += '<span class="field-wrap" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;width:' + descWidthIn.toFixed(4) + 'in;">' + safeText + '</span>';
+      html += '<span class="field-wrap" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;width:' + descWidthIn.toFixed(4) + 'in;font-size:9pt;">' + safeText + '</span>';
     } else if (p.fieldKey && p.fieldKey.match(/line\d+units$/)) {
       html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:8pt;">' + safeText + '</span>';
     } else {
