@@ -225,7 +225,7 @@
       }
       // Track selected generator ID in state for profile filtering
       var selGenIdState = useState(initPreGen ? initPreGen.id : null); var selGenId = selGenIdState[0]; var setSelGenId = selGenIdState[1];
-      var isEdit = !!manifest && !initPreGen;
+      var isEdit = !!manifest && !!manifest.id;
       var emptyWaste = { hm: '', description: '', containerNum: '', containerType: '', containerSize: '', qty: '', unit: '', wasteCodes: '', profileId: '' };
       var contState = useState(false); var showContinuation = contState[0]; var setShowContinuation = contState[1];
       var savedIdState = useState(isEdit && manifest ? manifest.id : null); var savedId = savedIdState[0]; var setSavedId = savedIdState[1];
@@ -239,7 +239,22 @@
       }
 
       var formState = useState(function() {
+        if (manifest && manifest.id) {
+          // Editing existing manifest - load ALL saved data
+          var mCopy = Object.assign({}, manifest);
+          if (!mCopy.wasteLines) {
+            var wlc = parseInt(mCopy.wasteLineCount) || 4;
+            var wls = [];
+            for (var wli = 1; wli <= wlc; wli++) {
+              wls.push({hm:mCopy['waste'+wli+'HM']||'',description:mCopy['waste'+wli+'Description']||'',containerNum:mCopy['waste'+wli+'ContainerNum']||'',containerType:mCopy['waste'+wli+'ContainerType']||'',containerSize:mCopy['waste'+wli+'ContainerSize']||'',qty:mCopy['waste'+wli+'Qty']||'',unit:mCopy['waste'+wli+'Unit']||'',wasteCodes:mCopy['waste'+wli+'WasteCodes']||'',profileId:mCopy['waste'+wli+'ProfileId']||''});
+            }
+            while (wls.length < 4) wls.push(Object.assign({}, emptyWaste));
+            mCopy.wasteLines = wls;
+          }
+          return mCopy;
+        }
         if (initPreGen) {
+          // New manifest from preselected generator
           return {
             manifestTrackingNum: '', emergencyPhone: '800-255-3924',
             generatorEpaId: initPreGen.epaId || '', generatorName: initPreGen.name || '',
@@ -256,19 +271,6 @@
             pageNum: '', pageTotal: '',
             status: 'draft'
           };
-        }
-        if (manifest) {
-          var mCopy = Object.assign({}, manifest);
-          if (!mCopy.wasteLines) {
-            var wlc = parseInt(mCopy.wasteLineCount) || 4;
-            var wls = [];
-            for (var wli = 1; wli <= wlc; wli++) {
-              wls.push({hm:mCopy['waste'+wli+'HM']||'',description:mCopy['waste'+wli+'Description']||'',containerNum:mCopy['waste'+wli+'ContainerNum']||'',containerType:mCopy['waste'+wli+'ContainerType']||'',containerSize:mCopy['waste'+wli+'ContainerSize']||'',qty:mCopy['waste'+wli+'Qty']||'',unit:mCopy['waste'+wli+'Unit']||'',wasteCodes:mCopy['waste'+wli+'WasteCodes']||'',profileId:mCopy['waste'+wli+'ProfileId']||''});
-            }
-            while (wls.length < 4) wls.push(Object.assign({}, emptyWaste));
-            mCopy.wasteLines = wls;
-          }
-          return mCopy;
         }
         return {
           manifestTrackingNum: '', emergencyPhone: '800-255-3924',
@@ -509,7 +511,10 @@
             <div className="card" style={{background:'#f9fafb',padding:16,marginBottom:16}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                 <h4>Box 9 - Waste Description ({(form.wasteLines||[]).length} lines{(form.wasteLines||[]).length > 4 ? ' - ' + (Math.ceil(((form.wasteLines||[]).length - 4) / 8) + 1) + ' pages' : ''})</h4>
-                <button className="btn btn-sm btn-secondary" type="button" onClick={function(){setForm(function(f){var ls=(f.wasteLines||[]).slice();ls.push(Object.assign({},emptyWaste));return Object.assign({},f,{wasteLines:ls})})}}>+ Add Waste Line</button>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  {preGen ? <span style={{fontSize:11,color:'#16a34a',fontWeight:600}}>{(preGen.profileIds||[]).length} linked profiles for {preGen.name||'generator'}</span> : null}
+                  <button className="btn btn-sm btn-secondary" type="button" onClick={function(){setForm(function(f){var ls=(f.wasteLines||[]).slice();ls.push(Object.assign({},emptyWaste));return Object.assign({},f,{wasteLines:ls})})}}>+ Add Waste Line</button>
+                </div>
               </div>
               <table className="waste-table">
                 <thead>
