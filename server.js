@@ -2134,7 +2134,7 @@ app.post('/api/bols/from-manifest/:manifestId', function(req, res) {
     date: new Date().toLocaleDateString('en-US'),
     pageNum: '1',
     pageOf: '1',
-    carrierName: manifest.transporter1Company || '',
+    carrierName: manifest.transporter1Company || 'Independence Environmental Services, LLC',
     scac: '',
     toConsignee: manifest.facilityName || '',
     toStreet: manifest.facilityAddress || '',

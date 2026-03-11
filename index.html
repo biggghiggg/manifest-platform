@@ -2723,7 +2723,7 @@
 
       var emptyBol={
         date:'',dateISO:'',pageNum:'1',pageOf:'1',
-        carrierName:'',scac:'',
+        carrierName:'Independence Environmental Services, LLC',scac:'',
         toConsignee:'',toStreet:'',toCity:'',toState:'',toZip:'',
         fromShipper:'',fromStreet:'',fromCity:'',fromState:'',fromZip:'',
         emergencyPhone:'',route:'',
@@ -2767,7 +2767,7 @@
         var nf=Object.assign({},form);
         nf.manifestId=manifest.id;
         nf.date=new Date().toLocaleDateString('en-US');
-        nf.carrierName=manifest.transporter1Company||'';
+        nf.carrierName=manifest.transporter1Company||'Independence Environmental Services, LLC';
         nf.toConsignee=manifest.facilityName||'';
         nf.toStreet=manifest.facilityAddress||'';
         nf.toCity=manifest.facilityCity||'';
@@ -2925,13 +2925,7 @@
                 (data.generators||[]).map(function(g){return React.createElement('option',{key:g.id,value:g.id},g.name+(g.epaId?' ('+g.epaId+')':''))})
               )
             ),
-            React.createElement('div',{style:{flex:1}},
-              React.createElement('label',{style:{fontSize:12,fontWeight:600,color:'#374151'}},'Pick Facility (TO)'),
-              React.createElement('select',{onChange:function(e){handlePullFac(e.target.value)},style:{width:'100%',padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13,marginTop:4}},
-                React.createElement('option',{value:''},'-- Select Facility --'),
-                (data.facilities||[]).map(function(f){return React.createElement('option',{key:f.id,value:f.id},f.name)})
-              )
-            )
+            React.createElement('div',{style:{flex:1}})
           ),
 
           // Header fields
@@ -2981,6 +2975,12 @@
             // TO (Consignee)
             React.createElement('div',{style:{flex:1,background:'#eff6ff',padding:12,borderRadius:8,border:'1px solid #bfdbfe'}},
               React.createElement('h4',{style:{fontSize:13,fontWeight:600,marginBottom:8,color:'#1e40af'}},'TO (Consignee)'),
+              React.createElement('div',{style:{marginBottom:8}},
+                React.createElement('select',{onChange:function(e){handlePullFac(e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #93c5fd',borderRadius:4,fontSize:12,background:'#dbeafe',color:'#1e40af'}},
+                  React.createElement('option',{value:''},'-- Pull from Facility --'),
+                  (data.facilities||[]).map(function(f){return React.createElement('option',{key:f.id,value:f.id},f.name)})
+                )
+              ),
               React.createElement('div',{className:'form-group',style:{marginBottom:6}},
                 React.createElement('label',{style:{fontSize:11}},'Consignee Name'),
                 React.createElement('input',{value:form.toConsignee,onChange:function(e){updateField('toConsignee',e.target.value)},style:{width:'100%',padding:'5px 8px',border:'1px solid #ddd',borderRadius:4,fontSize:13}})
