@@ -1868,7 +1868,7 @@ app.post('/api/labels/from-manifest/:manifestId', function(req, res) {
       epaWasteNum: wasteCodes,
       stateWasteCode: '',
       accumStartDate: '',
-      manifestTrackNo: manifest.manifestTrackingNumber || '',
+      manifestTrackNo: manifest.manifestTrackingNum || manifest.manifestTrackingNumber || '',
       contents: '',
       physicalState: '',
       hazProps: { flammable: false, corrosive: false, reactivity: false, toxic: false, other: false }
