@@ -130,14 +130,14 @@
           React.createElement('div',{className:'nav-tabs'},
             React.createElement('button',{className:'nav-tab'+(tab==='manifests'?' active':''),onClick:function(){setTab('manifests')}},'Manifests'),
             React.createElement('button',{className:'nav-tab'+(tab==='nonhaz'?' active':''),onClick:function(){setTab('nonhaz')},style:{color:tab==='nonhaz'?'#fff':'rgba(255,255,255,0.7)'}},'Non-Haz'),
+            React.createElement('button',{className:'nav-tab'+(tab==='labels'?' active':''),onClick:function(){setTab('labels')}},'Labels'),
+            React.createElement('button',{className:'nav-tab'+(tab==='bols'?' active':''),onClick:function(){setTab('bols')}},'BOL'),
             React.createElement('button',{className:'nav-tab'+(tab==='generators'?' active':''),onClick:function(){setTab('generators')}},'Generators'),
             React.createElement('button',{className:'nav-tab'+(tab==='transporters'?' active':''),onClick:function(){setTab('transporters')}},'Transporters'),
             React.createElement('button',{className:'nav-tab'+(tab==='facilities'?' active':''),onClick:function(){setTab('facilities')}},'Facilities'),
             React.createElement('button',{className:'nav-tab'+(tab==='waste'?' active':''),onClick:function(){setTab('waste')}},'Waste Streams'),
             React.createElement('button',{className:'nav-tab'+(tab==='profiles'?' active':''),onClick:function(){setTab('profiles')}},'Profiles'),
             React.createElement('button',{className:'nav-tab'+(tab==='import'?' active':''),onClick:function(){setTab('import')}},'Import'),
-            React.createElement('button',{className:'nav-tab'+(tab==='labels'?' active':''),onClick:function(){setTab('labels')}},'Labels'),
-            React.createElement('button',{className:'nav-tab'+(tab==='bols'?' active':''),onClick:function(){setTab('bols')}},'BOL'),
             React.createElement('button',{className:'nav-tab'+(tab==='alignment'?' active':''),onClick:function(){setTab('alignment')},style:{color:tab==='alignment'?'#fff':'rgba(255,255,255,0.4)'}},'Alignment')
           ),
           React.createElement('span',{className:'status-dot '+(connected?'connected':'disconnected'),title:connected?'Connected':'Disconnected'})
@@ -145,14 +145,14 @@
         React.createElement('div',{className:'main-content'},
           tab==='manifests'?React.createElement(ManifestsTab,{data:data,reload:loadAllData,preselectedGen:preselectedGen,clearPreselected:function(){setPreselectedGen(null)},manifestType:'hazardous',editManifestFromGen:editManifestFromGen,clearEditManifest:function(){setEditManifestFromGen(null)}}):null,
           tab==='nonhaz'?React.createElement(ManifestsTab,{data:data,reload:loadAllData,preselectedGen:null,clearPreselected:function(){},manifestType:'nonhaz',editManifestFromGen:editManifestFromGen,clearEditManifest:function(){setEditManifestFromGen(null)}}):null,
+          tab==='labels'?React.createElement(LabelsTab,{data:data,reload:loadAllData}):null,
+          tab==='bols'?React.createElement(BolsTab,{data:data,reload:loadAllData}):null,
           tab==='generators'?React.createElement(ProfileTab,{data:data,type:'generators',label:{singular:'Generator',plural:'Generators'},reload:loadAllData,onNewManifest:function(gen){setPreselectedGen(gen);setTab('manifests')},onEditManifest:function(m){setEditManifestFromGen(m);setTab((m.manifestType||'hazardous')==='nonhaz'?'nonhaz':'manifests')}}):null,
           tab==='transporters'?React.createElement(ProfileTab,{data:data,type:'transporters',label:{singular:'Transporter',plural:'Transporters'},reload:loadAllData}):null,
           tab==='facilities'?React.createElement(ProfileTab,{data:data,type:'facilities',label:{singular:'Facility',plural:'Facilities'},reload:loadAllData}):null,
           tab==='waste'?React.createElement(WasteStreamsTab,{data:data,reload:loadAllData}):null,
           tab==='profiles'?React.createElement(ProfilesTab,{data:data,reload:loadAllData}):null,
           tab==='import'?React.createElement(ImportTab,{reload:loadAllData}):null,
-          tab==='labels'?React.createElement(LabelsTab,{data:data,reload:loadAllData}):null,
-          tab==='bols'?React.createElement(BolsTab,{data:data,reload:loadAllData}):null,
           tab==='alignment'?React.createElement(AlignmentTabs,null):null
         )
       );
@@ -208,7 +208,7 @@
                   React.createElement('button',{className:'btn btn-sm btn-success',onClick:function(){handlePreview(m)}},'Preview'),
                   React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id,'_blank')}},'Print with Epson'),
                   React.createElement('button',{className:'btn btn-sm',style:{background:'#6d28d9',color:'#fff'},onClick:function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id+'?page=2','_blank')}},'Cont.'),
-                  React.createElement('button',{className:'btn btn-sm',style:{background:'#0891b2',color:'#fff'},onClick:function(){window.open('/api/print/labels/manifest/'+m.id,'_blank')}},'Print Labels'),
+                  React.createElement('button',{className:'btn btn-sm',style:{background:'#0891b2',color:'#fff'},onClick:function(){var mid=m.id;api.post('/api/labels/from-manifest/'+mid).then(function(result){reload();window.open('/api/print/labels/manifest/'+mid,'_blank')}).catch(function(){alert('Error generating labels')})}},'Print Labels'),
                   React.createElement('button',{className:'btn btn-sm',style:{background:'#6b7280',color:'#fff'},onClick:function(){handleArchive(m)}},'Archive'),
                   React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){handleDelete(m.id)}},'X')
                 )
@@ -2914,7 +2914,6 @@
               ),
               React.createElement('div',{style:{display:'flex',gap:6}},
                 React.createElement('button',{onClick:function(){handlePrint(b.id)},style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print with Epson'),
-                b.manifestId?React.createElement('button',{onClick:function(){window.open('/api/print/labels/manifest/'+b.manifestId,'_blank')},style:{padding:'4px 10px',fontSize:12,background:'#0891b2',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print Labels'):null,
                 React.createElement('button',{onClick:function(){var bb=b;return function(){setEditBol(bb);setShowForm(true)}}(),style:{padding:'4px 10px',fontSize:12,background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Edit'),
                 React.createElement('button',{onClick:function(){var bb=b;return function(){handleArchiveBol(bb)}}(),style:{padding:'4px 10px',fontSize:12,background:'#6b7280',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Archive'),
                 React.createElement('button',{onClick:function(){var bb=b;return function(){handleDelete(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Delete')
@@ -2945,7 +2944,6 @@
                 ),
                 React.createElement('div',{style:{display:'flex',gap:6}},
                   React.createElement('button',{onClick:function(){var bb=b;return function(){handlePrint(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print with Epson'),
-                  b.manifestId?React.createElement('button',{onClick:function(){var bb=b;return function(){window.open('/api/print/labels/manifest/'+bb.manifestId,'_blank')}}(),style:{padding:'4px 10px',fontSize:12,background:'#0891b2',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print Labels'):null,
                   React.createElement('button',{onClick:function(){var bb=b;return function(){setEditBol(bb);setShowForm(true)}}(),style:{padding:'4px 10px',fontSize:12,background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Edit'),
                   React.createElement('button',{onClick:function(){var bb=b;return function(){handleArchiveBol(bb)}}(),style:{padding:'4px 10px',fontSize:12,background:'#6b7280',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Archive'),
                   React.createElement('button',{onClick:function(){var bb=b;return function(){handleDelete(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Delete')
