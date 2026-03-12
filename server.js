@@ -126,6 +126,39 @@ collections.forEach(function(col) {
   });
 });
 
+// Helper: mark a manifest as printed/filed under its generator
+function fileManifestAsPrinted(manifestId) {
+  var manifests = data.manifests || [];
+  for (var i = 0; i < manifests.length; i++) {
+    if (manifests[i].id === manifestId) {
+      if (!manifests[i].printHistory) manifests[i].printHistory = [];
+      manifests[i].printHistory.push({ printedAt: new Date().toISOString() });
+      manifests[i].lastPrintedAt = new Date().toISOString();
+      manifests[i].status = 'printed';
+      saveData(data);
+      broadcast('update', { collection: 'manifests', action: 'update', item: manifests[i] });
+      return manifests[i];
+    }
+  }
+  return null;
+}
+
+// Helper: mark a BOL as printed/filed
+function fileBolAsPrinted(bolId) {
+  var bols = data.bols || [];
+  for (var i = 0; i < bols.length; i++) {
+    if (bols[i].id === bolId) {
+      if (!bols[i].printHistory) bols[i].printHistory = [];
+      bols[i].printHistory.push({ printedAt: new Date().toISOString() });
+      bols[i].lastPrintedAt = new Date().toISOString();
+      bols[i].status = 'printed';
+      saveData(data);
+      return bols[i];
+    }
+  }
+  return null;
+}
+
 // Waste Streams routes (HTML uses /api/waste-streams with hyphen)
 app.get('/api/waste-streams', function(req, res) { res.json(data.wasteStreams || []); });
 app.post('/api/waste-streams', function(req, res) {
@@ -2701,6 +2734,9 @@ app.get('/api/print/bol/:id', function(req, res) {
   }
   if (!bol) return res.status(404).send('BOL not found');
 
+  // Auto-file BOL as printed
+  fileBolAsPrinted(bol.id);
+
   customAlignmentBol = data.customAlignmentBol || null;
   savedDefaultsBol = data.savedDefaultsBol || null;
   var M = getActiveBolMap();
@@ -2931,6 +2967,9 @@ app.get('/api/print/manifest/:id', function(req, res) {
     if (data.manifests[i].id === req.params.id) { manifest = data.manifests[i]; break; }
   }
   if (!manifest) return res.status(404).send('Manifest not found');
+
+  // Auto-file manifest as printed
+  fileManifestAsPrinted(manifest.id);
 
   var MAP = getActiveMap();
 
@@ -3428,6 +3467,9 @@ app.get('/api/print/escp2/:id', function(req, res) {
   }
   if (!manifest) return res.status(404).send('Manifest not found');
 
+  // Auto-file manifest as printed
+  fileManifestAsPrinted(manifest.id);
+
   var M = getActiveRawMap();
   var commands = [];
 
@@ -3780,6 +3822,10 @@ app.get('/api/print/direct/:id', function(req, res) {
     if (data.manifests[i].id === req.params.id) { manifest = data.manifests[i]; break; }
   }
   if (!manifest) return res.status(404).send('Manifest not found');
+
+  // Auto-file manifest as printed
+  fileManifestAsPrinted(manifest.id);
+
   console.log('Direct Print manifest id=' + manifest.id + ', manifestTrackingNum="' + (manifest.manifestTrackingNum || '') + '"');
 
   var M = getActiveRawMap();
@@ -4231,6 +4277,9 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
     return res.status(404).send('Manifest not found');
   }
 
+  // Auto-file manifest as printed
+  fileManifestAsPrinted(manifest.id);
+
   var MAP = getActiveMap();
 
   var CANVAS_ROWS = 66;
@@ -4595,6 +4644,9 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
     if (data.manifests[i].id === req.params.id) { manifest = data.manifests[i]; break; }
   }
   if (!manifest) return res.status(404).send('Manifest not found');
+
+  // Auto-file manifest as printed
+  fileManifestAsPrinted(manifest.id);
 
   // Use non-haz raw map (same positions as haz, but separate alignment)
   var nhCustomAlignmentRaw = data.customAlignmentNonhaz || null;

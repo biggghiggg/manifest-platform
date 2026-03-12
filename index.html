@@ -118,6 +118,7 @@
       var cs=useState(false);var connected=cs[0];var setConnected=cs[1];
       var ls=useState(true);var loading=ls[0];var setLoading=ls[1];
       var gs=useState(null);var preselectedGen=gs[0];var setPreselectedGen=gs[1];
+      var ems=useState(null);var editManifestFromGen=ems[0];var setEditManifestFromGen=ems[1];
       var loadAllData=useCallback(function(){return api.get('/api/data').then(function(d){setData(d);setLoading(false)}).catch(function(e){console.error(e);setLoading(false)})},[]);
       useEffect(function(){loadAllData();var es=new EventSource('/api/events');es.onmessage=function(e){if(e.data==='connected')setConnected(true)};es.addEventListener('update',function(){loadAllData()});es.onerror=function(){setConnected(false)};return function(){es.close()}},[loadAllData]);
       if(loading) return React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontSize:18,color:'#888'}},'Loading...');
@@ -140,9 +141,9 @@
           React.createElement('span',{className:'status-dot '+(connected?'connected':'disconnected'),title:connected?'Connected':'Disconnected'})
         ),
         React.createElement('div',{className:'main-content'},
-          tab==='manifests'?React.createElement(ManifestsTab,{data:data,reload:loadAllData,preselectedGen:preselectedGen,clearPreselected:function(){setPreselectedGen(null)},manifestType:'hazardous'}):null,
-          tab==='nonhaz'?React.createElement(ManifestsTab,{data:data,reload:loadAllData,preselectedGen:null,clearPreselected:function(){},manifestType:'nonhaz'}):null,
-          tab==='generators'?React.createElement(ProfileTab,{data:data,type:'generators',label:{singular:'Generator',plural:'Generators'},reload:loadAllData,onNewManifest:function(gen){setPreselectedGen(gen);setTab('manifests')}}):null,
+          tab==='manifests'?React.createElement(ManifestsTab,{data:data,reload:loadAllData,preselectedGen:preselectedGen,clearPreselected:function(){setPreselectedGen(null)},manifestType:'hazardous',editManifestFromGen:editManifestFromGen,clearEditManifest:function(){setEditManifestFromGen(null)}}):null,
+          tab==='nonhaz'?React.createElement(ManifestsTab,{data:data,reload:loadAllData,preselectedGen:null,clearPreselected:function(){},manifestType:'nonhaz',editManifestFromGen:editManifestFromGen,clearEditManifest:function(){setEditManifestFromGen(null)}}):null,
+          tab==='generators'?React.createElement(ProfileTab,{data:data,type:'generators',label:{singular:'Generator',plural:'Generators'},reload:loadAllData,onNewManifest:function(gen){setPreselectedGen(gen);setTab('manifests')},onEditManifest:function(m){setEditManifestFromGen(m);setTab((m.manifestType||'hazardous')==='nonhaz'?'nonhaz':'manifests')}}):null,
           tab==='transporters'?React.createElement(ProfileTab,{data:data,type:'transporters',label:{singular:'Transporter',plural:'Transporters'},reload:loadAllData}):null,
           tab==='facilities'?React.createElement(ProfileTab,{data:data,type:'facilities',label:{singular:'Facility',plural:'Facilities'},reload:loadAllData}):null,
           tab==='waste'?React.createElement(WasteStreamsTab,{data:data,reload:loadAllData}):null,
@@ -157,6 +158,7 @@
 
     function ManifestsTab(props){
       var data=props.data;var reload=props.reload;var preselectedGen=props.preselectedGen;var clearPreselected=props.clearPreselected;
+      var editManifestFromGen=props.editManifestFromGen;var clearEditManifest=props.clearEditManifest;
       var manifestType=props.manifestType||'hazardous';
       var isNonHaz=manifestType==='nonhaz';
       var s1=useState(false);var showModal=s1[0];var setShowModal=s1[1];
@@ -164,6 +166,7 @@
       var s3=useState('');var search=s3[0];var setSearch=s3[1];
       var s4=useState(null);var previewing=s4[0];var setPreviewing=s4[1];
       useEffect(function(){if(preselectedGen){setEditing({_preselectedGen:preselectedGen});setShowModal(true)}},[preselectedGen]);
+      useEffect(function(){if(editManifestFromGen){setEditing(editManifestFromGen);setShowModal(true);if(clearEditManifest)clearEditManifest()}},[editManifestFromGen]);
       function handleSave(f){var p=editing?api.put('/api/manifests/'+editing.id,f):api.post('/api/manifests',f);p.then(function(){reload();setShowModal(false);setEditing(null)})}
       function handleDelete(id){if(confirm('Delete this manifest?')){api.del('/api/manifests/'+id).then(reload)}}
       function handlePrint(id){window.open('/api/print/'+(isNonHaz?'nonhaz':'manifest')+'/'+id,'_blank')}
@@ -1211,7 +1214,7 @@
     }
 
     function ProfileTab(props){
-      var data=props.data;var type=props.type;var label=props.label;var reload=props.reload;var onNewManifest=props.onNewManifest;
+      var data=props.data;var type=props.type;var label=props.label;var reload=props.reload;var onNewManifest=props.onNewManifest;var onEditManifest=props.onEditManifest;
       var s1=useState(false);var showModal=s1[0];var setShowModal=s1[1];
       var s2=useState(null);var editing=s2[0];var setEditing=s2[1];
       var s3=useState('');var search=s3[0];var setSearch=s3[1];
@@ -1288,6 +1291,21 @@
                       )
                     ));
                     if(isExpanded&&type==='generators'){
+                      // Find printed manifests for this generator
+                      var genNameLower=(item.name||'').toLowerCase().trim();
+                      var genEpaUpper=(item.epaId||'').toUpperCase();
+                      var genManifests=(data.manifests||[]).filter(function(m){
+                        if(!m.lastPrintedAt)return false;
+                        var mGenName=(m.generatorName||'').toLowerCase().trim();
+                        var mGenEpa=(m.generatorEpaId||'').toUpperCase();
+                        return (genNameLower&&mGenName===genNameLower)||(genEpaUpper&&mGenEpa&&mGenEpa===genEpaUpper);
+                      }).sort(function(a,b){return(b.lastPrintedAt||'').localeCompare(a.lastPrintedAt||'')});
+                      // Find printed BOLs for this generator
+                      var genBols=(data.bols||[]).filter(function(b){
+                        if(!b.lastPrintedAt)return false;
+                        var bGenName=(b.generatorName||'').toLowerCase().trim();
+                        return genNameLower&&bGenName===genNameLower;
+                      }).sort(function(a,b){return(b.lastPrintedAt||'').localeCompare(a.lastPrintedAt||'')});
                       rows.push(React.createElement('tr',{key:item.id+'-exp'},
                         React.createElement('td',{colSpan:6},
                           React.createElement('div',{style:{padding:12,background:'#f9fafb',borderRadius:4}},
@@ -1301,13 +1319,51 @@
                                 React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){removeProfileFromGenerator(item,w.id)}},'Remove')
                               )}):React.createElement('p',{style:{color:'#999',fontSize:13}},'No profiles linked yet')
                             ),
-                            React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center'}},
+                            React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center',marginBottom:16}},
                               React.createElement('select',{value:'',onChange:function(e){if(e.target.value){addProfileToGenerator(item,e.target.value);e.target.value=''}},style:{padding:'6px 8px'}},
                                 React.createElement('option',{value:''},'-- Add Profile --'),
                                 availableWastes.map(function(w){return React.createElement('option',{key:w.id,value:w.id},w.name)})
                               ),
                               React.createElement('button',{className:'btn btn-sm btn-primary',onClick:function(){onNewManifest(item)}},'New Manifest')
-                            )
+                            ),
+                            React.createElement('h5',{style:{marginBottom:8,marginTop:4,color:'#555',borderTop:'1px solid #e5e7eb',paddingTop:12}},'Previous Manifests'),
+                            genManifests.length>0?genManifests.map(function(m){
+                              var mType=m.manifestType||'hazardous';
+                              var isNH=mType==='nonhaz';
+                              var trackNum=m.manifestTrackingNum||m.manifestTrackingNumber||m.manifestNum||'No #';
+                              var printDate=m.lastPrintedAt?new Date(m.lastPrintedAt).toLocaleDateString():'';
+                              return React.createElement('div',{key:m.id,style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:8,background:'#fff',marginBottom:4,borderRadius:4,border:'1px solid #e5e7eb'}},
+                                React.createElement('div',{style:{flex:1}},
+                                  React.createElement('strong',{style:{fontSize:13}},trackNum),
+                                  React.createElement('span',{style:{marginLeft:8,fontSize:12,color:isNH?'#0891b2':'#666'}},isNH?'Non-Haz':'Haz'),
+                                  React.createElement('span',{style:{marginLeft:8,fontSize:11,color:'#999'}},'Printed: '+printDate),
+                                  m.transporter1Name?React.createElement('span',{style:{marginLeft:8,fontSize:11,color:'#888'}},'T: '+m.transporter1Name):null,
+                                  m.facilityName?React.createElement('span',{style:{marginLeft:8,fontSize:11,color:'#888'}},'F: '+m.facilityName):null
+                                ),
+                                React.createElement('div',{style:{display:'flex',gap:4}},
+                                  React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/'+(isNH?'nonhaz':'manifest')+'/'+m.id,'_blank')}},'Print'),
+                                  React.createElement('button',{className:'btn btn-sm',style:{background:'#7c3aed',color:'#fff'},onClick:function(){window.open('/api/print/'+(isNH?'nonhaz-direct':'direct')+'/'+m.id,'_blank')}},'Epson'),
+                                  React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){if(onEditManifest)onEditManifest(m)}},'Edit')
+                                )
+                              )
+                            }):React.createElement('p',{style:{color:'#999',fontSize:13}},'No printed manifests yet'),
+                            genBols.length>0?React.createElement('div',null,
+                              React.createElement('h5',{style:{marginBottom:8,marginTop:12,color:'#555',borderTop:'1px solid #e5e7eb',paddingTop:12}},'Previous BOLs'),
+                              genBols.map(function(b){
+                                var bTrack=b.manifestTrackingNum||b.manifestNum||'No #';
+                                var bPrintDate=b.lastPrintedAt?new Date(b.lastPrintedAt).toLocaleDateString():'';
+                                return React.createElement('div',{key:b.id,style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:8,background:'#fff',marginBottom:4,borderRadius:4,border:'1px solid #e5e7eb'}},
+                                  React.createElement('div',{style:{flex:1}},
+                                    React.createElement('strong',{style:{fontSize:13}},bTrack),
+                                    React.createElement('span',{style:{marginLeft:8,fontSize:12,color:'#2563eb'}},'BOL'),
+                                    React.createElement('span',{style:{marginLeft:8,fontSize:11,color:'#999'}},'Printed: '+bPrintDate)
+                                  ),
+                                  React.createElement('div',{style:{display:'flex',gap:4}},
+                                    React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/bol/'+b.id,'_blank')}},'Print')
+                                  )
+                                )
+                              })
+                            ):null
                           )
                         )
                       ));
