@@ -1341,7 +1341,8 @@
                                 ),
                                 React.createElement('div',{style:{display:'flex',gap:4}},
                                   React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/'+(isNH?'nonhaz-direct':'direct')+'/'+m.id,'_blank')}},'Print with Epson'),
-                                  React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){if(onEditManifest)onEditManifest(m)}},'Edit')
+                                  React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){if(onEditManifest)onEditManifest(m)}},'Edit'),
+                                  React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){var mid=m.id;return function(){if(confirm('Delete this manifest permanently?')){api.del('/api/manifests/'+mid).then(reload)}}}()},'X')
                                 )
                               )
                             }):React.createElement('p',{style:{color:'#999',fontSize:13}},'No printed manifests yet'),
@@ -1357,7 +1358,8 @@
                                     React.createElement('span',{style:{marginLeft:8,fontSize:11,color:'#999'}},'Printed: '+bPrintDate)
                                   ),
                                   React.createElement('div',{style:{display:'flex',gap:4}},
-                                    React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/bol/'+b.id,'_blank')}},'Print with Epson')
+                                    React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/bol/'+b.id,'_blank')}},'Print with Epson'),
+                                    React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){var bid=b.id;return function(){if(confirm('Delete this BOL permanently?')){api.del('/api/bols/'+bid).then(reload)}}}()},'X')
                                   )
                                 )
                               })
