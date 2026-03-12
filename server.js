@@ -1153,6 +1153,8 @@ var FORM_8700_MAP = {
   totalPages:         { row: 4, col: 38 },
   // Box 3 - Emergency Response Phone
   emergencyPhone:     { row: 4, col: 42 },
+  // Box 4 - Manifest Tracking Number
+  manifestTrackingNum: { row: 2, col: 55 },
   // Box 5 - Generator
   generatorName:      { row: 6, col: 11 },
   // Mailing Address (LEFT side of Box 5)
