@@ -40,7 +40,7 @@
     .data-table td{padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:14px}
     .data-table tr:hover td{background:#f9f9fb}
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center}
-    .modal{background:#fff;border-radius:16px;padding:28px;width:95vw;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+    .modal{background:#fff;border-radius:16px;padding:28px;width:50vw;max-width:50vw;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
     .modal h3{font-size:20px;margin-bottom:20px;color:#1a1a2e}
     .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
     .waste-table{width:100%;border-collapse:collapse;margin:12px 0}
@@ -438,7 +438,7 @@
 
       return (
         <div className="modal-overlay" onClick={onClose}>
-          <div className="modal" style={{maxWidth:'95vw',width:'95vw'}} onClick={function(e){e.stopPropagation()}}>
+          <div className="modal" style={{maxWidth:'50vw',width:'50vw'}} onClick={function(e){e.stopPropagation()}}>
             <h3>{isEdit ? 'Edit' : 'New'} {isNonHaz ? 'Non-Haz ' : ''}Manifest {isNonHaz ? '' : '(EPA 8700-22)'}</h3>
 
             <div className="form-grid" style={{marginBottom:20}}>
@@ -786,7 +786,7 @@
               var contLblStyle = {fontSize:11,fontWeight:600,color:'#374151',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4};
               return (
                 <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={function(){setShowContinuation(false)}}>
-                  <div style={{background:'#fff',borderRadius:16,padding:0,width:'95vw',maxWidth:'95vw',maxHeight:'90vh',overflowY:'auto',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}} onClick={function(e){e.stopPropagation()}}>
+                  <div style={{background:'#fff',borderRadius:16,padding:0,width:'50vw',maxWidth:'50vw',maxHeight:'90vh',overflowY:'auto',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}} onClick={function(e){e.stopPropagation()}}>
                     <div style={{background:'#3b82f6',color:'#fff',padding:'12px 20px',borderRadius:'16px 16px 0 0',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                       <span style={{fontWeight:700,fontSize:16}}>EPA Form 8700-22A - Uniform Hazardous Waste Manifest Continuation Sheet</span>
                       <button onClick={function(){setShowContinuation(false)}} style={{background:'none',border:'none',color:'#fff',fontSize:20,cursor:'pointer',fontWeight:700}}>X</button>
@@ -1066,7 +1066,7 @@
 
       return (
         <div className="modal-overlay" onClick={onClose}>
-          <div style={{background:'#fff',width:'95vw',maxWidth:'95vw',maxHeight:'92vh',overflowY:'auto',padding:0,borderRadius:4,boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}} onClick={function(e){e.stopPropagation()}}>
+          <div style={{background:'#fff',width:'50vw',maxWidth:'50vw',maxHeight:'92vh',overflowY:'auto',padding:0,borderRadius:4,boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}} onClick={function(e){e.stopPropagation()}}>
             <div style={{background:'#006600',color:'#fff',padding:'8px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <span style={{fontWeight:700,fontSize:14}}>UNIFORM HAZARDOUS WASTE MANIFEST - EPA Form 8700-22 (Preview)</span>
               <div style={{display:'flex',gap:8}}>
@@ -2682,7 +2682,7 @@
       }
 
       return React.createElement('div',{className:'modal-overlay',onClick:function(e){if(e.target===e.currentTarget)onClose()}},
-        React.createElement('div',{className:'modal',style:{maxWidth:'95vw',width:'95vw'}},
+        React.createElement('div',{className:'modal',style:{maxWidth:'50vw',width:'50vw'}},
           React.createElement('h3',null,existing?'Edit Label':'New Hazardous Waste Label'),
 
           // Pull from manifest section
@@ -3134,7 +3134,7 @@
       var lineNums=[];for(var li=0;li<14;li++)lineNums.push(li);
 
       return React.createElement('div',{className:'modal-overlay',onClick:function(e){if(e.target===e.currentTarget)onClose()}},
-        React.createElement('div',{className:'modal',style:{maxWidth:'95vw',width:'95vw',maxHeight:'90vh',overflow:'auto'}},
+        React.createElement('div',{className:'modal',style:{maxWidth:'50vw',width:'50vw',maxHeight:'90vh',overflow:'auto'}},
           React.createElement('h3',null,existing?'Edit Bill of Lading':'New Bill of Lading'),
 
           // Pull from Manifest
