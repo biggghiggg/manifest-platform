@@ -171,7 +171,7 @@
       function handleDelete(id){if(confirm('Delete this manifest?')){api.del('/api/manifests/'+id).then(reload)}}
       function handlePrint(id){window.open('/api/print/'+(isNonHaz?'nonhaz':'manifest')+'/'+id,'_blank')}
       function handlePreview(m){var previewData=Object.assign({},m);var wl=[];var wlc=parseInt(m.wasteLineCount)||4;for(var i=1;i<=wlc;i++){wl.push({hm:m['waste'+i+'HM']||'',description:m['waste'+i+'Description']||'',containerNum:m['waste'+i+'ContainerNum']||'',containerType:m['waste'+i+'ContainerType']||'',containerSize:m['waste'+i+'ContainerSize']||'',qty:m['waste'+i+'Qty']||'',unit:m['waste'+i+'Unit']||'',wasteCodes:m['waste'+i+'WasteCodes']||'',profileId:m['waste'+i+'ProfileId']||''})}previewData.wasteLines=wl;setPreviewing(previewData)}
-      var items=(data.manifests||[]).filter(function(m){var mType=m.manifestType||'hazardous';if(mType!==manifestType)return false;var s=search.toLowerCase();return !s||(m.manifestNum||'').toLowerCase().indexOf(s)>=0||(m.generatorName||'').toLowerCase().indexOf(s)>=0});
+      var items=(data.manifests||[]).filter(function(m){var mType=m.manifestType||'hazardous';if(mType!==manifestType)return false;if(m.lastPrintedAt)return false;var s=search.toLowerCase();return !s||(m.manifestNum||'').toLowerCase().indexOf(s)>=0||(m.generatorName||'').toLowerCase().indexOf(s)>=0});
       return React.createElement('div',null,
         React.createElement('div',{className:'section-header'},
           React.createElement('h2',{style:{fontSize:22,fontWeight:700}},isNonHaz?'Non-Hazardous Waste Manifests':'Hazardous Waste Manifests'),
@@ -2865,10 +2865,12 @@
         api.post('/api/bols/from-manifest/'+genManifestId,{}).then(function(){loadBols();setGenManifestId('')});
       }
 
+      // Filter out printed BOLs (they live in the generator tab now)
+      var activeBols=bols.filter(function(b){return !b.lastPrintedAt});
       // Group BOLs by manifest
       var grouped={};var standalone=[];
-      for(var i=0;i<bols.length;i++){
-        var b=bols[i];
+      for(var i=0;i<activeBols.length;i++){
+        var b=activeBols[i];
         if(b.manifestId){
           if(!grouped[b.manifestId])grouped[b.manifestId]=[];
           grouped[b.manifestId].push(b);
