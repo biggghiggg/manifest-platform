@@ -2062,7 +2062,7 @@
 
       var FIELD_LABELS={
         generatorEpaId:'Box 1 - EPA ID',page:'Box 2 - Page',totalPages:'Box 2 - Total Pages',
-        emergencyPhone:'Box 3 - Emergency Phone',
+        emergencyPhone:'Box 3 - Emergency Phone',manifestTrackingNum:'Box 4 - Manifest Tracking #',
         generatorName:'Box 5 - Generator Name',generatorMailAddr:'Box 5 - Mail Address',
         generatorMailCity:'Box 5 - Mail City/St/Zip',generatorPhone:'Box 5 - Phone',
         generatorSiteAddr:'Box 5 - Site Address',generatorSiteCity:'Box 5 - Site City/St/Zip',
@@ -2089,7 +2089,7 @@
       function nudge(fk,dim,amt){var current=alignData[fk]||{row:1,col:1};var nv=Math.round(((current[dim]||0)+amt)*10)/10;if(nv>=0&&nv<=100){updateField(fk,dim,nv)}}
 
       var groups=[
-        {title:'Box 1 (EPA ID)',fields:['generatorEpaId','page','totalPages']},
+        {title:'Box 1-4 (Header)',fields:['generatorEpaId','page','totalPages','manifestTrackingNum']},
         {title:'Box 3 (Emergency Phone)',fields:['emergencyPhone']},
         {title:'Box 5 (Generator)',fields:['generatorName','generatorMailAddr','generatorMailCity','generatorPhone','generatorSiteAddr','generatorSiteCity']},
         {title:'Box 6-7 (Transporters)',fields:['transporter1Name','transporter1EpaId','transporter2Name','transporter2EpaId']},
@@ -3558,7 +3558,7 @@
 
       var FIELD_LABELS={
         generatorEpaId:'Box 1 - EPA ID',page:'Box 2 - Page',totalPages:'Box 2 - Total Pages',
-        emergencyPhone:'Box 3 - Emergency Phone',
+        emergencyPhone:'Box 3 - Emergency Phone',manifestTrackingNum:'Box 4 - Manifest Tracking #',
         generatorName:'Box 5 - Generator Name',generatorMailAddr:'Box 5 - Mailing Address',
         generatorMailCity:'Box 5 - City/State/Zip',generatorPhone:'Box 5 - Phone',
         generatorSiteAddr:'Box 5 - Site Address',generatorSiteCity:'Box 5 - Site City/State/Zip',
@@ -3588,7 +3588,7 @@
       function nudge(fk,dim,amt){var current=alignData[fk]||{row:1,col:1};var nv=Math.round(((current[dim]||0)+amt)*10)/10;if(nv>=0&&nv<=100){updateField(fk,dim,nv)}}
 
       var groups=[
-        {title:'Box 1 (EPA ID)',fields:['generatorEpaId','page','totalPages']},
+        {title:'Box 1-4 (Header)',fields:['generatorEpaId','page','totalPages','manifestTrackingNum']},
         {title:'Box 3 (Emergency Phone)',fields:['emergencyPhone']},
         {title:'Box 5 (Generator)',fields:['generatorName','generatorMailAddr','generatorMailCity','generatorPhone','generatorSiteAddr','generatorSiteCity']},
         {title:'Box 6-7 (Transporters)',fields:['transporter1Name','transporter1EpaId','transporter2Name','transporter2EpaId']},
