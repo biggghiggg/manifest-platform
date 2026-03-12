@@ -1816,6 +1816,165 @@ app.post('/api/alignment-label/bake-defaults', function(req, res) {
   res.json({ ok: true, message: 'Current label settings saved as new defaults' });
 });
 
+// Non-Haz alignment system (same form as hazardous, separate alignment)
+var savedDefaultsNonhaz = data.savedDefaultsNonhaz || null;
+var customAlignmentNonhaz = data.customAlignmentNonhaz || null;
+var previousAlignmentNonhaz = data.previousAlignmentNonhaz || null;
+
+function getBaseNonhazMap() {
+  return savedDefaultsNonhaz || FORM_8700_MAP;
+}
+
+function getActiveNonhazMap() {
+  var base = getBaseNonhazMap();
+  if (!customAlignmentNonhaz) return base;
+  var merged = {};
+  var keys = Object.keys(base);
+  for (var i = 0; i < keys.length; i++) {
+    if (customAlignmentNonhaz[keys[i]]) {
+      merged[keys[i]] = customAlignmentNonhaz[keys[i]];
+    } else {
+      merged[keys[i]] = base[keys[i]];
+    }
+  }
+  return merged;
+}
+
+// Non-Haz RAW map (same base as hazardous RAW_MAP)
+var savedDefaultsNonhazRaw = data.savedDefaultsNonhazRaw || null;
+var customAlignmentNonhazRaw = data.customAlignmentNonhazRaw || null;
+
+function getBaseNonhazRawMap() {
+  return savedDefaultsNonhazRaw || RAW_MAP;
+}
+
+function getActiveNonhazRawMap() {
+  var base = getBaseNonhazRawMap();
+  if (!customAlignmentNonhazRaw) return base;
+  var merged = {};
+  var keys = Object.keys(base);
+  for (var i = 0; i < keys.length; i++) {
+    if (customAlignmentNonhazRaw[keys[i]]) {
+      merged[keys[i]] = customAlignmentNonhazRaw[keys[i]];
+    } else {
+      merged[keys[i]] = base[keys[i]];
+    }
+  }
+  return merged;
+}
+
+// Non-Haz 22A alignment (same base as hazardous 22A)
+var savedDefaultsNonhaz22a = data.savedDefaultsNonhaz22a || null;
+var customAlignmentNonhaz22a = data.customAlignmentNonhaz22a || null;
+
+function getBaseNonhaz22aMap() {
+  return savedDefaultsNonhaz22a || FORM_22A_MAP;
+}
+
+function getActiveNonhaz22aMap() {
+  var base = getBaseNonhaz22aMap();
+  if (!customAlignmentNonhaz22a) return base;
+  var merged = {};
+  var keys = Object.keys(base);
+  for (var i = 0; i < keys.length; i++) {
+    if (customAlignmentNonhaz22a[keys[i]]) {
+      merged[keys[i]] = customAlignmentNonhaz22a[keys[i]];
+    } else {
+      merged[keys[i]] = base[keys[i]];
+    }
+  }
+  return merged;
+}
+
+function getBaseNonhazRaw22aMap() {
+  return data.savedDefaultsNonhazRaw22a || CONT_RAW_MAP;
+}
+
+function getActiveNonhazRaw22aMap() {
+  var base = getBaseNonhazRaw22aMap();
+  if (!data.customAlignmentNonhazRaw22a) return base;
+  var merged = {};
+  var keys = Object.keys(base);
+  for (var i = 0; i < keys.length; i++) {
+    if (data.customAlignmentNonhazRaw22a[keys[i]]) {
+      merged[keys[i]] = data.customAlignmentNonhazRaw22a[keys[i]];
+    } else {
+      merged[keys[i]] = base[keys[i]];
+    }
+  }
+  return merged;
+}
+
+// Non-Haz alignment endpoints
+app.get('/api/alignment-nonhaz', function(req, res) {
+  customAlignmentNonhaz = data.customAlignmentNonhaz || null;
+  previousAlignmentNonhaz = data.previousAlignmentNonhaz || null;
+  savedDefaultsNonhaz = data.savedDefaultsNonhaz || null;
+  res.json({
+    fields: getActiveNonhazMap(),
+    map: getActiveNonhazMap(),
+    defaults: getBaseNonhazMap(),
+    colShift: (typeof data.colShiftNonhaz === 'number') ? data.colShiftNonhaz : 0,
+    rowShift: (typeof data.rowShiftNonhaz === 'number') ? data.rowShiftNonhaz : 0,
+    hasPrevious: !!previousAlignmentNonhaz,
+    hasSavedDefaults: !!savedDefaultsNonhaz
+  });
+});
+
+app.put('/api/alignment-nonhaz', function(req, res) {
+  previousAlignmentNonhaz = customAlignmentNonhaz ? JSON.parse(JSON.stringify(customAlignmentNonhaz)) : null;
+  data.previousAlignmentNonhaz = previousAlignmentNonhaz;
+  data.previousColShiftNonhaz = (typeof data.colShiftNonhaz === 'number') ? data.colShiftNonhaz : 0;
+  data.previousRowShiftNonhaz = (typeof data.rowShiftNonhaz === 'number') ? data.rowShiftNonhaz : 0;
+  customAlignmentNonhaz = req.body.fields || null;
+  data.customAlignmentNonhaz = customAlignmentNonhaz;
+  if (typeof req.body.colShift === 'number') data.colShiftNonhaz = req.body.colShift;
+  if (typeof req.body.rowShift === 'number') data.rowShiftNonhaz = req.body.rowShift;
+  saveData(data);
+  res.json({ ok: true, fields: getActiveNonhazMap() });
+});
+
+app.post('/api/alignment-nonhaz/reset', function(req, res) {
+  previousAlignmentNonhaz = customAlignmentNonhaz ? JSON.parse(JSON.stringify(customAlignmentNonhaz)) : null;
+  data.previousAlignmentNonhaz = previousAlignmentNonhaz;
+  data.previousColShiftNonhaz = (typeof data.colShiftNonhaz === 'number') ? data.colShiftNonhaz : 0;
+  data.previousRowShiftNonhaz = (typeof data.rowShiftNonhaz === 'number') ? data.rowShiftNonhaz : 0;
+  customAlignmentNonhaz = null;
+  delete data.customAlignmentNonhaz;
+  data.colShiftNonhaz = 0;
+  data.rowShiftNonhaz = 0;
+  saveData(data);
+  res.json({ ok: true, fields: getActiveNonhazMap() });
+});
+
+app.post('/api/alignment-nonhaz/undo', function(req, res) {
+  if (!previousAlignmentNonhaz) return res.json({ ok: false, message: 'No previous settings' });
+  var tempCs = (typeof data.colShiftNonhaz === 'number') ? data.colShiftNonhaz : 0;
+  var tempRs = (typeof data.rowShiftNonhaz === 'number') ? data.rowShiftNonhaz : 0;
+  customAlignmentNonhaz = JSON.parse(JSON.stringify(previousAlignmentNonhaz));
+  data.customAlignmentNonhaz = customAlignmentNonhaz;
+  previousAlignmentNonhaz = null;
+  data.previousAlignmentNonhaz = null;
+  data.colShiftNonhaz = (typeof data.previousColShiftNonhaz === 'number') ? data.previousColShiftNonhaz : 0;
+  data.rowShiftNonhaz = (typeof data.previousRowShiftNonhaz === 'number') ? data.previousRowShiftNonhaz : 0;
+  data.previousColShiftNonhaz = tempCs;
+  data.previousRowShiftNonhaz = tempRs;
+  saveData(data);
+  res.json({ ok: true, fields: getActiveNonhazMap(), map: getActiveNonhazMap(), colShift: data.colShiftNonhaz, rowShift: data.rowShiftNonhaz });
+});
+
+app.post('/api/alignment-nonhaz/bake-defaults', function(req, res) {
+  var current = getActiveNonhazMap();
+  savedDefaultsNonhaz = JSON.parse(JSON.stringify(current));
+  data.savedDefaultsNonhaz = savedDefaultsNonhaz;
+  previousAlignmentNonhaz = customAlignmentNonhaz ? JSON.parse(JSON.stringify(customAlignmentNonhaz)) : null;
+  data.previousAlignmentNonhaz = previousAlignmentNonhaz;
+  customAlignmentNonhaz = null;
+  delete data.customAlignmentNonhaz;
+  saveData(data);
+  res.json({ ok: true, message: 'Current non-haz settings saved as new defaults' });
+});
+
 // Label CRUD endpoints
 app.get('/api/labels', function(req, res) {
   res.json(data.labels || []);
@@ -3973,6 +4132,750 @@ app.get('/api/print/direct/:id', function(req, res) {
       var leftIn = ((p.col - 1) / CPI) + pgColOff;
       var topIn = ((p.row - 1) / LPI) + pgRowOff;
       // Escape HTML
+      var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
+    }
+    html += '</div>';
+  }
+
+  html += '</body></html>';
+  res.type('html').send(html);
+});
+
+// === Non-Haz Manifest Print Endpoints ===
+// Same form layout as hazardous, but uses non-haz alignment data
+
+// Non-Haz ESC/P2 text print (same as /api/print/manifest/:id but with non-haz alignment)
+app.get('/api/print/nonhaz/:id', function(req, res) {
+  // Use non-haz alignment shifts
+  var nhColShift = (typeof data.colShiftNonhaz === 'number') ? data.colShiftNonhaz : 0;
+  var nhRowShift = (typeof data.rowShiftNonhaz === 'number') ? data.rowShiftNonhaz : 0;
+  // Temporarily set global colShift/rowShift to non-haz values
+  var origColShift = colShift;
+  var origRowShift = rowShift;
+  var origCustomAlignment = customAlignment;
+  var origCustomAlignment22a = customAlignment22a;
+  colShift = nhColShift;
+  rowShift = nhRowShift;
+  customAlignment = data.customAlignmentNonhaz || null;
+  customAlignment22a = data.customAlignmentNonhaz22a || null;
+  console.log('Non-Haz ESC/P2 Print: using colShift=' + nhColShift + ', rowShift=' + nhRowShift);
+
+  var manifest = null;
+  for (var i = 0; i < data.manifests.length; i++) {
+    if (data.manifests[i].id === req.params.id) { manifest = data.manifests[i]; break; }
+  }
+  if (!manifest) {
+    colShift = origColShift; rowShift = origRowShift;
+    customAlignment = origCustomAlignment; customAlignment22a = origCustomAlignment22a;
+    return res.status(404).send('Manifest not found');
+  }
+
+  var MAP = getActiveMap();
+
+  var CANVAS_ROWS = 66;
+  function createCanvas() {
+    var pageLines = [];
+    for (var l = 0; l < CANVAS_ROWS; l++) {
+      var row = '';
+      for (var c = 0; c < 132; c++) { row += ' '; }
+      pageLines.push(row);
+    }
+    return pageLines;
+  }
+
+  function placeText(pageLines, row, col, text) {
+    if (!text) return;
+    text = String(text);
+    var actualRow = Math.round(row + rowShift);
+    var actualCol = Math.round(col + colShift);
+    if (actualRow < 0 || actualRow >= CANVAS_ROWS) return;
+    if (actualCol < 0) actualCol = 0;
+    var line = pageLines[actualRow];
+    for (var ci = 0; ci < text.length; ci++) {
+      var idx = actualCol + ci;
+      if (idx >= 0 && idx < line.length) {
+        line = line.substring(0, idx) + text[ci] + line.substring(idx + 1);
+      }
+    }
+    pageLines[actualRow] = line;
+  }
+
+  function wrapDesc(text, maxFirst, maxCont) {
+    if (!text) return [];
+    var remaining = String(text);
+    if (remaining.length <= maxFirst) return [remaining];
+    var result = [];
+    var cut = remaining.lastIndexOf(' ', maxFirst);
+    if (cut <= 0) cut = maxFirst;
+    result.push(remaining.substring(0, cut));
+    remaining = remaining.substring(cut).replace(/^\s+/, '');
+    while (remaining.length > 0) {
+      if (remaining.length <= maxCont) { result.push(remaining); break; }
+      cut = remaining.lastIndexOf(' ', maxCont);
+      if (cut <= 0) cut = maxCont;
+      result.push(remaining.substring(0, cut));
+      remaining = remaining.substring(cut).replace(/^\s+/, '');
+    }
+    return result;
+  }
+
+  function parseWC(allCodes) {
+    if (!allCodes) return [];
+    var codeArr = allCodes.split(/[\s,]+/).filter(function(c) { return c.length > 0; });
+    var needsSmart = false;
+    for (var sc = 0; sc < codeArr.length; sc++) {
+      if (codeArr[sc].length > 4) { needsSmart = true; break; }
+    }
+    if (needsSmart) {
+      var smartCodes = [];
+      var joined = allCodes.replace(/[\s,]+/g, '');
+      var letterRe = /[A-Za-z]\d{3}/g;
+      var lm;
+      var positions = [];
+      while ((lm = letterRe.exec(joined)) !== null) {
+        positions.push({start: lm.index, end: lm.index + lm[0].length, code: lm[0]});
+      }
+      var lastEnd = 0;
+      for (var pi = 0; pi < positions.length; pi++) {
+        var gap = joined.substring(lastEnd, positions[pi].start);
+        if (gap.length > 0) {
+          var gapNums = gap.match(/\d{3}/g);
+          if (gapNums) { for (var gi = 0; gi < gapNums.length; gi++) smartCodes.push(gapNums[gi]); }
+        }
+        smartCodes.push(positions[pi].code);
+        lastEnd = positions[pi].end;
+      }
+      var trail = joined.substring(lastEnd);
+      if (trail.length > 0) {
+        var trailNums = trail.match(/\d{3}/g);
+        if (trailNums) { for (var ti = 0; ti < trailNums.length; ti++) smartCodes.push(trailNums[ti]); }
+      }
+      if (smartCodes.length > 1) codeArr = smartCodes;
+    }
+    return codeArr;
+  }
+
+  var rawWLC = parseInt(manifest.wasteLineCount) || 4;
+  var wasteLineCount = 0;
+  for (var wlc = 1; wlc <= Math.max(rawWLC, 4); wlc++) {
+    var wd = (manifest['waste' + wlc + 'Description'] || '').replace(/^RQ,?\s*/i, '').trim();
+    var wco = (manifest['waste' + wlc + 'WasteCodes'] || '').trim();
+    var wq = (manifest['waste' + wlc + 'Qty'] || '').trim();
+    if (wd || wco || wq) wasteLineCount = wlc;
+  }
+  if (wasteLineCount < 4) wasteLineCount = 4;
+  var totalPages = wasteLineCount <= 4 ? 1 : Math.ceil((wasteLineCount - 4) / CONT_MAX_WASTE_LINES) + 1;
+
+  // Build page 1
+  var page1 = createCanvas();
+  placeText(page1, MAP.generatorEpaId.row, MAP.generatorEpaId.col, manifest.generatorEpaId);
+  if (manifest.pageTotal) placeText(page1, MAP.totalPages.row, MAP.totalPages.col, manifest.pageTotal);
+  placeText(page1, MAP.emergencyPhone.row, MAP.emergencyPhone.col, manifest.emergencyPhone);
+  placeText(page1, MAP.generatorName.row, MAP.generatorName.col, manifest.generatorName);
+  placeText(page1, MAP.generatorPhone.row, MAP.generatorPhone.col, manifest.generatorPhone);
+  placeText(page1, MAP.generatorMailAddr.row, MAP.generatorMailAddr.col, manifest.generatorAddress);
+  placeText(page1, MAP.generatorMailCity.row, MAP.generatorMailCity.col, manifest.generatorCityStZip);
+  placeText(page1, MAP.generatorSiteAddr.row, MAP.generatorSiteAddr.col, manifest.genSiteAddress);
+  placeText(page1, MAP.generatorSiteCity.row, MAP.generatorSiteCity.col, manifest.genSiteCityStZip);
+  placeText(page1, MAP.transporter1Name.row, MAP.transporter1Name.col, manifest.transporter1Name);
+  placeText(page1, MAP.transporter1EpaId.row, MAP.transporter1EpaId.col, manifest.transporter1EpaId);
+  placeText(page1, MAP.transporter2Name.row, MAP.transporter2Name.col, manifest.transporter2Name);
+  placeText(page1, MAP.transporter2EpaId.row, MAP.transporter2EpaId.col, manifest.transporter2EpaId);
+  placeText(page1, MAP.facilityName.row, MAP.facilityName.col, manifest.facilityName);
+  placeText(page1, MAP.facilityEpaId.row, MAP.facilityEpaId.col, manifest.facilityEpaId);
+  placeText(page1, MAP.facilityAddress.row, MAP.facilityAddress.col, manifest.facilityAddress);
+  placeText(page1, MAP.facilityPhone.row, MAP.facilityPhone.col, manifest.facilityPhone);
+  placeText(page1, MAP.facilityCity.row, MAP.facilityCity.col, manifest.facilityCityStZip);
+
+  // ERG lookup
+  var ERG_LOOKUP_NH = {
+    '1005': '125', '1017': '124', '1049': '115', '1072': '122', '1075': '115',
+    '1090': '127', '1170': '127', '1202': '128', '1203': '128', '1219': '129',
+    '1230': '131', '1263': '128', '1268': '128', '1270': '128', '1381': '136',
+    '1402': '138', '1547': '153', '1593': '160', '1760': '154', '1789': '157',
+    '1805': '154', '1824': '154', '1830': '137', '1831': '137', '1863': '128',
+    '1950': '126', '1978': '115', '1992': '131', '1993': '128', '1999': '130',
+    '2014': '140', '2031': '157', '2078': '156', '2312': '153', '2672': '154',
+    '2794': '154', '2795': '154', '2809': '172', '2810': '153', '2920': '132',
+    '2924': '132', '3077': '171', '3082': '171', '3175': '133', '3257': '171',
+    '3258': '171', '3264': '154', '3266': '154', '3291': '158', '3334': '171',
+    '3335': '171'
+  };
+
+  function getErgNumberNH(text) {
+    if (!text) return '';
+    if (/non[\s\-]*rcra/i.test(text)) return '171';
+    var match = text.match(/(?:UN|NA)\s*(\d{4})/i);
+    if (match && ERG_LOOKUP_NH[match[1]]) return ERG_LOOKUP_NH[match[1]];
+    var bareMatch = text.match(/\b(\d{4})\b/g);
+    if (bareMatch) {
+      for (var bi = 0; bi < bareMatch.length; bi++) {
+        if (ERG_LOOKUP_NH[bareMatch[bi]]) return ERG_LOOKUP_NH[bareMatch[bi]];
+      }
+    }
+    return '';
+  }
+
+  function formatShipDescNH(text) {
+    if (!text) return '';
+    var result = text.replace(/\s+/g, ' ').trim();
+    result = result.replace(/\s*,\s*/g, ', ');
+    result = result.toLowerCase().replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+    result = result.replace(/N\.O\.S\./gi, 'n.o.s.');
+    result = result.replace(/\bNos\b/gi, 'n.o.s.');
+    result = result.replace(/\bPg\b/g, 'PG');
+    result = result.replace(/\bIii\b/g, 'III');
+    result = result.replace(/\bIi\b/g, 'II');
+    result = result.replace(/\bUn(\d)/g, 'UN$1');
+    result = result.replace(/\bNa(\d)/g, 'NA$1');
+    result = result.replace(/\bRq,/g, 'RQ,');
+    result = result.replace(/\bRq\b/g, 'RQ');
+    result = result.replace(/\bRcra\b/g, 'RCRA');
+    result = result.replace(/\bErg\b/g, 'ERG');
+    return result;
+  }
+
+  // Waste lines 1-4
+  var maxOnPage1 = Math.min(wasteLineCount, 4);
+  for (var w = 1; w <= maxOnPage1; w++) {
+    var hmKey = 'waste' + w + 'hm';
+    var descKey = 'waste' + w + 'desc';
+    placeText(page1, MAP[hmKey].row, MAP[hmKey].col, manifest['waste' + w + 'HM']);
+    var rawDesc = (manifest['waste' + w + 'Description'] || '').replace(/\s+/g, ' ').trim();
+    var ergNum = getErgNumberNH(rawDesc);
+    var descText = formatShipDescNH(rawDesc);
+    if (ergNum && descText.indexOf('ERG') === -1) descText += ', ERG # ' + ergNum;
+    var descMaxWidth = MAP['waste' + w + 'containerNum'].col - MAP[descKey].col - 1;
+    var descLines = wrapDesc(descText, descMaxWidth, descMaxWidth);
+    for (var dl = 0; dl < descLines.length && dl < 2; dl++) {
+      placeText(page1, MAP[hmKey].row + dl, MAP[descKey].col, descLines[dl]);
+    }
+    placeText(page1, MAP[hmKey].row, MAP['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
+    placeText(page1, MAP[hmKey].row, MAP['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
+    placeText(page1, MAP[hmKey].row, MAP['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
+    placeText(page1, MAP[hmKey].row, MAP['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
+    var wcKey = 'waste' + w + 'wc';
+    var codes = parseWC((manifest['waste' + w + 'WasteCodes'] || '').trim());
+    for (var ci = 0; ci < 6 && ci < codes.length; ci++) {
+      var wcField = wcKey + (ci + 1);
+      if (MAP[wcField]) placeText(page1, MAP[wcField].row, MAP[wcField].col, codes[ci]);
+    }
+  }
+
+  // Box 14 - Special Handling
+  var sh3nh = manifest.specialHandling3 || '';
+  var parts14nh = [];
+  for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+    var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
+    var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
+    var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
+    var desc14 = manifest['waste' + b14 + 'Description'] || '';
+    if (!desc14 && !pid14) continue;
+    var label14 = '9b.' + b14 + '= ';
+    var cleanPid = pid14 ? pid14.split(/\s+/)[0] : '';
+    if (cleanPid) label14 += cleanPid;
+    if (csize14) label14 += ' ' + csize14;
+    if (ctype14) label14 += ' ' + ctype14;
+    parts14nh.push(label14.trim());
+  }
+  var autoTextNh = parts14nh.join(', ');
+  var sh1nh = '';
+  var sh2nh = '';
+  if (autoTextNh.length > 75) {
+    var cut14 = autoTextNh.lastIndexOf(', ', 75);
+    if (cut14 <= 0) cut14 = 75;
+    sh1nh = autoTextNh.substring(0, cut14);
+    var rest14 = autoTextNh.substring(cut14).replace(/^,?\s*/, '');
+    if (rest14.length > 75) {
+      var cut14b = rest14.lastIndexOf(', ', 75);
+      if (cut14b <= 0) cut14b = 75;
+      sh2nh = rest14.substring(0, cut14b);
+      var overflow14 = rest14.substring(cut14b).replace(/^,?\s*/, '');
+      if (overflow14 && !sh3nh) sh3nh = overflow14;
+    } else {
+      sh2nh = rest14;
+    }
+  } else {
+    sh1nh = autoTextNh;
+  }
+  placeText(page1, MAP.specialHandling.row, MAP.specialHandling.col, sh1nh);
+  placeText(page1, MAP.specialHandling2.row, MAP.specialHandling2.col, sh2nh);
+  placeText(page1, MAP.specialHandling3.row, MAP.specialHandling3.col, sh3nh);
+  placeText(page1, MAP.generatorCertName.row, MAP.generatorCertName.col, manifest.generatorPrintName);
+
+  var pages = [page1];
+
+  // Continuation pages
+  if (wasteLineCount > 4) {
+    var savedMainColShiftNh = colShift;
+    var savedMainRowShiftNh = rowShift;
+    colShift = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
+    rowShift = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
+    var contMap22a = getActive22aMap();
+    var remainingLines = wasteLineCount - 4;
+    var manifestLineStart = 5;
+    while (remainingLines > 0) {
+      var linesOnPage = Math.min(remainingLines, CONT_MAX_WASTE_LINES);
+      var contPage = createCanvas();
+      placeText(contPage, contMap22a.generatorEpaId.row, contMap22a.generatorEpaId.col, manifest.generatorEpaId);
+      placeText(contPage, contMap22a.totalPages.row, contMap22a.totalPages.col, String(totalPages));
+      placeText(contPage, contMap22a.manifestTrackingNum.row, contMap22a.manifestTrackingNum.col, manifest.manifestTrackingNum);
+      placeText(contPage, contMap22a.generatorName.row, contMap22a.generatorName.col, manifest.generatorName);
+      placeText(contPage, contMap22a.contTransporterName.row, contMap22a.contTransporterName.col, manifest.contTransporterName);
+      placeText(contPage, contMap22a.contTransporterEpaId.row, contMap22a.contTransporterEpaId.col, manifest.contTransporterEpaId);
+      placeText(contPage, contMap22a.contTransporter2Name.row, contMap22a.contTransporter2Name.col, manifest.contTransporter2Name);
+      placeText(contPage, contMap22a.contTransporter2EpaId.row, contMap22a.contTransporter2EpaId.col, manifest.contTransporter2EpaId);
+      for (var cw = 0; cw < linesOnPage; cw++) {
+        var mLineNum = manifestLineStart + cw;
+        var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
+        var cwRawDesc = (manifest['waste' + mLineNum + 'Description'] || '').replace(/\s+/g, ' ').trim();
+        var cwErgNum = getErgNumberNH(cwRawDesc);
+        var cwDesc = formatShipDescNH(cwRawDesc);
+        if (cwErgNum && cwDesc.indexOf('ERG') === -1) cwDesc += ', ERG # ' + cwErgNum;
+        var cwDescLines = wrapDesc(cwDesc, 40, 40);
+        for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
+          placeText(contPage, contRow + cdl, contMap22a.wasteDesc.col, cwDescLines[cdl]);
+        }
+        placeText(contPage, contRow, contMap22a.wasteHm.col, manifest['waste' + mLineNum + 'HM']);
+        placeText(contPage, contRow, contMap22a.wasteContainerNum.col, manifest['waste' + mLineNum + 'ContainerNum']);
+        placeText(contPage, contRow, contMap22a.wasteContainerType.col, manifest['waste' + mLineNum + 'ContainerType']);
+        placeText(contPage, contRow, contMap22a.wasteQty.col, manifest['waste' + mLineNum + 'Qty']);
+        placeText(contPage, contRow, contMap22a.wasteUom.col, manifest['waste' + mLineNum + 'Unit']);
+        var cwCodes = parseWC((manifest['waste' + mLineNum + 'WasteCodes'] || '').trim());
+        for (var cci = 0; cci < 6 && cci < cwCodes.length; cci++) {
+          var cwRow2 = contRow + (cci >= 3 ? 1 : 0);
+          var cwColOff = (cci % 3) * 5;
+          placeText(contPage, cwRow2, contMap22a.wasteWc1.col + cwColOff, cwCodes[cci]);
+        }
+      }
+      // Box 14 for continuation
+      var contParts = [];
+      for (var cp14 = 0; cp14 < linesOnPage; cp14++) {
+        var cpLineNum = manifestLineStart + cp14;
+        var cpPid = manifest['waste' + cpLineNum + 'ProfileId'] || '';
+        var cpCleanPid = cpPid ? cpPid.split(/\s+/)[0] : '';
+        var cpSize = manifest['waste' + cpLineNum + 'ContainerSize'] || '';
+        var cpType = manifest['waste' + cpLineNum + 'ContainerType'] || '';
+        var cpDesc = manifest['waste' + cpLineNum + 'Description'] || '';
+        if (!cpDesc && !cpPid) continue;
+        var cpEntry = '9b.' + cpLineNum + '= ';
+        if (cpCleanPid) cpEntry += cpCleanPid;
+        if (cpSize) cpEntry += ' ' + cpSize;
+        if (cpType) cpEntry += ' ' + cpType;
+        contParts.push(cpEntry.trim());
+      }
+      var cAutoText = contParts.join(', ');
+      if (cAutoText.length <= 75) {
+        placeText(contPage, contMap22a.specialHandling.row, contMap22a.specialHandling.col, cAutoText);
+      } else {
+        var cCut = cAutoText.lastIndexOf(', ', 75);
+        if (cCut <= 0) cCut = 75;
+        placeText(contPage, contMap22a.specialHandling.row, contMap22a.specialHandling.col, cAutoText.substring(0, cCut));
+        var cRest = cAutoText.substring(cCut).replace(/^,?\s*/, '');
+        if (contMap22a.specialHandling2) placeText(contPage, contMap22a.specialHandling2.row, contMap22a.specialHandling2.col, cRest.substring(0, 75));
+      }
+      placeText(contPage, contMap22a.contTransporterPrintName.row, contMap22a.contTransporterPrintName.col, manifest.contTransporterPrintName);
+      placeText(contPage, contMap22a.contTransporterDate.row, contMap22a.contTransporterDate.col, manifest.contTransporterDate);
+      placeText(contPage, contMap22a.contTransporter2PrintName.row, contMap22a.contTransporter2PrintName.col, manifest.contTransporter2PrintName);
+      placeText(contPage, contMap22a.contTransporter2Date.row, contMap22a.contTransporter2Date.col, manifest.contTransporter2Date);
+      placeText(contPage, contMap22a.contDiscrepancyInfo.row, contMap22a.contDiscrepancyInfo.col, manifest.contDiscrepancyInfo);
+      pages.push(contPage);
+      remainingLines -= linesOnPage;
+      manifestLineStart += linesOnPage;
+    }
+    colShift = savedMainColShiftNh;
+    rowShift = savedMainRowShiftNh;
+  }
+
+  // Build output text
+  var output = '';
+  for (var pg = 0; pg < pages.length; pg++) {
+    if (pg > 0) output += '\f';
+    for (var rl = 0; rl < pages[pg].length; rl++) {
+      output += pages[pg][rl].replace(/\s+$/, '') + '\n';
+    }
+  }
+
+  // Restore original alignment
+  colShift = origColShift;
+  rowShift = origRowShift;
+  customAlignment = origCustomAlignment;
+  customAlignment22a = origCustomAlignment22a;
+
+  res.type('text/plain').send(output);
+});
+
+// Non-Haz HTML CSS-positioned print (same as /api/print/direct/:id but with non-haz alignment)
+app.get('/api/print/nonhaz-direct/:id', function(req, res) {
+  // Use non-haz alignment shifts
+  var nhColShift = (typeof data.colShiftNonhaz === 'number') ? data.colShiftNonhaz : 0;
+  var nhRowShift = (typeof data.rowShiftNonhaz === 'number') ? data.rowShiftNonhaz : 0;
+  console.log('Non-Haz Direct Print: using colShift=' + nhColShift + ', rowShift=' + nhRowShift);
+
+  var manifest = null;
+  for (var i = 0; i < data.manifests.length; i++) {
+    if (data.manifests[i].id === req.params.id) { manifest = data.manifests[i]; break; }
+  }
+  if (!manifest) return res.status(404).send('Manifest not found');
+
+  // Use non-haz raw map (same positions as haz, but separate alignment)
+  var nhCustomAlignmentRaw = data.customAlignmentNonhaz || null;
+  var M = getActiveNonhazRawMap();
+
+  var placements = [];
+  function placeAt(row, col, text, pg) {
+    if (!text) return;
+    placements.push({ row: row, col: col, text: String(text), page: pg || 1 });
+  }
+
+  function wrapDesc(text, maxFirst, maxCont) {
+    if (!text) return [];
+    var remaining = String(text);
+    if (remaining.length <= maxFirst) return [remaining];
+    var result = [];
+    var cut = remaining.lastIndexOf(' ', maxFirst);
+    if (cut <= 0) cut = maxFirst;
+    result.push(remaining.substring(0, cut));
+    remaining = remaining.substring(cut).replace(/^\s+/, '');
+    while (remaining.length > 0) {
+      if (remaining.length <= maxCont) { result.push(remaining); break; }
+      cut = remaining.lastIndexOf(' ', maxCont);
+      if (cut <= 0) cut = maxCont;
+      result.push(remaining.substring(0, cut));
+      remaining = remaining.substring(cut).replace(/^\s+/, '');
+    }
+    return result;
+  }
+
+  function parseWC(allCodes) {
+    if (!allCodes) return [];
+    var codeArr = allCodes.split(/[\s,]+/).filter(function(c) { return c.length > 0; });
+    var needsSmart = false;
+    for (var sc = 0; sc < codeArr.length; sc++) {
+      if (codeArr[sc].length > 4) { needsSmart = true; break; }
+    }
+    if (needsSmart) {
+      var smartCodes = [];
+      var joined = allCodes.replace(/[\s,]+/g, '');
+      var letterRe = /[A-Za-z]\d{3}/g;
+      var lm;
+      var positions = [];
+      while ((lm = letterRe.exec(joined)) !== null) {
+        positions.push({start: lm.index, end: lm.index + lm[0].length, code: lm[0]});
+      }
+      var lastEnd = 0;
+      for (var pi = 0; pi < positions.length; pi++) {
+        var gap = joined.substring(lastEnd, positions[pi].start);
+        if (gap.length > 0) {
+          var gapNums = gap.match(/\d{3}/g);
+          if (gapNums) { for (var gi = 0; gi < gapNums.length; gi++) smartCodes.push(gapNums[gi]); }
+        }
+        smartCodes.push(positions[pi].code);
+        lastEnd = positions[pi].end;
+      }
+      var trail = joined.substring(lastEnd);
+      if (trail.length > 0) {
+        var trailNums = trail.match(/\d{3}/g);
+        if (trailNums) { for (var ti = 0; ti < trailNums.length; ti++) smartCodes.push(trailNums[ti]); }
+      }
+      if (smartCodes.length > 1) codeArr = smartCodes;
+    }
+    return codeArr;
+  }
+
+  var rawWLC = parseInt(manifest.wasteLineCount) || 4;
+  var wasteLineCount = 0;
+  for (var wlc = 1; wlc <= Math.max(rawWLC, 4); wlc++) {
+    var wd = (manifest['waste' + wlc + 'Description'] || '').replace(/^RQ,?\s*/i, '').trim();
+    var wco = (manifest['waste' + wlc + 'WasteCodes'] || '').trim();
+    var wq = (manifest['waste' + wlc + 'Qty'] || '').trim();
+    if (wd || wco || wq) wasteLineCount = wlc;
+  }
+  if (wasteLineCount < 4) wasteLineCount = 4;
+  var totalPages = wasteLineCount <= 4 ? 1 : Math.ceil((wasteLineCount - 4) / CONT_MAX_WASTE_LINES) + 1;
+
+  // Page 1 fields
+  placeAt(M.generatorEpaId.row, M.generatorEpaId.col, manifest.generatorEpaId);
+  if (manifest.pageTotal) placeAt(M.totalPages.row, M.totalPages.col, manifest.pageTotal);
+  placeAt(M.emergencyPhone.row, M.emergencyPhone.col, manifest.emergencyPhone);
+  placeAt(M.generatorName.row, M.generatorName.col, manifest.generatorName);
+  placeAt(M.generatorPhone.row, M.generatorPhone.col, manifest.generatorPhone);
+  placeAt(M.generatorMailAddr.row, M.generatorMailAddr.col, manifest.generatorAddress);
+  placeAt(M.generatorMailCity.row, M.generatorMailCity.col, manifest.generatorCityStZip);
+  placeAt(M.generatorSiteAddr.row, M.generatorSiteAddr.col, manifest.genSiteAddress);
+  placeAt(M.generatorSiteCity.row, M.generatorSiteCity.col, manifest.genSiteCityStZip);
+  placeAt(M.transporter1Name.row, M.transporter1Name.col, manifest.transporter1Name);
+  placeAt(M.transporter1EpaId.row, M.transporter1EpaId.col, manifest.transporter1EpaId);
+  placeAt(M.transporter2Name.row, M.transporter2Name.col, manifest.transporter2Name);
+  placeAt(M.transporter2EpaId.row, M.transporter2EpaId.col, manifest.transporter2EpaId);
+  placeAt(M.facilityName.row, M.facilityName.col, manifest.facilityName);
+  placeAt(M.facilityEpaId.row, M.facilityEpaId.col, manifest.facilityEpaId);
+  placeAt(M.facilityAddress.row, M.facilityAddress.col, manifest.facilityAddress);
+  placeAt(M.facilityPhone.row, M.facilityPhone.col, manifest.facilityPhone);
+  placeAt(M.facilityCity.row, M.facilityCity.col, manifest.facilityCityStZip);
+
+  // ERG lookup
+  var ERG_LOOKUP_NH2 = {
+    '1005': '125', '1017': '124', '1049': '115', '1072': '122', '1075': '115',
+    '1090': '127', '1170': '127', '1202': '128', '1203': '128', '1219': '129',
+    '1230': '131', '1263': '128', '1268': '128', '1270': '128', '1381': '136',
+    '1402': '138', '1547': '153', '1593': '160', '1760': '154', '1789': '157',
+    '1805': '154', '1824': '154', '1830': '137', '1831': '137', '1863': '128',
+    '1950': '126', '1978': '115', '1992': '131', '1993': '128', '1999': '130',
+    '2014': '140', '2031': '157', '2078': '156', '2312': '153', '2672': '154',
+    '2794': '154', '2795': '154', '2809': '172', '2810': '153', '2920': '132',
+    '2924': '132', '3077': '171', '3082': '171', '3175': '133', '3257': '171',
+    '3258': '171', '3264': '154', '3266': '154', '3291': '158', '3334': '171',
+    '3335': '171'
+  };
+
+  function getErgNumberNH2(text) {
+    if (!text) return '';
+    if (/non[\s\-]*rcra/i.test(text)) return '171';
+    var match = text.match(/(?:UN|NA)\s*(\d{4})/i);
+    if (match && ERG_LOOKUP_NH2[match[1]]) return ERG_LOOKUP_NH2[match[1]];
+    var bareMatch = text.match(/\b(\d{4})\b/g);
+    if (bareMatch) {
+      for (var bi = 0; bi < bareMatch.length; bi++) {
+        if (ERG_LOOKUP_NH2[bareMatch[bi]]) return ERG_LOOKUP_NH2[bareMatch[bi]];
+      }
+    }
+    return '';
+  }
+
+  function formatShipDescNH2(text) {
+    if (!text) return '';
+    var result = text.replace(/\s+/g, ' ').trim();
+    result = result.replace(/\s*,\s*/g, ', ');
+    result = result.toLowerCase().replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+    result = result.replace(/N\.O\.S\./gi, 'n.o.s.');
+    result = result.replace(/\bNos\b/gi, 'n.o.s.');
+    result = result.replace(/\bPg\b/g, 'PG');
+    result = result.replace(/\bIii\b/g, 'III');
+    result = result.replace(/\bIi\b/g, 'II');
+    result = result.replace(/\bUn(\d)/g, 'UN$1');
+    result = result.replace(/\bNa(\d)/g, 'NA$1');
+    result = result.replace(/\bRq,/g, 'RQ,');
+    result = result.replace(/\bRq\b/g, 'RQ');
+    result = result.replace(/\bRcra\b/g, 'RCRA');
+    result = result.replace(/\bErg\b/g, 'ERG');
+    return result;
+  }
+
+  // Waste Lines 1-4
+  var maxOnPage1 = Math.min(wasteLineCount, 4);
+  for (var w = 1; w <= maxOnPage1; w++) {
+    var hmKey = 'waste' + w + 'hm';
+    var descKey = 'waste' + w + 'desc';
+    var baseRow = M[hmKey].row;
+    placeAt(M[hmKey].row, M[hmKey].col, manifest['waste' + w + 'HM']);
+    var rawDesc = (manifest['waste' + w + 'Description'] || '').replace(/\s+/g, ' ').trim();
+    var ergNum = getErgNumberNH2(rawDesc);
+    var descText = formatShipDescNH2(rawDesc);
+    if (ergNum && descText.indexOf('ERG') === -1) descText += ', ERG # ' + ergNum;
+    var descMaxWidth = M['waste' + w + 'containerNum'].col - M[descKey].col - 1;
+    var descLines = wrapDesc(descText, descMaxWidth, descMaxWidth);
+    for (var dl = 0; dl < descLines.length && dl < 2; dl++) {
+      placeAt(baseRow + dl, M[descKey].col, descLines[dl]);
+    }
+    placeAt(baseRow, M['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
+    placeAt(baseRow, M['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
+    placeAt(baseRow, M['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
+    placeAt(baseRow, M['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
+    var wcKey = 'waste' + w + 'wc';
+    var codes = parseWC((manifest['waste' + w + 'WasteCodes'] || '').trim());
+    for (var ci = 0; ci < 6 && ci < codes.length; ci++) {
+      var wcField = wcKey + (ci + 1);
+      if (M[wcField]) placeAt(M[wcField].row, M[wcField].col, codes[ci]);
+    }
+  }
+
+  // Box 14
+  var sh3nh2 = manifest.specialHandling3 || '';
+  var parts14nh2 = [];
+  for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+    var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
+    var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
+    var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
+    var desc14 = manifest['waste' + b14 + 'Description'] || '';
+    if (!desc14 && !pid14) continue;
+    var label14 = '9b.' + b14 + '= ';
+    var cleanPid = pid14 ? pid14.split(/\s+/)[0] : '';
+    if (cleanPid) label14 += cleanPid;
+    if (csize14) label14 += ' ' + csize14;
+    if (ctype14) label14 += ' ' + ctype14;
+    parts14nh2.push(label14.trim());
+  }
+  var autoTextNh2 = parts14nh2.join(', ');
+  var sh1nh2 = '';
+  var sh2nh2 = '';
+  if (autoTextNh2.length > 75) {
+    var cut14 = autoTextNh2.lastIndexOf(', ', 75);
+    if (cut14 <= 0) cut14 = 75;
+    sh1nh2 = autoTextNh2.substring(0, cut14);
+    var rest14 = autoTextNh2.substring(cut14).replace(/^,?\s*/, '');
+    if (rest14.length > 75) {
+      var cut14b = rest14.lastIndexOf(', ', 75);
+      if (cut14b <= 0) cut14b = 75;
+      sh2nh2 = rest14.substring(0, cut14b);
+      var overflow14 = rest14.substring(cut14b).replace(/^,?\s*/, '');
+      if (overflow14 && !sh3nh2) sh3nh2 = overflow14;
+    } else {
+      sh2nh2 = rest14;
+    }
+  } else {
+    sh1nh2 = autoTextNh2;
+  }
+  placeAt(M.specialHandling.row, M.specialHandling.col, sh1nh2);
+  placeAt(M.specialHandling2.row, M.specialHandling2.col, sh2nh2);
+  placeAt(M.specialHandling3.row, M.specialHandling3.col, sh3nh2);
+  placeAt(M.generatorCertName.row, M.generatorCertName.col, manifest.generatorPrintName);
+
+  // Continuation Pages
+  if (wasteLineCount > 4) {
+    var contMap = getActiveNonhazRaw22aMap();
+    var remainingLines = wasteLineCount - 4;
+    var contPageNum = 2;
+    var manifestLineStart = 5;
+    var contPageCount = Math.ceil(remainingLines / CONT_MAX_WASTE_LINES);
+    for (var cpIdx = 0; cpIdx < contPageCount; cpIdx++) {
+      var pg = cpIdx + 2;
+      var linesOnThisPage = Math.min(remainingLines, CONT_MAX_WASTE_LINES);
+      placeAt(contMap.generatorEpaId.row, contMap.generatorEpaId.col, manifest.generatorEpaId, pg);
+      placeAt(contMap.totalPages.row, contMap.totalPages.col, String(totalPages), pg);
+      placeAt(contMap.manifestTrackingNum.row, contMap.manifestTrackingNum.col, manifest.manifestTrackingNum, pg);
+      placeAt(contMap.generatorName.row, contMap.generatorName.col, manifest.generatorName, pg);
+      placeAt(contMap.contTransporterName.row, contMap.contTransporterName.col, manifest.contTransporterName, pg);
+      placeAt(contMap.contTransporterEpaId.row, contMap.contTransporterEpaId.col, manifest.contTransporterEpaId, pg);
+      placeAt(contMap.contTransporter2Name.row, contMap.contTransporter2Name.col, manifest.contTransporter2Name, pg);
+      placeAt(contMap.contTransporter2EpaId.row, contMap.contTransporter2EpaId.col, manifest.contTransporter2EpaId, pg);
+      for (var cw = 0; cw < linesOnThisPage; cw++) {
+        var mLineNum = manifestLineStart + cw;
+        var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
+        var cwRawDesc = (manifest['waste' + mLineNum + 'Description'] || '').replace(/\s+/g, ' ').trim();
+        var cwErgNum = getErgNumberNH2(cwRawDesc);
+        var cwDesc = formatShipDescNH2(cwRawDesc);
+        if (cwErgNum && cwDesc.indexOf('ERG') === -1) cwDesc += ', ERG # ' + cwErgNum;
+        var cwDescLines = wrapDesc(cwDesc, 40, 40);
+        for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
+          placeAt(contRow + cdl + (contMap.wasteDesc.rowOffset || 0), contMap.wasteDesc.col, cwDescLines[cdl], pg);
+        }
+        placeAt(contRow + (contMap.wasteHm.rowOffset || 0), contMap.wasteHm.col, manifest['waste' + mLineNum + 'HM'], pg);
+        placeAt(contRow + (contMap.wasteContainerNum.rowOffset || 0), contMap.wasteContainerNum.col, manifest['waste' + mLineNum + 'ContainerNum'], pg);
+        placeAt(contRow + (contMap.wasteContainerType.rowOffset || 0), contMap.wasteContainerType.col, manifest['waste' + mLineNum + 'ContainerType'], pg);
+        placeAt(contRow + (contMap.wasteQty.rowOffset || 0), contMap.wasteQty.col, manifest['waste' + mLineNum + 'Qty'], pg);
+        placeAt(contRow + (contMap.wasteUom.rowOffset || 0), contMap.wasteUom.col, manifest['waste' + mLineNum + 'Unit'], pg);
+        var cwCodes = parseWC((manifest['waste' + mLineNum + 'WasteCodes'] || '').trim());
+        for (var cci = 0; cci < 6 && cci < cwCodes.length; cci++) {
+          var cwRow2 = contRow + (cci >= 3 ? 1 : 0) + (contMap.wasteWc1.rowOffset || 0);
+          var cwColOff = (cci % 3) * 5;
+          placeAt(cwRow2, contMap.wasteWc1.col + cwColOff, cwCodes[cci], pg);
+        }
+      }
+      // Box 14 continuation
+      var contParts14 = [];
+      var contSh3 = manifest.specialHandling3 || '';
+      for (var cp14 = 0; cp14 < linesOnThisPage; cp14++) {
+        var cpLineNum = manifestLineStart + cp14;
+        var cpPid = manifest['waste' + cpLineNum + 'ProfileId'] || '';
+        var cpCleanPid = cpPid ? cpPid.split(/\s+/)[0] : '';
+        var cpSize = manifest['waste' + cpLineNum + 'ContainerSize'] || '';
+        var cpType = manifest['waste' + cpLineNum + 'ContainerType'] || '';
+        var cpDesc = manifest['waste' + cpLineNum + 'Description'] || '';
+        if (!cpDesc && !cpPid) continue;
+        var cpEntry = '9b.' + cpLineNum + '= ';
+        if (cpCleanPid) cpEntry += cpCleanPid;
+        if (cpSize) cpEntry += ' ' + cpSize;
+        if (cpType) cpEntry += ' ' + cpType;
+        contParts14.push(cpEntry.trim());
+      }
+      var contAutoText = contParts14.join(', ');
+      var cSh1 = '', cSh2 = '';
+      if (contAutoText.length > 75) {
+        var cCut = contAutoText.lastIndexOf(', ', 75);
+        if (cCut <= 0) cCut = 75;
+        cSh1 = contAutoText.substring(0, cCut);
+        var cRest = contAutoText.substring(cCut).replace(/^,?\s*/, '');
+        if (cRest.length > 75) {
+          var cCut2 = cRest.lastIndexOf(', ', 75);
+          if (cCut2 <= 0) cCut2 = 75;
+          cSh2 = cRest.substring(0, cCut2);
+          var cOverflow = cRest.substring(cCut2).replace(/^,?\s*/, '');
+          if (cOverflow && !contSh3) contSh3 = cOverflow;
+        } else {
+          cSh2 = cRest;
+        }
+      } else {
+        cSh1 = contAutoText;
+      }
+      placeAt(contMap.specialHandling.row, contMap.specialHandling.col, cSh1, pg);
+      placeAt(contMap.specialHandling2.row, contMap.specialHandling2.col, cSh2, pg);
+      placeAt(contMap.specialHandling3.row, contMap.specialHandling3.col, contSh3, pg);
+      placeAt(contMap.contTransporterPrintName.row, contMap.contTransporterPrintName.col, manifest.contTransporterPrintName, pg);
+      placeAt(contMap.contTransporterDate.row, contMap.contTransporterDate.col, manifest.contTransporterDate, pg);
+      placeAt(contMap.contTransporter2PrintName.row, contMap.contTransporter2PrintName.col, manifest.contTransporter2PrintName, pg);
+      placeAt(contMap.contTransporter2Date.row, contMap.contTransporter2Date.col, manifest.contTransporter2Date, pg);
+      placeAt(contMap.contDiscrepancyInfo.row, contMap.contDiscrepancyInfo.col, manifest.contDiscrepancyInfo, pg);
+      remainingLines -= linesOnThisPage;
+      manifestLineStart += linesOnThisPage;
+      contPageNum++;
+    }
+  }
+
+  // Build HTML
+  var CPI = 12;
+  var LPI = 6;
+  var BASE_TOP_OFFSET = 0.5;
+  var BASE_LEFT_OFFSET = 0.0;
+  var savedColShiftIn = nhColShift / CPI;
+  var savedRowShiftIn = nhRowShift / LPI;
+  var colOffsetIn = BASE_LEFT_OFFSET + savedColShiftIn + (parseFloat(req.query.colOffset) || 0);
+  var rowOffsetIn = BASE_TOP_OFFSET + savedRowShiftIn + (parseFloat(req.query.rowOffset) || 0);
+  // Non-haz continuation uses same 22A shifts (shared with haz for now)
+  var nhColShift22a = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
+  var nhRowShift22a = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
+  var contColOffsetIn = BASE_LEFT_OFFSET + (nhColShift22a / CPI) + (parseFloat(req.query.colOffset) || 0);
+  var contRowOffsetIn = BASE_TOP_OFFSET + (nhRowShift22a / LPI) + (parseFloat(req.query.rowOffset) || 0);
+
+  var html = '<!DOCTYPE html><html><head><title>Print Non-Haz Manifest</title><style>';
+  html += '@page { margin: 0; size: 8.5in 11in; }';
+  html += '@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } }';
+  html += 'body { margin: 0; padding: 0; }';
+  html += '.page { position: relative; width: 8.5in; height: 11in; overflow: hidden; page-break-after: always; }';
+  html += '.page:last-child { page-break-after: auto; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 9pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
+  html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
+  html += '.toolbar .print-btn { background: #059669; color: white; border: none; border-radius: 4px; }';
+  html += '.toolbar .close-btn { background: #6b7280; color: white; border: none; border-radius: 4px; }';
+  html += '.toolbar label { margin: 0 8px; font-size: 13px; }';
+  html += '.toolbar input[type=number] { width: 60px; padding: 2px 4px; }';
+  html += '</style></head><body>';
+
+  html += '<div class="no-print toolbar">';
+  html += '<button class="print-btn" onclick="window.print()">Print Non-Haz Manifest</button>';
+  html += '<button class="close-btn" onclick="window.close()">Close</button>';
+  html += '<span style="margin-left:20px;font-size:12px;color:#666">Select your Epson LQ-590II in the print dialog. Set margins to None.</span>';
+  html += '</div>';
+
+  var maxPage = 1;
+  for (var pi = 0; pi < placements.length; pi++) {
+    if (placements[pi].page > maxPage) maxPage = placements[pi].page;
+  }
+
+  var requestedPage = parseInt(req.query.page) || 0;
+
+  for (var pg = 1; pg <= maxPage; pg++) {
+    if (requestedPage > 0 && pg !== requestedPage) continue;
+    html += '<div class="page">';
+    var pgColOff = (pg >= 2) ? contColOffsetIn : colOffsetIn;
+    var pgRowOff = (pg >= 2) ? contRowOffsetIn : rowOffsetIn;
+    for (var fi = 0; fi < placements.length; fi++) {
+      var p = placements[fi];
+      if (p.page !== pg) continue;
+      var leftIn = ((p.col - 1) / CPI) + pgColOff;
+      var topIn = ((p.row - 1) / LPI) + pgRowOff;
       var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
     }

@@ -126,6 +126,7 @@
           React.createElement('h1',null,React.createElement('span',null,'IES'),' Manifest Platform'),
           React.createElement('div',{className:'nav-tabs'},
             React.createElement('button',{className:'nav-tab'+(tab==='manifests'?' active':''),onClick:function(){setTab('manifests')}},'Manifests'),
+            React.createElement('button',{className:'nav-tab'+(tab==='nonhaz'?' active':''),onClick:function(){setTab('nonhaz')},style:{color:tab==='nonhaz'?'#fff':'rgba(255,255,255,0.7)'}},'Non-Haz'),
             React.createElement('button',{className:'nav-tab'+(tab==='generators'?' active':''),onClick:function(){setTab('generators')}},'Generators'),
             React.createElement('button',{className:'nav-tab'+(tab==='transporters'?' active':''),onClick:function(){setTab('transporters')}},'Transporters'),
             React.createElement('button',{className:'nav-tab'+(tab==='facilities'?' active':''),onClick:function(){setTab('facilities')}},'Facilities'),
@@ -139,7 +140,8 @@
           React.createElement('span',{className:'status-dot '+(connected?'connected':'disconnected'),title:connected?'Connected':'Disconnected'})
         ),
         React.createElement('div',{className:'main-content'},
-          tab==='manifests'?React.createElement(ManifestsTab,{data:data,reload:loadAllData,preselectedGen:preselectedGen,clearPreselected:function(){setPreselectedGen(null)}}):null,
+          tab==='manifests'?React.createElement(ManifestsTab,{data:data,reload:loadAllData,preselectedGen:preselectedGen,clearPreselected:function(){setPreselectedGen(null)},manifestType:'hazardous'}):null,
+          tab==='nonhaz'?React.createElement(ManifestsTab,{data:data,reload:loadAllData,preselectedGen:null,clearPreselected:function(){},manifestType:'nonhaz'}):null,
           tab==='generators'?React.createElement(ProfileTab,{data:data,type:'generators',label:{singular:'Generator',plural:'Generators'},reload:loadAllData,onNewManifest:function(gen){setPreselectedGen(gen);setTab('manifests')}}):null,
           tab==='transporters'?React.createElement(ProfileTab,{data:data,type:'transporters',label:{singular:'Transporter',plural:'Transporters'},reload:loadAllData}):null,
           tab==='facilities'?React.createElement(ProfileTab,{data:data,type:'facilities',label:{singular:'Facility',plural:'Facilities'},reload:loadAllData}):null,
@@ -155,6 +157,8 @@
 
     function ManifestsTab(props){
       var data=props.data;var reload=props.reload;var preselectedGen=props.preselectedGen;var clearPreselected=props.clearPreselected;
+      var manifestType=props.manifestType||'hazardous';
+      var isNonHaz=manifestType==='nonhaz';
       var s1=useState(false);var showModal=s1[0];var setShowModal=s1[1];
       var s2=useState(null);var editing=s2[0];var setEditing=s2[1];
       var s3=useState('');var search=s3[0];var setSearch=s3[1];
@@ -162,15 +166,15 @@
       useEffect(function(){if(preselectedGen){setEditing({_preselectedGen:preselectedGen});setShowModal(true)}},[preselectedGen]);
       function handleSave(f){var p=editing?api.put('/api/manifests/'+editing.id,f):api.post('/api/manifests',f);p.then(function(){reload();setShowModal(false);setEditing(null)})}
       function handleDelete(id){if(confirm('Delete this manifest?')){api.del('/api/manifests/'+id).then(reload)}}
-      function handlePrint(id){window.open('/api/print/manifest/'+id,'_blank')}
+      function handlePrint(id){window.open('/api/print/'+(isNonHaz?'nonhaz':'manifest')+'/'+id,'_blank')}
       function handlePreview(m){var previewData=Object.assign({},m);var wl=[];var wlc=parseInt(m.wasteLineCount)||4;for(var i=1;i<=wlc;i++){wl.push({hm:m['waste'+i+'HM']||'',description:m['waste'+i+'Description']||'',containerNum:m['waste'+i+'ContainerNum']||'',containerType:m['waste'+i+'ContainerType']||'',containerSize:m['waste'+i+'ContainerSize']||'',qty:m['waste'+i+'Qty']||'',unit:m['waste'+i+'Unit']||'',wasteCodes:m['waste'+i+'WasteCodes']||'',profileId:m['waste'+i+'ProfileId']||''})}previewData.wasteLines=wl;setPreviewing(previewData)}
-      var items=(data.manifests||[]).filter(function(m){var s=search.toLowerCase();return !s||(m.manifestNum||'').toLowerCase().indexOf(s)>=0||(m.generatorName||'').toLowerCase().indexOf(s)>=0});
+      var items=(data.manifests||[]).filter(function(m){var mType=m.manifestType||'hazardous';if(mType!==manifestType)return false;var s=search.toLowerCase();return !s||(m.manifestNum||'').toLowerCase().indexOf(s)>=0||(m.generatorName||'').toLowerCase().indexOf(s)>=0});
       return React.createElement('div',null,
         React.createElement('div',{className:'section-header'},
-          React.createElement('h2',{style:{fontSize:22,fontWeight:700}},'Hazardous Waste Manifests'),
+          React.createElement('h2',{style:{fontSize:22,fontWeight:700}},isNonHaz?'Non-Hazardous Waste Manifests':'Hazardous Waste Manifests'),
           React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center'}},
             React.createElement('input',{className:'search-bar',placeholder:'Search manifests...',value:search,onChange:function(e){setSearch(e.target.value)}}),
-            React.createElement('button',{className:'btn btn-primary',onClick:function(){setEditing(null);setShowModal(true)}},'+ New Manifest')
+            React.createElement('button',{className:'btn btn-primary',onClick:function(){setEditing(null);setShowModal(true)}},isNonHaz?'+ New Non-Haz Manifest':'+ New Manifest')
           )
         ),
         React.createElement('div',{className:'card'},
@@ -197,15 +201,15 @@
                   React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){setEditing(m);setShowModal(true)}},'Edit'),
                   React.createElement('button',{className:'btn btn-sm btn-success',onClick:function(){handlePreview(m)}},'Preview'),
                   React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){handlePrint(m.id)}},'Print'),
-                  React.createElement('button',{className:'btn btn-sm',style:{background:'#7c3aed',color:'#fff'},onClick:function(){window.open('/api/print/direct/'+m.id,'_blank')}},'Epson'),
-                  React.createElement('button',{className:'btn btn-sm',style:{background:'#6d28d9',color:'#fff'},onClick:function(){window.open('/api/print/direct/'+m.id+'?page=2','_blank')}},'Cont.'),
+                  React.createElement('button',{className:'btn btn-sm',style:{background:'#7c3aed',color:'#fff'},onClick:function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id,'_blank')}},'Epson'),
+                  React.createElement('button',{className:'btn btn-sm',style:{background:'#6d28d9',color:'#fff'},onClick:function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id+'?page=2','_blank')}},'Cont.'),
                   React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){handleDelete(m.id)}},'X')
                 )
               )})
             )
           )
         ),
-        showModal?React.createElement(ManifestFormModal,{manifest:editing,data:data,reload:function(){reload();setShowModal(false);setEditing(null);clearPreselected()},onClose:function(){setShowModal(false);setEditing(null);clearPreselected()},onPreview:function(formData){setPreviewing(formData)}}):null,
+        showModal?React.createElement(ManifestFormModal,{manifest:editing,data:data,manifestType:manifestType,reload:function(){reload();setShowModal(false);setEditing(null);clearPreselected()},onClose:function(){setShowModal(false);setEditing(null);clearPreselected()},onPreview:function(formData){setPreviewing(formData)}}):null,
         previewing?React.createElement(ManifestPreview,{formData:previewing,onClose:function(){setPreviewing(null)}}):null
       );
     }
@@ -216,6 +220,8 @@
       var onClose = props.onClose;
       var reload = props.reload;
       var onPreview = props.onPreview;
+      var manifestType = props.manifestType || (manifest && manifest.manifestType) || 'hazardous';
+      var isNonHaz = manifestType === 'nonhaz';
       var initPreGen = manifest && manifest._preselectedGen ? manifest._preselectedGen : null;
       // When editing, look up generator by EPA ID to get linked profiles
       if (!initPreGen && manifest && manifest.generatorEpaId) {
@@ -418,6 +424,7 @@
         delete payload.wasteLines; // flattened to waste1*, waste2*, etc.
         // Sync manifestNum for list display with manifestTrackingNum from form
         payload.manifestNum = payload.manifestTrackingNum || '';
+        payload.manifestType = manifestType;
         var promise;
         if (isEdit && manifest && manifest.id) {
           promise = api.put('/api/manifests/' + manifest.id, payload);
@@ -430,7 +437,7 @@
       return (
         <div className="modal-overlay" onClick={onClose}>
           <div className="modal" style={{maxWidth:850}} onClick={function(e){e.stopPropagation()}}>
-            <h3>{isEdit ? 'Edit' : 'New'} Manifest (EPA 8700-22)</h3>
+            <h3>{isEdit ? 'Edit' : 'New'} {isNonHaz ? 'Non-Haz ' : ''}Manifest {isNonHaz ? '' : '(EPA 8700-22)'}</h3>
 
             <div className="form-grid" style={{marginBottom:20}}>
               <div className="form-group">
@@ -3528,12 +3535,156 @@
           ),
           React.createElement('button',{onClick:function(){setTab('bol')},style:{padding:'12px 20px',border:'none',background:'transparent',cursor:'pointer',fontSize:15,fontWeight:tab==='bol'?700:400,color:tab==='bol'?'#e94560':'#999',borderBottom:tab==='bol'?'3px solid #e94560':'none',marginBottom:-2}},
             'BOL (8.5x11)'
+          ),
+          React.createElement('button',{onClick:function(){setTab('nonhaz')},style:{padding:'12px 20px',border:'none',background:'transparent',cursor:'pointer',fontSize:15,fontWeight:tab==='nonhaz'?700:400,color:tab==='nonhaz'?'#e94560':'#999',borderBottom:tab==='nonhaz'?'3px solid #e94560':'none',marginBottom:-2}},
+            'Non-Haz Manifest'
           )
         ),
         tab==='main'?React.createElement(AlignmentEditor,null):null,
         tab==='22a'?React.createElement(Alignment22AEditor,null):null,
         tab==='label'?React.createElement(LabelAlignmentEditor,null):null,
-        tab==='bol'?React.createElement(BolAlignmentEditor,null):null
+        tab==='bol'?React.createElement(BolAlignmentEditor,null):null,
+        tab==='nonhaz'?React.createElement(NonHazAlignmentEditor,null):null
+      );
+    }
+
+    function NonHazAlignmentEditor(){
+      var s1=useState({});var alignData=s1[0];var setAlignData=s1[1];
+      var s2=useState(null);var selected=s2[0];var setSelected=s2[1];
+      var s3=useState('');var status=s3[0];var setStatus=s3[1];
+      var s4=useState(false);var hasPrevious=s4[0];var setHasPrevious=s4[1];
+      var csNh=useState(0);var colShiftNh=csNh[0];var setColShiftNh=csNh[1];
+      var rsNh=useState(0);var rowShiftNh=rsNh[0];var setRowShiftNh=rsNh[1];
+
+      var FIELD_LABELS={
+        generatorEpaId:'Box 1 - EPA ID',page:'Box 2 - Page',totalPages:'Box 2 - Total Pages',
+        emergencyPhone:'Box 3 - Emergency Phone',
+        generatorName:'Box 5 - Generator Name',generatorMailAddr:'Box 5 - Mailing Address',
+        generatorMailCity:'Box 5 - City/State/Zip',generatorPhone:'Box 5 - Phone',
+        generatorSiteAddr:'Box 5 - Site Address',generatorSiteCity:'Box 5 - Site City/State/Zip',
+        transporter1Name:'Box 6 - Transporter 1',transporter1EpaId:'Box 6 - EPA ID',
+        transporter2Name:'Box 7 - Transporter 2',transporter2EpaId:'Box 7 - EPA ID',
+        facilityName:'Box 8 - Facility',facilityEpaId:'Box 8 - EPA ID',
+        facilityAddress:'Box 8 - Address',facilityPhone:'Box 8 - Phone',
+        facilityCity:'Box 8 - City',facilityState:'Box 8 - State',facilityZip:'Box 8 - Zip',
+        waste1hm:'Waste 1 - HM',waste1desc:'Waste 1 - Description',waste1containerNum:'Waste 1 - Container #',waste1container:'Waste 1 - Type',waste1qty:'Waste 1 - Qty',waste1uom:'Waste 1 - UOM',
+        waste1wc1:'Waste 1 - Code 1',waste1wc2:'Waste 1 - Code 2',waste1wc3:'Waste 1 - Code 3',waste1wc4:'Waste 1 - Code 4',waste1wc5:'Waste 1 - Code 5',waste1wc6:'Waste 1 - Code 6',
+        waste2hm:'Waste 2 - HM',waste2desc:'Waste 2 - Description',waste2containerNum:'Waste 2 - Container #',waste2container:'Waste 2 - Type',waste2qty:'Waste 2 - Qty',waste2uom:'Waste 2 - UOM',
+        waste2wc1:'Waste 2 - Code 1',waste2wc2:'Waste 2 - Code 2',waste2wc3:'Waste 2 - Code 3',waste2wc4:'Waste 2 - Code 4',waste2wc5:'Waste 2 - Code 5',waste2wc6:'Waste 2 - Code 6',
+        waste3hm:'Waste 3 - HM',waste3desc:'Waste 3 - Description',waste3containerNum:'Waste 3 - Container #',waste3container:'Waste 3 - Type',waste3qty:'Waste 3 - Qty',waste3uom:'Waste 3 - UOM',
+        waste3wc1:'Waste 3 - Code 1',waste3wc2:'Waste 3 - Code 2',waste3wc3:'Waste 3 - Code 3',waste3wc4:'Waste 3 - Code 4',waste3wc5:'Waste 3 - Code 5',waste3wc6:'Waste 3 - Code 6',
+        waste4hm:'Waste 4 - HM',waste4desc:'Waste 4 - Description',waste4containerNum:'Waste 4 - Container #',waste4container:'Waste 4 - Type',waste4qty:'Waste 4 - Qty',waste4uom:'Waste 4 - UOM',
+        waste4wc1:'Waste 4 - Code 1',waste4wc2:'Waste 4 - Code 2',waste4wc3:'Waste 4 - Code 3',waste4wc4:'Waste 4 - Code 4',waste4wc5:'Waste 4 - Code 5',waste4wc6:'Waste 4 - Code 6',
+        specialHandling:'Box 14 - Special Handling 1',specialHandling2:'Box 14 - Special Handling 2',specialHandling3:'Box 14 - Special Handling 3',
+        generatorCertName:'Box 15 - Generator Cert Name'
+      };
+
+      useEffect(function(){api.get('/api/alignment-nonhaz').then(function(d){if(d.fields)setAlignData(d.fields);if(typeof d.colShift==='number')setColShiftNh(d.colShift);if(typeof d.rowShift==='number')setRowShiftNh(d.rowShift);if(d.hasPrevious)setHasPrevious(true)})},[]);
+      function handleSave(){api.put('/api/alignment-nonhaz',{fields:alignData,colShift:colShiftNh,rowShift:rowShiftNh}).then(function(r){if(r&&r.ok){setHasPrevious(true);setStatus('Saved!');setTimeout(function(){setStatus('')},3000)}else{setStatus('ERROR: Save failed!')}})}
+      function handleUndo(){api.post('/api/alignment-nonhaz/undo').then(function(d){if(d.fields)setAlignData(d.fields);if(typeof d.colShift==='number')setColShiftNh(d.colShift);if(typeof d.rowShift==='number')setRowShiftNh(d.rowShift);setStatus('Restored previous settings');setTimeout(function(){setStatus('')},2000)})}
+      function handleReset(){api.post('/api/alignment-nonhaz/reset').then(function(){setAlignData({});setColShiftNh(0);setRowShiftNh(0);setStatus('Reset to defaults');setTimeout(function(){setStatus('')},2000)})}
+      function handleBakeDefaults(){if(!confirm('This will save your current non-haz alignment positions as the new defaults. Continue?'))return;api.post('/api/alignment-nonhaz/bake-defaults').then(function(r){if(r&&r.ok){setStatus('Current non-haz settings saved as new defaults!');setColShiftNh(0);setRowShiftNh(0);api.get('/api/alignment-nonhaz').then(function(d){if(d.fields)setAlignData(d.fields)})}else{setStatus('ERROR: Failed to save defaults')}setTimeout(function(){setStatus('')},3000)})}
+      function updateField(fk,dim,val){var v=parseFloat(val);if(!isNaN(v)&&v>=0&&v<=100){var newData=Object.assign({},alignData);newData[fk]=Object.assign({},alignData[fk]||{row:1,col:1});newData[fk][dim]=v;setAlignData(newData)}}
+      function nudge(fk,dim,amt){var current=alignData[fk]||{row:1,col:1};var nv=Math.round(((current[dim]||0)+amt)*10)/10;if(nv>=0&&nv<=100){updateField(fk,dim,nv)}}
+
+      var groups=[
+        {title:'Box 1 (EPA ID)',fields:['generatorEpaId','page','totalPages']},
+        {title:'Box 3 (Emergency Phone)',fields:['emergencyPhone']},
+        {title:'Box 5 (Generator)',fields:['generatorName','generatorMailAddr','generatorMailCity','generatorPhone','generatorSiteAddr','generatorSiteCity']},
+        {title:'Box 6-7 (Transporters)',fields:['transporter1Name','transporter1EpaId','transporter2Name','transporter2EpaId']},
+        {title:'Box 8 (Facility)',fields:['facilityName','facilityEpaId','facilityAddress','facilityPhone','facilityCity','facilityState','facilityZip']},
+        {title:'Waste Line 1 - Boxes 9-12',fields:['waste1hm','waste1desc','waste1containerNum','waste1container','waste1qty','waste1uom']},
+        {title:'Waste Line 1 - Box 13 (Codes)',fields:['waste1wc1','waste1wc2','waste1wc3','waste1wc4','waste1wc5','waste1wc6']},
+        {title:'Waste Line 2 - Boxes 9-12',fields:['waste2hm','waste2desc','waste2containerNum','waste2container','waste2qty','waste2uom']},
+        {title:'Waste Line 2 - Box 13 (Codes)',fields:['waste2wc1','waste2wc2','waste2wc3','waste2wc4','waste2wc5','waste2wc6']},
+        {title:'Waste Line 3 - Boxes 9-12',fields:['waste3hm','waste3desc','waste3containerNum','waste3container','waste3qty','waste3uom']},
+        {title:'Waste Line 3 - Box 13 (Codes)',fields:['waste3wc1','waste3wc2','waste3wc3','waste3wc4','waste3wc5','waste3wc6']},
+        {title:'Waste Line 4 - Boxes 9-12',fields:['waste4hm','waste4desc','waste4containerNum','waste4container','waste4qty','waste4uom']},
+        {title:'Waste Line 4 - Box 13 (Codes)',fields:['waste4wc1','waste4wc2','waste4wc3','waste4wc4','waste4wc5','waste4wc6']},
+        {title:'Box 14 (Special Handling)',fields:['specialHandling','specialHandling2','specialHandling3']},
+        {title:'Box 15 (Certification)',fields:['generatorCertName']}
+      ];
+
+      return React.createElement('div',null,
+        React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:8}},'Non-Hazardous Waste Manifest Alignment'),
+        React.createElement('p',{style:{color:'#666',marginBottom:16}},'Adjust field positions for non-hazardous waste manifest. Same form layout as hazardous but aligned independently.'),
+        React.createElement('div',{className:'card',style:{marginBottom:16,padding:16,background:'#fffbeb',border:'1px solid #f59e0b'}},
+          React.createElement('div',{style:{marginBottom:12}},
+            React.createElement('strong',null,'Global Shift (moves ALL fields)'),
+            React.createElement('p',{style:{color:'#666',fontSize:13,margin:'4px 0'}},'Positive = right/down, negative = left/up. Steps of 0.5.')
+          ),
+          React.createElement('div',{style:{display:'flex',gap:24,flexWrap:'wrap'}},
+            React.createElement('div',null,
+              React.createElement('h4',{style:{marginBottom:8}},'Column Shift (Left/Right)'),
+              React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
+                React.createElement('button',{onClick:function(){setColShiftNh(Math.round((colShiftNh-0.5)*10)/10)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9664)),
+                React.createElement('input',{type:'number',step:'0.5',value:colShiftNh,onChange:function(e){var v=parseFloat(e.target.value);if(!isNaN(v)&&v>=-20&&v<=20)setColShiftNh(v)},style:{width:70,textAlign:'center',padding:'4px 8px',fontSize:16,border:'1px solid #ccc',borderRadius:4}}),
+                React.createElement('button',{onClick:function(){setColShiftNh(Math.round((colShiftNh+0.5)*10)/10)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9654)),
+                React.createElement('span',{style:{marginLeft:12,color:'#666',fontSize:13}},colShiftNh>0?'+'+colShiftNh+' right':colShiftNh<0?colShiftNh+' left':'0 (no shift)')
+              )
+            ),
+            React.createElement('div',null,
+              React.createElement('h4',{style:{marginBottom:8}},'Row Shift (Up/Down)'),
+              React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
+                React.createElement('button',{onClick:function(){setRowShiftNh(Math.round((rowShiftNh-0.5)*10)/10)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9650)),
+                React.createElement('input',{type:'number',step:'0.5',value:rowShiftNh,onChange:function(e){var v=parseFloat(e.target.value);if(!isNaN(v)&&v>=-10&&v<=10)setRowShiftNh(v)},style:{width:70,textAlign:'center',padding:'4px 8px',fontSize:16,border:'1px solid #ccc',borderRadius:4}}),
+                React.createElement('button',{onClick:function(){setRowShiftNh(Math.round((rowShiftNh+0.5)*10)/10)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9660)),
+                React.createElement('span',{style:{marginLeft:12,color:'#666',fontSize:13}},rowShiftNh>0?'+'+rowShiftNh+' down':rowShiftNh<0?rowShiftNh+' up':'0 (no shift)')
+              )
+            )
+          )
+        ),
+        React.createElement('div',{style:{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap'}},
+          React.createElement('button',{className:'btn btn-primary',onClick:handleSave,style:{padding:'10px 24px',fontSize:16}},'Save Alignment'),
+          React.createElement('button',{className:'btn',onClick:handleUndo,style:{padding:'10px 24px',background:hasPrevious?'#f59e0b':'#999',cursor:hasPrevious?'pointer':'not-allowed',color:'#fff'},disabled:!hasPrevious},'Undo (Previous Settings)'),
+          React.createElement('button',{className:'btn',onClick:handleReset,style:{padding:'10px 24px',background:'#666'}},'Reset to Defaults'),
+          React.createElement('button',{className:'btn',onClick:handleBakeDefaults,style:{padding:'10px 24px',background:'#2563eb',color:'#fff'}},'Set Current as Default'),
+          status?React.createElement('span',{style:{color:'#4ade80',fontWeight:600,alignSelf:'center'}},status):null,
+          selected?React.createElement('span',{style:{color:'#60a5fa',fontWeight:600,alignSelf:'center',marginLeft:8}},'Selected: '+(FIELD_LABELS[selected]||selected)+' (use arrow keys)'):React.createElement('span',{style:{color:'#999',alignSelf:'center',marginLeft:8}},'Click a field to select it')
+        ),
+        groups.map(function(group){
+          return React.createElement('div',{key:group.title,className:'card',style:{marginBottom:12,padding:16}},
+            React.createElement('h4',{style:{marginBottom:12,borderBottom:'1px solid #eee',paddingBottom:8}},group.title),
+            React.createElement('table',{style:{width:'100%',borderCollapse:'collapse'}},
+              React.createElement('thead',null,
+                React.createElement('tr',null,
+                  React.createElement('th',{style:{textAlign:'left',padding:'4px 8px',width:'40%'}},'Field'),
+                  React.createElement('th',{style:{textAlign:'center',padding:'4px 8px',width:'30%'}},'Up / Down'),
+                  React.createElement('th',{style:{textAlign:'center',padding:'4px 8px',width:'30%'}},'Left / Right')
+                )
+              ),
+              React.createElement('tbody',null,
+                (function(){
+                  var rows=[];
+                  for(var fi=0;fi<group.fields.length;fi++){
+                    (function(fk){
+                      var pos=alignData[fk]||{row:1,col:1};
+                      var isSelected=selected===fk;
+                      rows.push(React.createElement('tr',{key:fk,onClick:function(){setSelected(fk)},style:{background:isSelected?'rgba(233,69,96,0.1)':'transparent',cursor:'pointer',borderBottom:'1px solid #f0f0f0'}},
+                        React.createElement('td',{style:{padding:'6px 8px',fontSize:13,fontWeight:isSelected?700:400}},FIELD_LABELS[fk]||fk),
+                        React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
+                          React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',-0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9650)),
+                            React.createElement('input',{type:'number',step:'0.5',value:pos.row,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'row',e.target.value)},style:{width:50,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9660))
+                          )
+                        ),
+                        React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
+                          React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',-0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9664)),
+                            React.createElement('input',{type:'number',step:'0.5',value:pos.col,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'col',e.target.value)},style:{width:50,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                            React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9654))
+                          )
+                        )
+                      ));
+                    })(group.fields[fi]);
+                  }
+                  return rows;
+                })()
+              )
+            )
+          );
+        })
       );
     }
 
