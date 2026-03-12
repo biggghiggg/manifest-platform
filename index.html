@@ -1232,9 +1232,10 @@
         if (!freshGen) freshGen = gen;
         var updatedIds = (freshGen.profileIds || []).slice();
         if (updatedIds.indexOf(profileId) < 0) { updatedIds.push(profileId); }
-        api.put('/api/generators/' + freshGen.id, Object.assign({}, freshGen, { profileIds: updatedIds })).then(reload);
+        var excl=(freshGen.excludedProfileIds||[]).filter(function(id){return id!==profileId});
+        api.put('/api/generators/' + freshGen.id, Object.assign({}, freshGen, { profileIds: updatedIds, excludedProfileIds: excl })).then(reload);
       }
-      function removeProfileFromGenerator(gen,profileId){var updatedIds=(gen.profileIds||[]).slice().filter(function(id){return id!==profileId});api.put('/api/generators/'+gen.id,Object.assign({},gen,{profileIds:updatedIds})).then(reload)}
+      function removeProfileFromGenerator(gen,profileId){var updatedIds=(gen.profileIds||[]).slice().filter(function(id){return id!==profileId});var excluded=(gen.excludedProfileIds||[]).slice();if(excluded.indexOf(profileId)<0)excluded.push(profileId);api.put('/api/generators/'+gen.id,Object.assign({},gen,{profileIds:updatedIds,excludedProfileIds:excluded})).then(reload)}
       return React.createElement('div',null,
         React.createElement('div',{className:'section-header'},
           React.createElement('h2',{style:{fontSize:22,fontWeight:700}},label.plural),
@@ -1275,6 +1276,8 @@
                       });
                       var iEpa=(item.epaId||'').toUpperCase();
                       ws.forEach(function(w){if(iEpa&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===iEpa)lSet[w.id]=true;if(iNameLower&&w.generatorName&&w.generatorName.toLowerCase().trim()===iNameLower)lSet[w.id]=true});
+                      var excl=item.excludedProfileIds||[];
+                      excl.forEach(function(id){delete lSet[id]});
                       linkedWastes=ws.filter(function(w){return lSet[w.id]}).sort(function(a,b){return(a.name||'').localeCompare(b.name||'')});
                       availableWastes=ws.filter(function(w){return !lSet[w.id]}).sort(function(a,b){return(a.name||'').localeCompare(b.name||'')});
                     }
