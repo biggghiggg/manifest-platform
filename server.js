@@ -1842,24 +1842,22 @@ function getActiveNonhazMap() {
   return merged;
 }
 
-// Non-Haz RAW map (same base as hazardous RAW_MAP)
-var savedDefaultsNonhazRaw = data.savedDefaultsNonhazRaw || null;
-var customAlignmentNonhazRaw = data.customAlignmentNonhazRaw || null;
-
-function getBaseNonhazRawMap() {
-  return savedDefaultsNonhazRaw || RAW_MAP;
-}
-
+// Non-Haz RAW map - compute deltas from FORM_8700_MAP to apply to RAW_MAP
+// Same approach as getActiveRawMap() but using non-haz alignment data
 function getActiveNonhazRawMap() {
-  var base = getBaseNonhazRawMap();
-  if (!customAlignmentNonhazRaw) return base;
+  var base = RAW_MAP;
+  if (!customAlignmentNonhaz) return base;
+  var baseForm = getBaseNonhazMap();
   var merged = {};
   var keys = Object.keys(base);
   for (var i = 0; i < keys.length; i++) {
-    if (customAlignmentNonhazRaw[keys[i]]) {
-      merged[keys[i]] = customAlignmentNonhazRaw[keys[i]];
+    var key = keys[i];
+    if (customAlignmentNonhaz[key] && baseForm[key]) {
+      var deltaRow = customAlignmentNonhaz[key].row - baseForm[key].row;
+      var deltaCol = customAlignmentNonhaz[key].col - baseForm[key].col;
+      merged[key] = { row: base[key].row + deltaRow, col: base[key].col + deltaCol };
     } else {
-      merged[keys[i]] = base[keys[i]];
+      merged[key] = base[key];
     }
   }
   return merged;
@@ -4195,6 +4193,9 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
     var freshData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
     Object.keys(freshData).forEach(function(k) { data[k] = freshData[k]; });
   } catch(e) { console.error('Non-Haz ESC/P2 print: failed to re-read data:', e.message); }
+  // Re-sync non-haz alignment variables from data
+  customAlignmentNonhaz = data.customAlignmentNonhaz || null;
+  savedDefaultsNonhaz = data.savedDefaultsNonhaz || null;
   // Use non-haz alignment shifts
   var nhColShift = (typeof data.colShiftNonhaz === 'number') ? data.colShiftNonhaz : 0;
   var nhRowShift = (typeof data.rowShiftNonhaz === 'number') ? data.rowShiftNonhaz : 0;
@@ -4563,10 +4564,13 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
     var freshData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
     Object.keys(freshData).forEach(function(k) { data[k] = freshData[k]; });
   } catch(e) { console.error('Non-Haz Direct print: failed to re-read data:', e.message); }
+  // Re-sync non-haz alignment variables from data
+  customAlignmentNonhaz = data.customAlignmentNonhaz || null;
+  savedDefaultsNonhaz = data.savedDefaultsNonhaz || null;
   // Use non-haz alignment shifts
   var nhColShift = (typeof data.colShiftNonhaz === 'number') ? data.colShiftNonhaz : 0;
   var nhRowShift = (typeof data.rowShiftNonhaz === 'number') ? data.rowShiftNonhaz : 0;
-  console.log('Non-Haz Direct Print: using colShift=' + nhColShift + ', rowShift=' + nhRowShift);
+  console.log('Non-Haz Direct Print: using colShift=' + nhColShift + ', rowShift=' + nhRowShift + ', hasCustomAlignment=' + !!customAlignmentNonhaz);
 
   var manifest = null;
   for (var i = 0; i < data.manifests.length; i++) {
