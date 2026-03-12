@@ -119,7 +119,7 @@
       var ls=useState(true);var loading=ls[0];var setLoading=ls[1];
       var gs=useState(null);var preselectedGen=gs[0];var setPreselectedGen=gs[1];
       var loadAllData=useCallback(function(){return api.get('/api/data').then(function(d){setData(d);setLoading(false)}).catch(function(e){console.error(e);setLoading(false)})},[]);
-      useEffect(function(){loadAllData();var es=new EventSource('/api/events');es.onmessage=function(e){var ev=JSON.parse(e.data);if(ev.type==='connected')setConnected(true);if(ev.type==='data-updated')loadAllData()};es.onerror=function(){setConnected(false)};return function(){es.close()}},[loadAllData]);
+      useEffect(function(){loadAllData();var es=new EventSource('/api/events');es.onmessage=function(e){if(e.data==='connected')setConnected(true)};es.addEventListener('update',function(){loadAllData()});es.onerror=function(){setConnected(false)};return function(){es.close()}},[loadAllData]);
       if(loading) return React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontSize:18,color:'#888'}},'Loading...');
       return React.createElement('div',null,
         React.createElement('nav',{className:'top-nav'},
@@ -174,7 +174,7 @@
           React.createElement('h2',{style:{fontSize:22,fontWeight:700}},isNonHaz?'Non-Hazardous Waste Manifests':'Hazardous Waste Manifests'),
           React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center'}},
             React.createElement('input',{className:'search-bar',placeholder:'Search manifests...',value:search,onChange:function(e){setSearch(e.target.value)}}),
-            React.createElement('button',{className:'btn btn-primary',onClick:function(){setEditing(null);setShowModal(true)}},isNonHaz?'+ New Non-Haz Manifest':'+ New Manifest')
+            React.createElement('button',{className:'btn btn-primary',onClick:function(){reload().then(function(){setEditing(null);setShowModal(true)})}},isNonHaz?'+ New Non-Haz Manifest':'+ New Manifest')
           )
         ),
         React.createElement('div',{className:'card'},
