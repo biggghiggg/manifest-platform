@@ -3308,6 +3308,7 @@ function getActiveRawMap() {
 var RAW_MAP = {
   // Original 12 CPI positions for direct printer output (no browser margin)
   generatorEpaId:     { row: 4, col: 18 },
+  manifestTrackingNum: { row: 2, col: 55 },
   page:               { row: 4, col: 40 },
   totalPages:         { row: 4, col: 43 },
   emergencyPhone:     { row: 4, col: 47 },
