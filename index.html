@@ -203,8 +203,7 @@
                 React.createElement('td',{style:{display:'flex',gap:4}},
                   React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){setEditing(m);setShowModal(true)}},'Edit'),
                   React.createElement('button',{className:'btn btn-sm btn-success',onClick:function(){handlePreview(m)}},'Preview'),
-                  React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){handlePrint(m.id)}},'Print'),
-                  React.createElement('button',{className:'btn btn-sm',style:{background:'#7c3aed',color:'#fff'},onClick:function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id,'_blank')}},'Epson'),
+                  React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id,'_blank')}},'Print with Epson'),
                   React.createElement('button',{className:'btn btn-sm',style:{background:'#6d28d9',color:'#fff'},onClick:function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id+'?page=2','_blank')}},'Cont.'),
                   React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){handleDelete(m.id)}},'X')
                 )
@@ -699,9 +698,8 @@
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
               <button className="btn btn-success" onClick={function(){if(onPreview)onPreview(form)}}>Preview</button>
-              {savedId ? <button className="btn btn-print" onClick={function(){window.open('/api/print/manifest/'+savedId+'?page=1','_blank')}}>Print</button> : null}
-              {savedId ? <button className="btn btn-sm" style={{background:'#7c3aed',color:'#fff',marginLeft:4}} onClick={function(){window.open('/api/print/direct/'+savedId,'_blank')}}>Print to Epson</button> : null}
-              {savedId ? <button className="btn btn-sm" style={{background:'#6d28d9',color:'#fff',marginLeft:4}} onClick={function(){window.open('/api/print/direct/'+savedId+'?page=2','_blank')}}>Epson Cont.</button> : null}
+              {savedId ? <button className="btn btn-print" onClick={function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+savedId,'_blank')}}>Print with Epson</button> : null}
+              {savedId ? <button className="btn btn-sm" style={{background:'#6d28d9',color:'#fff',marginLeft:4}} onClick={function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+savedId+'?page=2','_blank')}}>Print Cont.</button> : null}
               <button className="btn btn-sm" style={{background:'#3b82f6',color:'#fff'}} onClick={function(){
                 setShowContinuation(true);
               }}>Continuation Page</button>
@@ -770,15 +768,16 @@
                   payload['waste' + sn + 'ProfileId'] = sl.profileId || '';
                 }
                 delete payload.wasteLines;
+                var printPath = isNonHaz ? 'nonhaz-direct' : 'direct';
                 if (savedId) {
                   api.put('/api/manifests/' + savedId, payload).then(function() {
-                    window.open('/api/print/manifest/' + savedId + '?page=2', '_blank');
+                    window.open('/api/print/' + printPath + '/' + savedId + '?page=2', '_blank');
                   });
                 } else {
                   api.post('/api/manifests', payload).then(function(resp) {
                     if (resp && resp.id) {
                       setSavedId(resp.id);
-                      window.open('/api/print/manifest/' + resp.id + '?page=2', '_blank');
+                      window.open('/api/print/' + printPath + '/' + resp.id + '?page=2', '_blank');
                     }
                   });
                 }
@@ -1071,7 +1070,7 @@
             <div style={{background:'#006600',color:'#fff',padding:'8px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <span style={{fontWeight:700,fontSize:14}}>UNIFORM HAZARDOUS WASTE MANIFEST - EPA Form 8700-22 (Preview)</span>
               <div style={{display:'flex',gap:8}}>
-                {d.id ? <button className="btn btn-sm" style={{background:'#fff',color:'#333'}} onClick={function(){window.open('/api/print/manifest/'+d.id,'_blank')}}>Send to Printer</button> : null}
+                {d.id ? <button className="btn btn-sm" style={{background:'#fff',color:'#333'}} onClick={function(){window.open('/api/print/direct/'+d.id,'_blank')}}>Print with Epson</button> : null}
                 <button className="btn btn-sm" style={{background:'#fff',color:'#333'}} onClick={function(){var pw=window.open('','_blank');pw.document.write('<html><head><title>Manifest Preview</title></head><body>');pw.document.write(document.querySelector('.modal-overlay:last-child > div').innerHTML);pw.document.write('</body></html>');pw.document.close();pw.print()}}>Print Preview</button>
                 <button className="btn btn-sm" style={{background:'rgba(255,255,255,0.3)',color:'#fff'}} onClick={onClose}>Close</button>
               </div>
@@ -1341,8 +1340,7 @@
                                   m.facilityName?React.createElement('span',{style:{marginLeft:8,fontSize:11,color:'#888'}},'F: '+m.facilityName):null
                                 ),
                                 React.createElement('div',{style:{display:'flex',gap:4}},
-                                  React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/'+(isNH?'nonhaz':'manifest')+'/'+m.id,'_blank')}},'Print'),
-                                  React.createElement('button',{className:'btn btn-sm',style:{background:'#7c3aed',color:'#fff'},onClick:function(){window.open('/api/print/'+(isNH?'nonhaz-direct':'direct')+'/'+m.id,'_blank')}},'Epson'),
+                                  React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/'+(isNH?'nonhaz-direct':'direct')+'/'+m.id,'_blank')}},'Print with Epson'),
                                   React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){if(onEditManifest)onEditManifest(m)}},'Edit')
                                 )
                               )
@@ -1359,7 +1357,7 @@
                                     React.createElement('span',{style:{marginLeft:8,fontSize:11,color:'#999'}},'Printed: '+bPrintDate)
                                   ),
                                   React.createElement('div',{style:{display:'flex',gap:4}},
-                                    React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/bol/'+b.id,'_blank')}},'Print')
+                                    React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/bol/'+b.id,'_blank')}},'Print with Epson')
                                   )
                                 )
                               })
@@ -2904,7 +2902,7 @@
                 React.createElement('span',{style:{marginLeft:12,color:'#6b7280',fontSize:13}},b.date||'')
               ),
               React.createElement('div',{style:{display:'flex',gap:6}},
-                React.createElement('button',{onClick:function(){handlePrint(b.id)},style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print'),
+                React.createElement('button',{onClick:function(){handlePrint(b.id)},style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print with Epson'),
                 React.createElement('button',{onClick:function(){var bb=b;return function(){setEditBol(bb);setShowForm(true)}}(),style:{padding:'4px 10px',fontSize:12,background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Edit'),
                 React.createElement('button',{onClick:function(){var bb=b;return function(){handleDelete(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Delete')
               )
@@ -2933,7 +2931,7 @@
                   React.createElement('span',{style:{marginLeft:8,color:'#6b7280',fontSize:12}},(b.lines||[]).filter(function(l){return l.desc}).length+' line(s)')
                 ),
                 React.createElement('div',{style:{display:'flex',gap:6}},
-                  React.createElement('button',{onClick:function(){var bb=b;return function(){handlePrint(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print'),
+                  React.createElement('button',{onClick:function(){var bb=b;return function(){handlePrint(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print with Epson'),
                   React.createElement('button',{onClick:function(){var bb=b;return function(){setEditBol(bb);setShowForm(true)}}(),style:{padding:'4px 10px',fontSize:12,background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Edit'),
                   React.createElement('button',{onClick:function(){var bb=b;return function(){handleDelete(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Delete')
                 )
