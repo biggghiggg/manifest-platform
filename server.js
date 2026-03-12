@@ -2076,6 +2076,11 @@ app.post('/api/labels/from-manifest/:manifestId', function(req, res) {
 
 // Print a single label (HTML positioned output for dot matrix)
 app.get('/api/print/label/:id', function(req, res) {
+  // Re-load data from disk to ensure we have the latest
+  try {
+    var freshData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    Object.keys(freshData).forEach(function(k) { data[k] = freshData[k]; });
+  } catch(e) { console.error('Label print: failed to re-read data:', e.message); }
   var label = null;
   for (var i = 0; i < (data.labels || []).length; i++) {
     if (data.labels[i].id === req.params.id) { label = data.labels[i]; break; }
@@ -2254,6 +2259,11 @@ app.get('/api/print/label/:id', function(req, res) {
 
 // Batch print all labels for a manifest
 app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
+  // Re-load data from disk to ensure we have the latest
+  try {
+    var freshData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    Object.keys(freshData).forEach(function(k) { data[k] = freshData[k]; });
+  } catch(e) { console.error('Batch label print: failed to re-read data:', e.message); }
   var manifestLabels = (data.labels || []).filter(function(l) { return l.manifestId === req.params.manifestId; });
   if (manifestLabels.length === 0) return res.status(404).send('No labels found for this manifest');
 
@@ -2682,6 +2692,11 @@ app.post('/api/alignment-bol/bake-defaults', function(req, res) {
 // ---- BOL Print Endpoints ----
 
 app.get('/api/print/bol/:id', function(req, res) {
+  // Re-load data from disk to ensure we have the latest
+  try {
+    var freshData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    Object.keys(freshData).forEach(function(k) { data[k] = freshData[k]; });
+  } catch(e) { console.error('BOL print: failed to re-read data:', e.message); }
   var bol = null;
   for (var i = 0; i < (data.bols || []).length; i++) {
     if (data.bols[i].id === req.params.id) { bol = data.bols[i]; break; }
@@ -2797,7 +2812,11 @@ app.get('/api/print/bol/:id', function(req, res) {
 
 // Alignment test print - prints a grid pattern to calibrate field positions
 app.get('/api/print/alignment-test', function(req, res) {
-  // Re-sync alignment from data object
+  // Re-load data from disk to ensure we have the latest
+  try {
+    var freshData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    Object.keys(freshData).forEach(function(k) { data[k] = freshData[k]; });
+  } catch(e) { console.error('Alignment test: failed to re-read data:', e.message); }
   colShift = (typeof data.colShift === 'number') ? data.colShift : 0;
   rowShift = (typeof data.rowShift === 'number') ? data.rowShift : 0;
   console.log('Alignment Test Print: using colShift=' + colShift + ', rowShift=' + rowShift);
@@ -2898,7 +2917,11 @@ app.get('/api/print/alignment-test', function(req, res) {
 });
 
 app.get('/api/print/manifest/:id', function(req, res) {
-  // Re-sync alignment from data object before printing
+  // Re-load data from disk to ensure we have the latest
+  try {
+    var freshData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    Object.keys(freshData).forEach(function(k) { data[k] = freshData[k]; });
+  } catch(e) { console.error('ESC/P2 print: failed to re-read data:', e.message); }
   colShift = (typeof data.colShift === 'number') ? data.colShift : 0;
   rowShift = (typeof data.rowShift === 'number') ? data.rowShift : 0;
   customAlignment = data.customAlignment || null;
@@ -3386,7 +3409,11 @@ var RAW_MAP = {
 };
 
 app.get('/api/print/escp2/:id', function(req, res) {
-  // Re-sync alignment from data object before printing
+  // Re-load data from disk to ensure we have the latest
+  try {
+    var freshData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    Object.keys(freshData).forEach(function(k) { data[k] = freshData[k]; });
+  } catch(e) { console.error('ESC/P2 raw print: failed to re-read data:', e.message); }
   customAlignment = data.customAlignment || null;
   customAlignment22a = data.customAlignment22a || null;
 
@@ -3728,19 +3755,26 @@ app.get('/api/print/escp2/:id', function(req, res) {
 // Opens in new tab, user selects Epson printer and clicks Print. No file download needed.
 app.get('/api/print/direct/:id', function(req, res) {
   // Re-sync alignment from data object before printing
+  // Re-load data from disk to ensure we have the latest
+  try {
+    var freshData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    Object.keys(freshData).forEach(function(k) { data[k] = freshData[k]; });
+  } catch(e) { console.error('Direct print: failed to re-read data:', e.message); }
   colShift = (typeof data.colShift === 'number') ? data.colShift : 0;
   rowShift = (typeof data.rowShift === 'number') ? data.rowShift : 0;
   customAlignment = data.customAlignment || null;
   customAlignment22a = data.customAlignment22a || null;
-  console.log('Direct Print: using colShift=' + colShift + ', rowShift=' + rowShift);
+  console.log('Direct Print: using colShift=' + colShift + ', rowShift=' + rowShift + ', hasCustomAlignment=' + !!customAlignment);
 
   var manifest = null;
   for (var i = 0; i < data.manifests.length; i++) {
     if (data.manifests[i].id === req.params.id) { manifest = data.manifests[i]; break; }
   }
   if (!manifest) return res.status(404).send('Manifest not found');
+  console.log('Direct Print manifest id=' + manifest.id + ', manifestTrackingNum="' + (manifest.manifestTrackingNum || '') + '"');
 
   var M = getActiveRawMap();
+  console.log('Direct Print M.manifestTrackingNum=' + JSON.stringify(M.manifestTrackingNum));
 
   // Collect all text placements: [{row, col, text, page}]
   var placements = [];
@@ -4156,6 +4190,11 @@ app.get('/api/print/direct/:id', function(req, res) {
 
 // Non-Haz ESC/P2 text print (same as /api/print/manifest/:id but with non-haz alignment)
 app.get('/api/print/nonhaz/:id', function(req, res) {
+  // Re-load data from disk to ensure we have the latest
+  try {
+    var freshData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    Object.keys(freshData).forEach(function(k) { data[k] = freshData[k]; });
+  } catch(e) { console.error('Non-Haz ESC/P2 print: failed to re-read data:', e.message); }
   // Use non-haz alignment shifts
   var nhColShift = (typeof data.colShiftNonhaz === 'number') ? data.colShiftNonhaz : 0;
   var nhRowShift = (typeof data.rowShiftNonhaz === 'number') ? data.rowShiftNonhaz : 0;
@@ -4519,6 +4558,11 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
 
 // Non-Haz HTML CSS-positioned print (same as /api/print/direct/:id but with non-haz alignment)
 app.get('/api/print/nonhaz-direct/:id', function(req, res) {
+  // Re-load data from disk to ensure we have the latest
+  try {
+    var freshData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    Object.keys(freshData).forEach(function(k) { data[k] = freshData[k]; });
+  } catch(e) { console.error('Non-Haz Direct print: failed to re-read data:', e.message); }
   // Use non-haz alignment shifts
   var nhColShift = (typeof data.colShiftNonhaz === 'number') ? data.colShiftNonhaz : 0;
   var nhRowShift = (typeof data.rowShiftNonhaz === 'number') ? data.rowShiftNonhaz : 0;
