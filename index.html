@@ -1235,7 +1235,7 @@
         var excl=(freshGen.excludedProfileIds||[]).filter(function(id){return id!==profileId});
         api.put('/api/generators/' + freshGen.id, Object.assign({}, freshGen, { profileIds: updatedIds, excludedProfileIds: excl })).then(reload);
       }
-      function removeProfileFromGenerator(gen,profileId){var updatedIds=(gen.profileIds||[]).slice().filter(function(id){return id!==profileId});var excluded=(gen.excludedProfileIds||[]).slice();if(excluded.indexOf(profileId)<0)excluded.push(profileId);api.put('/api/generators/'+gen.id,Object.assign({},gen,{profileIds:updatedIds,excludedProfileIds:excluded})).then(reload)}
+      function removeProfileFromGenerator(gen,profileId){if(!confirm('Remove this profile from the generator?'))return;var updatedIds=(gen.profileIds||[]).slice().filter(function(id){return id!==profileId});var excluded=(gen.excludedProfileIds||[]).slice();if(excluded.indexOf(profileId)<0)excluded.push(profileId);api.put('/api/generators/'+gen.id,Object.assign({},gen,{profileIds:updatedIds,excludedProfileIds:excluded})).then(reload)}
       return React.createElement('div',null,
         React.createElement('div',{className:'section-header'},
           React.createElement('h2',{style:{fontSize:22,fontWeight:700}},label.plural),
