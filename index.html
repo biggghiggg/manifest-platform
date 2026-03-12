@@ -52,7 +52,9 @@
     .search-bar:focus{outline:none;border-color:#e94560}
     .badge{padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600}
     .badge-draft{background:#fef3c7;color:#92400e}
+    .badge-completed{background:#d1fae5;color:#065f46}
     .badge-printed{background:#d1fae5;color:#065f46}
+    .badge-archived{background:#e5e7eb;color:#374151}
     .badge-signed{background:#dbeafe;color:#1e40af}
     .section-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px}
     .profile-select{display:flex;gap:8px;align-items:center;margin-bottom:12px}
@@ -169,9 +171,10 @@
       useEffect(function(){if(editManifestFromGen){setEditing(editManifestFromGen);setShowModal(true);if(clearEditManifest)clearEditManifest()}},[editManifestFromGen]);
       function handleSave(f){var p=editing?api.put('/api/manifests/'+editing.id,f):api.post('/api/manifests',f);p.then(function(){reload();setShowModal(false);setEditing(null)})}
       function handleDelete(id){if(confirm('Delete this manifest?')){api.del('/api/manifests/'+id).then(reload)}}
+      function handleArchive(m){if(confirm('Archive this document? It will move to the generator tab.')){api.put('/api/manifests/'+m.id,Object.assign({},m,{status:'archived'})).then(reload)}}
       function handlePrint(id){window.open('/api/print/'+(isNonHaz?'nonhaz':'manifest')+'/'+id,'_blank')}
       function handlePreview(m){var previewData=Object.assign({},m);var wl=[];var wlc=parseInt(m.wasteLineCount)||4;for(var i=1;i<=wlc;i++){wl.push({hm:m['waste'+i+'HM']||'',description:m['waste'+i+'Description']||'',containerNum:m['waste'+i+'ContainerNum']||'',containerType:m['waste'+i+'ContainerType']||'',containerSize:m['waste'+i+'ContainerSize']||'',qty:m['waste'+i+'Qty']||'',unit:m['waste'+i+'Unit']||'',wasteCodes:m['waste'+i+'WasteCodes']||'',profileId:m['waste'+i+'ProfileId']||''})}previewData.wasteLines=wl;setPreviewing(previewData)}
-      var items=(data.manifests||[]).filter(function(m){var mType=m.manifestType||'hazardous';if(mType!==manifestType)return false;if(m.lastPrintedAt)return false;var s=search.toLowerCase();return !s||(m.manifestNum||'').toLowerCase().indexOf(s)>=0||(m.generatorName||'').toLowerCase().indexOf(s)>=0});
+      var items=(data.manifests||[]).filter(function(m){var mType=m.manifestType||'hazardous';if(mType!==manifestType)return false;if(m.status==='archived')return false;var s=search.toLowerCase();return !s||(m.manifestNum||'').toLowerCase().indexOf(s)>=0||(m.generatorName||'').toLowerCase().indexOf(s)>=0});
       return React.createElement('div',null,
         React.createElement('div',{className:'section-header'},
           React.createElement('h2',{style:{fontSize:22,fontWeight:700}},isNonHaz?'Non-Hazardous Waste Manifests':'Hazardous Waste Manifests'),
@@ -200,11 +203,13 @@
                 React.createElement('td',null,m.transporter1Name||'-'),
                 React.createElement('td',null,m.facilityName||'-'),
                 React.createElement('td',null,React.createElement('span',{className:'badge badge-'+(m.status||'draft')},m.status||'draft')),
-                React.createElement('td',{style:{display:'flex',gap:4}},
+                React.createElement('td',{style:{display:'flex',gap:4,flexWrap:'wrap'}},
                   React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){setEditing(m);setShowModal(true)}},'Edit'),
                   React.createElement('button',{className:'btn btn-sm btn-success',onClick:function(){handlePreview(m)}},'Preview'),
                   React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id,'_blank')}},'Print with Epson'),
                   React.createElement('button',{className:'btn btn-sm',style:{background:'#6d28d9',color:'#fff'},onClick:function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id+'?page=2','_blank')}},'Cont.'),
+                  React.createElement('button',{className:'btn btn-sm',style:{background:'#0891b2',color:'#fff'},onClick:function(){window.open('/api/print/labels/manifest/'+m.id,'_blank')}},'Print Labels'),
+                  React.createElement('button',{className:'btn btn-sm',style:{background:'#6b7280',color:'#fff'},onClick:function(){handleArchive(m)}},'Archive'),
                   React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){handleDelete(m.id)}},'X')
                 )
               )})
@@ -1293,18 +1298,18 @@
                       )
                     ));
                     if(isExpanded&&type==='generators'){
-                      // Find printed manifests for this generator
+                      // Find archived manifests for this generator
                       var genNameLower=(item.name||'').toLowerCase().trim();
                       var genEpaUpper=(item.epaId||'').toUpperCase();
                       var genManifests=(data.manifests||[]).filter(function(m){
-                        if(!m.lastPrintedAt)return false;
+                        if(m.status!=='archived')return false;
                         var mGenName=(m.generatorName||'').toLowerCase().trim();
                         var mGenEpa=(m.generatorEpaId||'').toUpperCase();
                         return (genNameLower&&mGenName===genNameLower)||(genEpaUpper&&mGenEpa&&mGenEpa===genEpaUpper);
                       }).sort(function(a,b){return(b.lastPrintedAt||'').localeCompare(a.lastPrintedAt||'')});
-                      // Find printed BOLs for this generator
+                      // Find archived BOLs for this generator
                       var genBols=(data.bols||[]).filter(function(b){
-                        if(!b.lastPrintedAt)return false;
+                        if(b.status!=='archived')return false;
                         var bGenName=(b.generatorName||'').toLowerCase().trim();
                         return genNameLower&&bGenName===genNameLower;
                       }).sort(function(a,b){return(b.lastPrintedAt||'').localeCompare(a.lastPrintedAt||'')});
@@ -1328,7 +1333,7 @@
                               ),
                               React.createElement('button',{className:'btn btn-sm btn-primary',onClick:function(){onNewManifest(item)}},'New Manifest')
                             ),
-                            React.createElement('h5',{style:{marginBottom:8,marginTop:4,color:'#555',borderTop:'1px solid #e5e7eb',paddingTop:12}},'Previous Manifests'),
+                            React.createElement('h5',{style:{marginBottom:8,marginTop:4,color:'#555',borderTop:'1px solid #e5e7eb',paddingTop:12}},'Archived Manifests'),
                             genManifests.length>0?genManifests.map(function(m){
                               var mType=m.manifestType||'hazardous';
                               var isNH=mType==='nonhaz';
@@ -1348,9 +1353,9 @@
                                   React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){var mid=m.id;return function(){if(confirm('Delete this manifest permanently?')){api.del('/api/manifests/'+mid).then(reload)}}}()},'X')
                                 )
                               )
-                            }):React.createElement('p',{style:{color:'#999',fontSize:13}},'No printed manifests yet'),
+                            }):React.createElement('p',{style:{color:'#999',fontSize:13}},'No archived manifests yet'),
                             genBols.length>0?React.createElement('div',null,
-                              React.createElement('h5',{style:{marginBottom:8,marginTop:12,color:'#555',borderTop:'1px solid #e5e7eb',paddingTop:12}},'Previous BOLs'),
+                              React.createElement('h5',{style:{marginBottom:8,marginTop:12,color:'#555',borderTop:'1px solid #e5e7eb',paddingTop:12}},'Archived BOLs'),
                               genBols.map(function(b){
                                 var bTrack=b.manifestTrackingNum||b.manifestNum||'No #';
                                 var bPrintDate=b.lastPrintedAt?new Date(b.lastPrintedAt).toLocaleDateString():'';
@@ -2863,13 +2868,14 @@
         api.del('/api/bols/'+id).then(function(){loadBols()});
       }
       function handlePrint(id){window.open('/api/print/bol/'+id,'_blank')}
+      function handleArchiveBol(b){if(confirm('Archive this BOL? It will move to the generator tab.')){api.put('/api/bols/'+b.id,Object.assign({},b,{status:'archived'})).then(function(){loadBols()})}}
       function handleGenerate(){
         if(!genManifestId)return;
         api.post('/api/bols/from-manifest/'+genManifestId,{}).then(function(){loadBols();setGenManifestId('')});
       }
 
       // Filter out printed BOLs (they live in the generator tab now)
-      var activeBols=bols.filter(function(b){return !b.lastPrintedAt});
+      var activeBols=bols.filter(function(b){return b.status!=='archived'});
       // Group BOLs by manifest
       var grouped={};var standalone=[];
       for(var i=0;i<activeBols.length;i++){
@@ -2909,6 +2915,7 @@
               React.createElement('div',{style:{display:'flex',gap:6}},
                 React.createElement('button',{onClick:function(){handlePrint(b.id)},style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print with Epson'),
                 React.createElement('button',{onClick:function(){var bb=b;return function(){setEditBol(bb);setShowForm(true)}}(),style:{padding:'4px 10px',fontSize:12,background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Edit'),
+                React.createElement('button',{onClick:function(){var bb=b;return function(){handleArchiveBol(bb)}}(),style:{padding:'4px 10px',fontSize:12,background:'#6b7280',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Archive'),
                 React.createElement('button',{onClick:function(){var bb=b;return function(){handleDelete(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Delete')
               )
             );
@@ -2938,6 +2945,7 @@
                 React.createElement('div',{style:{display:'flex',gap:6}},
                   React.createElement('button',{onClick:function(){var bb=b;return function(){handlePrint(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print with Epson'),
                   React.createElement('button',{onClick:function(){var bb=b;return function(){setEditBol(bb);setShowForm(true)}}(),style:{padding:'4px 10px',fontSize:12,background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Edit'),
+                  React.createElement('button',{onClick:function(){var bb=b;return function(){handleArchiveBol(bb)}}(),style:{padding:'4px 10px',fontSize:12,background:'#6b7280',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Archive'),
                   React.createElement('button',{onClick:function(){var bb=b;return function(){handleDelete(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Delete')
                 )
               );

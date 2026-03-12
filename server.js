@@ -126,7 +126,7 @@ collections.forEach(function(col) {
   });
 });
 
-// Helper: mark a manifest as printed/filed under its generator
+// Helper: mark a manifest as printed (status -> completed)
 function fileManifestAsPrinted(manifestId) {
   var manifests = data.manifests || [];
   for (var i = 0; i < manifests.length; i++) {
@@ -134,7 +134,7 @@ function fileManifestAsPrinted(manifestId) {
       if (!manifests[i].printHistory) manifests[i].printHistory = [];
       manifests[i].printHistory.push({ printedAt: new Date().toISOString() });
       manifests[i].lastPrintedAt = new Date().toISOString();
-      manifests[i].status = 'printed';
+      manifests[i].status = 'completed';
       saveData(data);
       broadcast('update', { collection: 'manifests', action: 'update', item: manifests[i] });
       return manifests[i];
@@ -143,7 +143,7 @@ function fileManifestAsPrinted(manifestId) {
   return null;
 }
 
-// Helper: mark a BOL as printed/filed
+// Helper: mark a BOL as printed (status -> completed)
 function fileBolAsPrinted(bolId) {
   var bols = data.bols || [];
   for (var i = 0; i < bols.length; i++) {
@@ -151,7 +151,7 @@ function fileBolAsPrinted(bolId) {
       if (!bols[i].printHistory) bols[i].printHistory = [];
       bols[i].printHistory.push({ printedAt: new Date().toISOString() });
       bols[i].lastPrintedAt = new Date().toISOString();
-      bols[i].status = 'printed';
+      bols[i].status = 'completed';
       saveData(data);
       return bols[i];
     }
