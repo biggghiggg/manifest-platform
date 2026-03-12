@@ -1273,8 +1273,8 @@
                       });
                       var iEpa=(item.epaId||'').toUpperCase();
                       ws.forEach(function(w){if(iEpa&&w.generatorEpaId&&w.generatorEpaId.toUpperCase()===iEpa)lSet[w.id]=true;if(iNameLower&&w.generatorName&&w.generatorName.toLowerCase().trim()===iNameLower)lSet[w.id]=true});
-                      linkedWastes=ws.filter(function(w){return lSet[w.id]});
-                      availableWastes=ws.filter(function(w){return !lSet[w.id]});
+                      linkedWastes=ws.filter(function(w){return lSet[w.id]}).sort(function(a,b){return(a.name||'').localeCompare(b.name||'')});
+                      availableWastes=ws.filter(function(w){return !lSet[w.id]}).sort(function(a,b){return(a.name||'').localeCompare(b.name||'')});
                     }
                     rows.push(React.createElement('tr',{key:item.id},
                       React.createElement('td',{style:{fontWeight:600,cursor:type==='generators'?'pointer':'default',color:type==='generators'?'#e94560':'inherit'},onClick:type==='generators'?function(){setExpandedId(isExpanded?null:item.id)}:undefined},(type==='generators'?(isExpanded?'v ':'> '):'')+item.name),
@@ -2409,7 +2409,7 @@
           React.createElement('div',{style:{display:'flex',gap:12,alignItems:'center'}},
             React.createElement('select',{value:genManifestId,onChange:function(e){setGenManifestId(e.target.value)},style:{padding:'8px 12px',border:'1px solid #ddd',borderRadius:6,fontSize:14,minWidth:300}},
               React.createElement('option',{value:''},'-- Select Manifest --'),
-              (data.manifests||[]).map(function(m){
+              (data.manifests||[]).slice().sort(function(a,b){return((a.manifestTrackingNum||a.manifestTrackingNumber||'')+' - '+(a.generatorName||'')).localeCompare((b.manifestTrackingNum||b.manifestTrackingNumber||'')+' - '+(b.generatorName||''))}).map(function(m){
                 return React.createElement('option',{key:m.id,value:m.id},(m.manifestTrackingNum||m.manifestTrackingNumber||'No tracking #')+' - '+(m.generatorName||'Unknown'));
               })
             ),
@@ -2637,7 +2637,7 @@
             React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}},
               React.createElement('select',{value:pullManifestId,onChange:function(e){setPullManifestId(e.target.value);setPullWasteLine('')},style:{padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13}},
                 React.createElement('option',{value:''},'-- Manifest --'),
-                (data.manifests||[]).map(function(m){
+                (data.manifests||[]).slice().sort(function(a,b){return((a.manifestTrackingNum||a.manifestTrackingNumber||'')+' - '+(a.generatorName||'')).localeCompare((b.manifestTrackingNum||b.manifestTrackingNumber||'')+' - '+(b.generatorName||''))}).map(function(m){
                   return React.createElement('option',{key:m.id,value:m.id},(m.manifestTrackingNum||m.manifestTrackingNumber||'No #')+' - '+(m.generatorName||''));
                 })
               ),
@@ -2825,7 +2825,7 @@
           React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center'}},
             React.createElement('select',{value:genManifestId,onChange:function(e){setGenManifestId(e.target.value)},style:{padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13}},
               React.createElement('option',{value:''},'-- Select Manifest --'),
-              (data.manifests||[]).map(function(m){return React.createElement('option',{key:m.id,value:m.id},(m.manifestTrackingNum||m.manifestTrackingNumber||'No #')+' - '+(m.generatorName||''))})
+              (data.manifests||[]).slice().sort(function(a,b){return((a.manifestTrackingNum||a.manifestTrackingNumber||'')+' - '+(a.generatorName||'')).localeCompare((b.manifestTrackingNum||b.manifestTrackingNumber||'')+' - '+(b.generatorName||''))}).map(function(m){return React.createElement('option',{key:m.id,value:m.id},(m.manifestTrackingNum||m.manifestTrackingNumber||'No #')+' - '+(m.generatorName||''))})
             ),
             React.createElement('button',{className:'btn btn-primary',onClick:handleGenerate,disabled:!genManifestId,style:{padding:'6px 14px',fontSize:13}},'Generate from Manifest'),
             React.createElement('button',{className:'btn btn-primary',onClick:function(){setEditBol(null);setShowForm(true)},style:{padding:'6px 14px',fontSize:13}},'New BOL')
@@ -3087,7 +3087,7 @@
             React.createElement('div',{style:{display:'flex',gap:6,alignItems:'center'}},
               React.createElement('select',{value:pullManifestId,onChange:function(e){setPullManifestId(e.target.value)},style:{padding:'4px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12,flex:1}},
                 React.createElement('option',{value:''},'-- Select Manifest --'),
-                (data.manifests||[]).map(function(m){return React.createElement('option',{key:m.id,value:m.id},(m.manifestTrackingNum||m.manifestTrackingNumber||'No #')+' - '+(m.generatorName||''))})
+                (data.manifests||[]).slice().sort(function(a,b){return((a.manifestTrackingNum||a.manifestTrackingNumber||'')+' - '+(a.generatorName||'')).localeCompare((b.manifestTrackingNum||b.manifestTrackingNumber||'')+' - '+(b.generatorName||''))}).map(function(m){return React.createElement('option',{key:m.id,value:m.id},(m.manifestTrackingNum||m.manifestTrackingNumber||'No #')+' - '+(m.generatorName||''))})
               ),
               React.createElement('button',{onClick:handlePullManifest,disabled:!pullManifestId,style:{padding:'6px 14px',fontSize:13,background:'#0369a1',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Pull')
             )
@@ -3099,7 +3099,7 @@
             React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center'}},
               React.createElement('select',{value:pullWsId,onChange:function(e){setPullWsId(e.target.value)},style:{padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13,flex:1}},
                 React.createElement('option',{value:''},'-- Select Waste Stream --'),
-                (data.wasteStreams||[]).map(function(ws){return React.createElement('option',{key:ws.id,value:ws.id},(ws.profileId?ws.profileId+' - ':'')+ws.name)})
+                (data.wasteStreams||[]).slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'')}).map(function(ws){return React.createElement('option',{key:ws.id,value:ws.id},(ws.profileId?ws.profileId+' - ':'')+ws.name)})
               ),
               React.createElement('select',{value:pullWsLine,onChange:function(e){setPullWsLine(e.target.value)},style:{padding:'6px 10px',border:'1px solid #ddd',borderRadius:4,fontSize:13,width:80}},
                 lineNums.map(function(n){return React.createElement('option',{key:n,value:n},'Line '+(n+1))})
@@ -3251,7 +3251,7 @@
                           e.target.value='';
                         }}(),style:{width:28,padding:'2px',border:'1px solid #d1d5db',borderRadius:3,fontSize:10,color:'#6b7280',flexShrink:0}},
                           React.createElement('option',{value:''},'WS'),
-                          (data.wasteStreams||[]).map(function(ws){return React.createElement('option',{key:ws.id,value:ws.id},(ws.profileId?ws.profileId+' - ':'')+ws.name)})
+                          (data.wasteStreams||[]).slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'')}).map(function(ws){return React.createElement('option',{key:ws.id,value:ws.id},(ws.profileId?ws.profileId+' - ':'')+ws.name)})
                         ),
                         React.createElement('input',{value:line.desc||'',onChange:function(){var ii=idx;return function(e){updateLine(ii,'desc',e.target.value)}}(),style:{width:'100%',padding:'2px 4px',border:'1px solid #e5e7eb',borderRadius:3,fontSize:11,flex:1}})
                       )
