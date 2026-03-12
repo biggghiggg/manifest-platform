@@ -2220,7 +2220,7 @@ app.get('/api/print/label/:id', function(req, res) {
   html += '@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } }';
   html += 'body { margin: 0; padding: 0; }';
   html += '.sheet { position: relative; width: 6in; height: ' + totalHeight + 'in; }';
-  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: bold; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
   html += '.toolbar .print-btn { background: #f59e0b; color: white; border: none; border-radius: 4px; }';
@@ -2282,7 +2282,7 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
   html += '@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } }';
   html += 'body { margin: 0; padding: 0; }';
   html += '.sheet { position: relative; width: 6in; height: ' + totalHeight + 'in; }';
-  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: bold; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
   html += '.toolbar .print-btn { background: #f59e0b; color: white; border: none; border-radius: 4px; }';
@@ -2771,8 +2771,8 @@ app.get('/api/print/bol/:id', function(req, res) {
   html += 'body { margin: 0; padding: 0; }';
   html += '.page { position: relative; width: 8.5in; height: 11in; overflow: hidden; page-break-after: always; }';
   html += '.page:last-child { page-break-after: auto; }';
-  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
-  html += '.field-wrap { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; line-height: 1.15; white-space: pre-wrap; word-break: break-word; margin: 0; padding: 0; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: bold; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.field-wrap { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: bold; line-height: 1.15; white-space: pre-wrap; word-break: break-word; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
   html += '.toolbar .print-btn { background: #2563eb; color: white; border: none; border-radius: 4px; }';
@@ -3302,8 +3302,15 @@ app.get('/api/print/manifest/:id', function(req, res) {
   output = output.replace(/\n\s*$/, '');
   console.log('Print output: ' + allPages.length + ' page(s), ' + output.split('\n').length + ' lines');
 
-  res.set('Content-Type', 'text/plain');
-  res.send(output);
+  // Wrap in HTML with bold pre for darker printing
+  var htmlOutput = '<!DOCTYPE html><html><head><title>Print Manifest</title><style>';
+  htmlOutput += '@media print { @page { margin: 0; } body { margin: 0; } }';
+  htmlOutput += 'body { margin: 0; padding: 0; }';
+  htmlOutput += 'pre { font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: bold; margin: 0; padding: 0; line-height: 1; }';
+  htmlOutput += '</style></head><body><pre>' + output.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>';
+  htmlOutput += '<script>window.print();</script></body></html>';
+  res.set('Content-Type', 'text/html');
+  res.send(htmlOutput);
 });
 
 // ESC/P2 raw print - generates .prn file for direct Epson LQ-590II printing
@@ -3514,6 +3521,8 @@ app.get('/api/print/escp2/:id', function(req, res) {
   addBytes([0x1B, 0x40]); // ESC @ - Initialize/reset
   addBytes([0x1B, 0x4D]); // ESC M - Select 12 CPI (Elite)
   addBytes([0x1B, 0x32]); // ESC 2 - Set 1/6" line spacing (6 LPI)
+  addBytes([0x1B, 0x45]); // ESC E - Bold/emphasized on
+  addBytes([0x1B, 0x47]); // ESC G - Double-strike on
 
   // === Page 1 - Main Form (8700-22) ===
 
@@ -3656,6 +3665,8 @@ app.get('/api/print/escp2/:id', function(req, res) {
       addBytes([0x1B, 0x40]); // ESC @ reset
       addBytes([0x1B, 0x4D]); // 12 CPI
       addBytes([0x1B, 0x32]); // 6 LPI
+      addBytes([0x1B, 0x45]); // ESC E - Bold/emphasized on
+      addBytes([0x1B, 0x47]); // ESC G - Double-strike on
 
       printAt(contMap.generatorEpaId.row, contMap.generatorEpaId.col, manifest.generatorEpaId);
       // Page number not printed - "Page __" is preprinted; only print total pages ("of __")
@@ -4134,7 +4145,7 @@ app.get('/api/print/direct/:id', function(req, res) {
   html += 'body { margin: 0; padding: 0; }';
   html += '.page { position: relative; width: 8.5in; height: 11in; overflow: hidden; page-break-after: always; }';
   html += '.page:last-child { page-break-after: auto; }';
-  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 9pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 9pt; font-weight: bold; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
   html += '.toolbar .print-btn { background: #7c3aed; color: white; border: none; border-radius: 4px; }';
@@ -4554,7 +4565,14 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
   customAlignment = origCustomAlignment;
   customAlignment22a = origCustomAlignment22a;
 
-  res.type('text/plain').send(output);
+  // Wrap in HTML with bold pre for darker printing
+  var htmlOutput = '<!DOCTYPE html><html><head><title>Print Non-Haz Manifest</title><style>';
+  htmlOutput += '@media print { @page { margin: 0; } body { margin: 0; } }';
+  htmlOutput += 'body { margin: 0; padding: 0; }';
+  htmlOutput += 'pre { font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: bold; margin: 0; padding: 0; line-height: 1; }';
+  htmlOutput += '</style></head><body><pre>' + output.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>';
+  htmlOutput += '<script>window.print();</script></body></html>';
+  res.type('text/html').send(htmlOutput);
 });
 
 // Non-Haz HTML CSS-positioned print (same as /api/print/direct/:id but with non-haz alignment)
@@ -4905,7 +4923,7 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
   html += 'body { margin: 0; padding: 0; }';
   html += '.page { position: relative; width: 8.5in; height: 11in; overflow: hidden; page-break-after: always; }';
   html += '.page:last-child { page-break-after: auto; }';
-  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 9pt; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
+  html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 9pt; font-weight: bold; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
   html += '.toolbar .print-btn { background: #059669; color: white; border: none; border-radius: 4px; }';
