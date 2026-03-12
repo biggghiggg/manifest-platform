@@ -459,7 +459,7 @@
               <div className="profile-select">
                 <select onChange={function(e){loadGenerator(e.target.value)}} defaultValue="">
                   <option value="">-- Load from saved generator --</option>
-                  {data.generators.map(function(g) { return <option key={g.id} value={g.id}>{g.name} {g.epaId ? '(' + g.epaId + ')' : ''}</option>; })}
+                  {(data.generators||[]).slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'')}).map(function(g) { return <option key={g.id} value={g.id}>{g.name} {g.epaId ? '(' + g.epaId + ')' : ''}</option>; })}
                 </select>
               </div>
               <div className="form-grid">
@@ -478,7 +478,7 @@
               <div className="profile-select">
                 <select onChange={function(e){loadTransporter(e.target.value, 1)}} defaultValue="">
                   <option value="">-- Load from saved transporter --</option>
-                  {data.transporters.map(function(t) { return <option key={t.id} value={t.id}>{t.name}</option>; })}
+                  {(data.transporters||[]).slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'')}).map(function(t) { return <option key={t.id} value={t.id}>{t.name}</option>; })}
                 </select>
               </div>
               <div className="form-grid">
@@ -489,7 +489,7 @@
               <div className="profile-select">
                 <select onChange={function(e){loadTransporter(e.target.value, 2)}} defaultValue="">
                   <option value="">-- Load from saved transporter --</option>
-                  {data.transporters.map(function(t) { return <option key={t.id} value={t.id}>{t.name}</option>; })}
+                  {(data.transporters||[]).slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'')}).map(function(t) { return <option key={t.id} value={t.id}>{t.name}</option>; })}
                 </select>
               </div>
               <div className="form-grid">
@@ -503,7 +503,7 @@
               <div className="profile-select">
                 <select onChange={function(e){loadFacility(e.target.value)}} defaultValue="">
                   <option value="">-- Load from saved facility --</option>
-                  {data.facilities.map(function(f) { return <option key={f.id} value={f.id}>{f.name}</option>; })}
+                  {(data.facilities||[]).slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'')}).map(function(f) { return <option key={f.id} value={f.id}>{f.name}</option>; })}
                 </select>
               </div>
               <div className="form-grid">
@@ -824,7 +824,7 @@
                         <div style={{marginBottom:8}}>
                           <select onChange={function(e){var t=data.transporters.find(function(x){return x.id===e.target.value});if(t){set('contTransporterName',t.name||'');set('contTransporterEpaId',t.epaId||'')}}} defaultValue="" style={{fontSize:12,padding:'4px 8px'}}>
                             <option value="">-- Load from saved transporter --</option>
-                            {data.transporters.map(function(t){return <option key={t.id} value={t.id}>{t.name}</option>})}
+                            {(data.transporters||[]).slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'')}).map(function(t){return <option key={t.id} value={t.id}>{t.name}</option>})}
                           </select>
                         </div>
                         <div style={{display:'grid',gridTemplateColumns:'1fr 200px',gap:12}}>
@@ -844,7 +844,7 @@
                         <div style={{marginBottom:8}}>
                           <select onChange={function(e){var t=data.transporters.find(function(x){return x.id===e.target.value});if(t){set('contTransporter2Name',t.name||'');set('contTransporter2EpaId',t.epaId||'')}}} defaultValue="" style={{fontSize:12,padding:'4px 8px'}}>
                             <option value="">-- Load from saved transporter --</option>
-                            {data.transporters.map(function(t){return <option key={t.id} value={t.id}>{t.name}</option>})}
+                            {(data.transporters||[]).slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'')}).map(function(t){return <option key={t.id} value={t.id}>{t.name}</option>})}
                           </select>
                         </div>
                         <div style={{display:'grid',gridTemplateColumns:'1fr 200px',gap:12}}>
