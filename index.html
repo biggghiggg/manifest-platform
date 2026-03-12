@@ -2914,6 +2914,7 @@
               ),
               React.createElement('div',{style:{display:'flex',gap:6}},
                 React.createElement('button',{onClick:function(){handlePrint(b.id)},style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print with Epson'),
+                b.manifestId?React.createElement('button',{onClick:function(){window.open('/api/print/labels/manifest/'+b.manifestId,'_blank')},style:{padding:'4px 10px',fontSize:12,background:'#0891b2',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print Labels'):null,
                 React.createElement('button',{onClick:function(){var bb=b;return function(){setEditBol(bb);setShowForm(true)}}(),style:{padding:'4px 10px',fontSize:12,background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Edit'),
                 React.createElement('button',{onClick:function(){var bb=b;return function(){handleArchiveBol(bb)}}(),style:{padding:'4px 10px',fontSize:12,background:'#6b7280',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Archive'),
                 React.createElement('button',{onClick:function(){var bb=b;return function(){handleDelete(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Delete')
@@ -2944,6 +2945,7 @@
                 ),
                 React.createElement('div',{style:{display:'flex',gap:6}},
                   React.createElement('button',{onClick:function(){var bb=b;return function(){handlePrint(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print with Epson'),
+                  b.manifestId?React.createElement('button',{onClick:function(){var bb=b;return function(){window.open('/api/print/labels/manifest/'+bb.manifestId,'_blank')}}(),style:{padding:'4px 10px',fontSize:12,background:'#0891b2',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print Labels'):null,
                   React.createElement('button',{onClick:function(){var bb=b;return function(){setEditBol(bb);setShowForm(true)}}(),style:{padding:'4px 10px',fontSize:12,background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Edit'),
                   React.createElement('button',{onClick:function(){var bb=b;return function(){handleArchiveBol(bb)}}(),style:{padding:'4px 10px',fontSize:12,background:'#6b7280',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Archive'),
                   React.createElement('button',{onClick:function(){var bb=b;return function(){handleDelete(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Delete')
