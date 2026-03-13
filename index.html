@@ -114,6 +114,106 @@
       return false;
     }
 
+    // ==========================================
+    // LABEL QUANTITY SELECTOR MODAL
+    // ==========================================
+    function LabelQuantityModal(props) {
+      var manifestId = props.manifestId;
+      var data = props.data;
+      var onClose = props.onClose;
+      var onDone = props.onDone;
+
+      // Find the manifest
+      var manifest = null;
+      for (var mi = 0; mi < (data.manifests || []).length; mi++) {
+        if (data.manifests[mi].id === manifestId) { manifest = data.manifests[mi]; break; }
+      }
+
+      // Build waste lines list from manifest
+      var wasteLineCount = manifest ? (parseInt(manifest.wasteLineCount) || 4) : 4;
+      var lines = [];
+      if (manifest) {
+        for (var w = 1; w <= wasteLineCount; w++) {
+          var desc = manifest['waste' + w + 'Description'] || '';
+          if (!desc.trim()) continue;
+          lines.push({ lineNum: w, description: desc });
+        }
+      }
+
+      // State for counts - default 1 per line
+      var initCounts = {};
+      for (var ic = 0; ic < lines.length; ic++) {
+        initCounts[String(lines[ic].lineNum)] = 1;
+      }
+      var cs = useState(initCounts); var counts = cs[0]; var setCounts = cs[1];
+
+      function updateCount(lineNum, val) {
+        var n = Object.assign({}, counts);
+        var v = parseInt(val) || 0;
+        if (v < 0) v = 0;
+        n[String(lineNum)] = v;
+        setCounts(n);
+      }
+
+      function handlePrint() {
+        // Check at least one label selected
+        var total = 0;
+        var keys = Object.keys(counts);
+        for (var k = 0; k < keys.length; k++) { total += (parseInt(counts[keys[k]]) || 0); }
+        if (total === 0) { alert('Please select at least 1 label to print.'); return; }
+        api.post('/api/labels/from-manifest/' + manifestId, { counts: counts, batchPrint: true }).then(function() {
+          window.open('/api/print/labels/manifest/' + manifestId, '_blank');
+          if (onDone) onDone();
+          onClose();
+        }).catch(function() { alert('Error generating labels'); });
+      }
+
+      if (!manifest) return React.createElement('div',{className:'modal-overlay',onClick:onClose},
+        React.createElement('div',{className:'modal',onClick:function(e){e.stopPropagation()},style:{maxWidth:500,width:500}},
+          React.createElement('p',null,'Manifest not found.')
+        )
+      );
+
+      return React.createElement('div',{className:'modal-overlay',onClick:onClose},
+        React.createElement('div',{className:'modal',onClick:function(e){e.stopPropagation()},style:{maxWidth:550,width:550}},
+          React.createElement('h2',{style:{marginTop:0,marginBottom:16}},'Print Labels - Select Quantities'),
+          React.createElement('p',{style:{color:'#6b7280',fontSize:13,marginBottom:16}},'Choose how many labels to print for each waste line. Set to 0 to skip a line.'),
+          React.createElement('table',{style:{width:'100%',borderCollapse:'collapse',marginBottom:20}},
+            React.createElement('thead',null,
+              React.createElement('tr',{style:{borderBottom:'2px solid #e5e7eb'}},
+                React.createElement('th',{style:{textAlign:'left',padding:'8px 4px',fontSize:13,width:40}},'Line'),
+                React.createElement('th',{style:{textAlign:'left',padding:'8px 4px',fontSize:13}},'Description'),
+                React.createElement('th',{style:{textAlign:'center',padding:'8px 4px',fontSize:13,width:80}},'# Labels')
+              )
+            ),
+            React.createElement('tbody',null,
+              lines.map(function(line) {
+                return React.createElement('tr',{key:line.lineNum,style:{borderBottom:'1px solid #f3f4f6'}},
+                  React.createElement('td',{style:{padding:'8px 4px',fontSize:13,fontWeight:600}},line.lineNum),
+                  React.createElement('td',{style:{padding:'8px 4px',fontSize:12,maxWidth:350,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},line.description),
+                  React.createElement('td',{style:{padding:'8px 4px',textAlign:'center'}},
+                    React.createElement('input',{type:'number',min:0,max:99,value:counts[String(line.lineNum)]||0,onChange:function(ln){return function(e){updateCount(ln,e.target.value)}}(line.lineNum),style:{width:50,textAlign:'center',padding:'4px',border:'1px solid #d1d5db',borderRadius:4,fontSize:13}})
+                  )
+                );
+              })
+            )
+          ),
+          React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},
+            React.createElement('button',{className:'btn btn-secondary',onClick:onClose},'Cancel'),
+            React.createElement('div',{style:{display:'flex',gap:8}},
+              React.createElement('button',{className:'btn',style:{background:'#6b7280',color:'#fff'},onClick:function(){
+                var allCounts = Object.assign({}, counts);
+                var keys = Object.keys(allCounts);
+                for (var k = 0; k < keys.length; k++) { allCounts[keys[k]] = 0; }
+                setCounts(allCounts);
+              }},'Clear All'),
+              React.createElement('button',{className:'btn',style:{background:'#0891b2',color:'#fff',fontWeight:600},onClick:handlePrint},'Generate & Print Labels')
+            )
+          )
+        )
+      );
+    }
+
     function App(){
       var ts=useState('manifests');var tab=ts[0];var setTab=ts[1];
       var ds=useState({generators:[],transporters:[],facilities:[],wasteStreams:[],manifests:[]});var data=ds[0];var setData=ds[1];
@@ -121,6 +221,7 @@
       var ls=useState(true);var loading=ls[0];var setLoading=ls[1];
       var gs=useState(null);var preselectedGen=gs[0];var setPreselectedGen=gs[1];
       var ems=useState(null);var editManifestFromGen=ems[0];var setEditManifestFromGen=ems[1];
+      var lqs=useState(null);var labelQtyManifestId=lqs[0];var setLabelQtyManifestId=lqs[1];
       var loadAllData=useCallback(function(){return api.get('/api/data').then(function(d){setData(d);setLoading(false)}).catch(function(e){console.error(e);setLoading(false)})},[]);
       useEffect(function(){loadAllData();var es=new EventSource('/api/events');es.onmessage=function(e){if(e.data==='connected')setConnected(true)};es.addEventListener('update',function(){loadAllData()});es.onerror=function(){setConnected(false)};return function(){es.close()}},[loadAllData]);
       if(loading) return React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontSize:18,color:'#888'}},'Loading...');
@@ -143,24 +244,26 @@
           React.createElement('span',{className:'status-dot '+(connected?'connected':'disconnected'),title:connected?'Connected':'Disconnected'})
         ),
         React.createElement('div',{className:'main-content'},
-          tab==='manifests'?React.createElement(ManifestsTab,{data:data,reload:loadAllData,preselectedGen:preselectedGen,clearPreselected:function(){setPreselectedGen(null)},manifestType:'hazardous',editManifestFromGen:editManifestFromGen,clearEditManifest:function(){setEditManifestFromGen(null)}}):null,
-          tab==='nonhaz'?React.createElement(ManifestsTab,{data:data,reload:loadAllData,preselectedGen:null,clearPreselected:function(){},manifestType:'nonhaz',editManifestFromGen:editManifestFromGen,clearEditManifest:function(){setEditManifestFromGen(null)}}):null,
+          tab==='manifests'?React.createElement(ManifestsTab,{data:data,reload:loadAllData,preselectedGen:preselectedGen,clearPreselected:function(){setPreselectedGen(null)},manifestType:'hazardous',editManifestFromGen:editManifestFromGen,clearEditManifest:function(){setEditManifestFromGen(null)},onPrintLabels:function(mid){setLabelQtyManifestId(mid)}}):null,
+          tab==='nonhaz'?React.createElement(ManifestsTab,{data:data,reload:loadAllData,preselectedGen:null,clearPreselected:function(){},manifestType:'nonhaz',editManifestFromGen:editManifestFromGen,clearEditManifest:function(){setEditManifestFromGen(null)},onPrintLabels:function(mid){setLabelQtyManifestId(mid)}}):null,
           tab==='labels'?React.createElement(LabelsTab,{data:data,reload:loadAllData}):null,
-          tab==='bols'?React.createElement(BolsTab,{data:data,reload:loadAllData}):null,
-          tab==='generators'?React.createElement(ProfileTab,{data:data,type:'generators',label:{singular:'Generator',plural:'Generators'},reload:loadAllData,onNewManifest:function(gen){setPreselectedGen(gen);setTab('manifests')},onEditManifest:function(m){setEditManifestFromGen(m);setTab((m.manifestType||'hazardous')==='nonhaz'?'nonhaz':'manifests')}}):null,
+          tab==='bols'?React.createElement(BolsTab,{data:data,reload:loadAllData,onPrintLabels:function(mid){setLabelQtyManifestId(mid)}}):null,
+          tab==='generators'?React.createElement(ProfileTab,{data:data,type:'generators',label:{singular:'Generator',plural:'Generators'},reload:loadAllData,onNewManifest:function(gen){setPreselectedGen(gen);setTab('manifests')},onEditManifest:function(m){setEditManifestFromGen(m);setTab((m.manifestType||'hazardous')==='nonhaz'?'nonhaz':'manifests')},onPrintLabels:function(mid){setLabelQtyManifestId(mid)}}):null,
           tab==='transporters'?React.createElement(ProfileTab,{data:data,type:'transporters',label:{singular:'Transporter',plural:'Transporters'},reload:loadAllData}):null,
           tab==='facilities'?React.createElement(ProfileTab,{data:data,type:'facilities',label:{singular:'Facility',plural:'Facilities'},reload:loadAllData}):null,
           tab==='waste'?React.createElement(WasteStreamsTab,{data:data,reload:loadAllData}):null,
           tab==='profiles'?React.createElement(ProfilesTab,{data:data,reload:loadAllData}):null,
           tab==='import'?React.createElement(ImportTab,{reload:loadAllData}):null,
           tab==='alignment'?React.createElement(AlignmentTabs,null):null
-        )
+        ),
+        labelQtyManifestId?React.createElement(LabelQuantityModal,{manifestId:labelQtyManifestId,data:data,onClose:function(){setLabelQtyManifestId(null)},onDone:function(){loadAllData()}}):null
       );
     }
 
     function ManifestsTab(props){
       var data=props.data;var reload=props.reload;var preselectedGen=props.preselectedGen;var clearPreselected=props.clearPreselected;
       var editManifestFromGen=props.editManifestFromGen;var clearEditManifest=props.clearEditManifest;
+      var onPrintLabels=props.onPrintLabels;
       var manifestType=props.manifestType||'hazardous';
       var isNonHaz=manifestType==='nonhaz';
       var s1=useState(false);var showModal=s1[0];var setShowModal=s1[1];
@@ -208,7 +311,7 @@
                   React.createElement('button',{className:'btn btn-sm btn-success',onClick:function(){handlePreview(m)}},'Preview'),
                   React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id,'_blank')}},'Print with Epson'),
                   React.createElement('button',{className:'btn btn-sm',style:{background:'#6d28d9',color:'#fff'},onClick:function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id+'?page=2','_blank')}},'Cont.'),
-                  React.createElement('button',{className:'btn btn-sm',style:{background:'#0891b2',color:'#fff'},onClick:function(){var mid=m.id;api.post('/api/labels/from-manifest/'+mid).then(function(result){reload();window.open('/api/print/labels/manifest/'+mid,'_blank')}).catch(function(){alert('Error generating labels')})}},'Print Labels'),
+                  React.createElement('button',{className:'btn btn-sm',style:{background:'#0891b2',color:'#fff'},onClick:function(){if(onPrintLabels)onPrintLabels(m.id)}},'Print Labels'),
                   React.createElement('button',{className:'btn btn-sm',style:{background:'#6b7280',color:'#fff'},onClick:function(){handleArchive(m)}},'Archive'),
                   React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){handleDelete(m.id)}},'X')
                 )
@@ -216,7 +319,7 @@
             )
           )
         ),
-        showModal?React.createElement(ManifestFormModal,{manifest:editing,data:data,manifestType:manifestType,reload:function(){reload();setShowModal(false);setEditing(null);clearPreselected()},onClose:function(){setShowModal(false);setEditing(null);clearPreselected()},onPreview:function(formData){setPreviewing(formData)}}):null,
+        showModal?React.createElement(ManifestFormModal,{manifest:editing,data:data,manifestType:manifestType,reload:function(){reload();setShowModal(false);setEditing(null);clearPreselected()},onClose:function(){setShowModal(false);setEditing(null);clearPreselected()},onPreview:function(formData){setPreviewing(formData)},onPrintLabels:onPrintLabels}):null,
         previewing?React.createElement(ManifestPreview,{formData:previewing,onClose:function(){setPreviewing(null)}}):null
       );
     }
@@ -227,6 +330,7 @@
       var onClose = props.onClose;
       var reload = props.reload;
       var onPreview = props.onPreview;
+      var onPrintLabels = props.onPrintLabels;
       var manifestType = props.manifestType || (manifest && manifest.manifestType) || 'hazardous';
       var isNonHaz = manifestType === 'nonhaz';
       var initPreGen = manifest && manifest._preselectedGen ? manifest._preselectedGen : null;
@@ -705,6 +809,7 @@
               <button className="btn btn-success" onClick={function(){if(onPreview)onPreview(form)}}>Preview</button>
               {savedId ? <button className="btn btn-print" onClick={function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+savedId,'_blank')}}>Print with Epson</button> : null}
               {savedId ? <button className="btn btn-sm" style={{background:'#6d28d9',color:'#fff',marginLeft:4}} onClick={function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+savedId+'?page=2','_blank')}}>Print Cont.</button> : null}
+              {savedId ? <button className="btn btn-sm" style={{background:'#0891b2',color:'#fff',marginLeft:4}} onClick={function(){if(onPrintLabels)onPrintLabels(savedId)}}>Print Labels</button> : null}
               <button className="btn btn-sm" style={{background:'#3b82f6',color:'#fff'}} onClick={function(){
                 setShowContinuation(true);
               }}>Continuation Page</button>
@@ -1218,13 +1323,13 @@
     }
 
     function ProfileTab(props){
-      var data=props.data;var type=props.type;var label=props.label;var reload=props.reload;var onNewManifest=props.onNewManifest;var onEditManifest=props.onEditManifest;
+      var data=props.data;var type=props.type;var label=props.label;var reload=props.reload;var onNewManifest=props.onNewManifest;var onEditManifest=props.onEditManifest;var onPrintLabels=props.onPrintLabels;
       var s1=useState(false);var showModal=s1[0];var setShowModal=s1[1];
       var s2=useState(null);var editing=s2[0];var setEditing=s2[1];
       var s3=useState('');var search=s3[0];var setSearch=s3[1];
       var s4=useState(null);var expandedId=s4[0];var setExpandedId=s4[1];
       var s5=useState(null);var viewItem=s5[0];var setViewItem=s5[1];
-      var items=(data[type]||[]).filter(function(item){var s=search.toLowerCase();return !s||(item.name||'').toLowerCase().indexOf(s)>=0||(item.epaId||'').toLowerCase().indexOf(s)>=0});
+      var items=(data[type]||[]).slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'')}).filter(function(item){var s=search.toLowerCase();return !s||(item.name||'').toLowerCase().indexOf(s)>=0||(item.epaId||'').toLowerCase().indexOf(s)>=0});
       function handleSave(formData){var p=editing?api.put('/api/'+type+'/'+editing.id,formData):api.post('/api/'+type,formData);p.then(function(){reload();setShowModal(false);setEditing(null)})}
       function handleDelete(id){if(confirm('Delete this '+label.singular.toLowerCase()+'?')){api.del('/api/'+type+'/'+id).then(reload)}}
       function handleClearAll(){if(confirm('DELETE ALL GENERATORS? This cannot be undone!')){if(confirm('Are you really sure? This will remove all '+data.generators.length+' generators.')){api.del('/api/generators').then(reload)}}}
@@ -1349,6 +1454,7 @@
                                 ),
                                 React.createElement('div',{style:{display:'flex',gap:4}},
                                   React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/'+(isNH?'nonhaz-direct':'direct')+'/'+m.id,'_blank')}},'Print with Epson'),
+                                  React.createElement('button',{className:'btn btn-sm',style:{background:'#0891b2',color:'#fff'},onClick:function(){var mid=m.id;return function(){if(onPrintLabels)onPrintLabels(mid)}}()},'Print Labels'),
                                   React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){if(onEditManifest)onEditManifest(m)}},'Edit'),
                                   React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){var mid=m.id;return function(){if(confirm('Delete this manifest permanently?')){api.del('/api/manifests/'+mid).then(reload)}}}()},'X')
                                 )
@@ -2854,7 +2960,7 @@
     // ==========================================
 
     function BolsTab(props){
-      var data=props.data;var reload=props.reload;
+      var data=props.data;var reload=props.reload;var onPrintLabels=props.onPrintLabels;
       var s1=useState([]);var bols=s1[0];var setBols=s1[1];
       var s2=useState(false);var showForm=s2[0];var setShowForm=s2[1];
       var s3=useState(null);var editBol=s3[0];var setEditBol=s3[1];
@@ -2914,7 +3020,7 @@
               ),
               React.createElement('div',{style:{display:'flex',gap:6}},
                 React.createElement('button',{onClick:function(){handlePrint(b.id)},style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print with Epson'),
-                b.manifestId?React.createElement('button',{onClick:function(){var bb=b;return function(){api.post('/api/labels/from-manifest/'+bb.manifestId).then(function(){window.open('/api/print/labels/manifest/'+bb.manifestId,'_blank')}).catch(function(){alert('Error generating labels')})}}(),style:{padding:'4px 10px',fontSize:12,background:'#0891b2',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print Labels'):null,
+                b.manifestId?React.createElement('button',{onClick:function(){var bb=b;return function(){if(onPrintLabels)onPrintLabels(bb.manifestId)}}(),style:{padding:'4px 10px',fontSize:12,background:'#0891b2',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print Labels'):null,
                 React.createElement('button',{onClick:function(){var bb=b;return function(){setEditBol(bb);setShowForm(true)}}(),style:{padding:'4px 10px',fontSize:12,background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Edit'),
                 React.createElement('button',{onClick:function(){var bb=b;return function(){handleArchiveBol(bb)}}(),style:{padding:'4px 10px',fontSize:12,background:'#6b7280',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Archive'),
                 React.createElement('button',{onClick:function(){var bb=b;return function(){handleDelete(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Delete')
@@ -2945,7 +3051,7 @@
                 ),
                 React.createElement('div',{style:{display:'flex',gap:6}},
                   React.createElement('button',{onClick:function(){var bb=b;return function(){handlePrint(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#2563eb',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print with Epson'),
-                  b.manifestId?React.createElement('button',{onClick:function(){var bb=b;return function(){api.post('/api/labels/from-manifest/'+bb.manifestId).then(function(){window.open('/api/print/labels/manifest/'+bb.manifestId,'_blank')}).catch(function(){alert('Error generating labels')})}}(),style:{padding:'4px 10px',fontSize:12,background:'#0891b2',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print Labels'):null,
+                  b.manifestId?React.createElement('button',{onClick:function(){var bb=b;return function(){if(onPrintLabels)onPrintLabels(bb.manifestId)}}(),style:{padding:'4px 10px',fontSize:12,background:'#0891b2',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Print Labels'):null,
                   React.createElement('button',{onClick:function(){var bb=b;return function(){setEditBol(bb);setShowForm(true)}}(),style:{padding:'4px 10px',fontSize:12,background:'#f59e0b',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Edit'),
                   React.createElement('button',{onClick:function(){var bb=b;return function(){handleArchiveBol(bb)}}(),style:{padding:'4px 10px',fontSize:12,background:'#6b7280',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Archive'),
                   React.createElement('button',{onClick:function(){var bb=b;return function(){handleDelete(bb.id)}}(),style:{padding:'4px 10px',fontSize:12,background:'#ef4444',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}},'Delete')

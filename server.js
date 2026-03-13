@@ -51,6 +51,14 @@ var data = loadData();
 if (!data.profiles) { data.profiles = []; saveData(data); }
 // Ensure labels array exists for older data files
 if (!data.labels) { data.labels = []; saveData(data); }
+// One-time cleanup: remove all existing manifest-generated labels (test prints) and any batch-print leftovers
+var labelsBefore = (data.labels || []).length;
+data.labels = (data.labels || []).filter(function(l) { return !l._batchPrint; });
+if (!data._labelCleanupDone) {
+  data.labels = (data.labels || []).filter(function(l) { return !l.manifestId; });
+  data._labelCleanupDone = true;
+}
+if (data.labels.length < labelsBefore) { console.log('Cleaned up ' + (labelsBefore - data.labels.length) + ' leftover manifest-generated labels'); saveData(data); }
 
 // Middleware
 app.use(express.json({ limit: '50mb' }));
@@ -2048,11 +2056,20 @@ app.post('/api/labels/from-manifest/:manifestId', function(req, res) {
   }
   if (!manifest) return res.status(404).json({ error: 'Manifest not found' });
 
+  // Accept optional counts per waste line: { "counts": { "1": 3, "2": 1 } }
+  var counts = (req.body && req.body.counts) ? req.body.counts : {};
+  // If batchPrint flag is set, labels are temporary and will be cleaned up after printing
+  var isBatchPrint = !!(req.body && req.body.batchPrint);
+
   var wasteLineCount = parseInt(manifest.wasteLineCount) || 4;
   var labels = [];
   for (var w = 1; w <= wasteLineCount; w++) {
     var desc = manifest['waste' + w + 'Description'] || '';
     if (!desc.trim()) continue;
+
+    // How many labels for this line? Default to 1 if not specified
+    var labelCount = parseInt(counts[String(w)]) || 1;
+    if (labelCount < 1) labelCount = 1;
 
     // Build city/state/zip — use site location first, fall back to mailing
     var cityStateZip = manifest.genSiteCityStZip || manifest.generatorCityStZip || '';
@@ -2077,29 +2094,32 @@ app.post('/api/labels/from-manifest/:manifestId', function(req, res) {
       }
     }
 
-    var label = {
-      id: Date.now().toString() + '-' + w,
-      createdAt: new Date().toISOString(),
-      manifestId: manifest.id,
-      wasteLineNum: w,
-      dotShippingName: desc,
-      profileNumber: profileNum,
-      genName: manifest.generatorName || '',
-      genAddress: manifest.genSiteAddress || manifest.generatorAddress || '',
-      genCityStateZip: cityStateZip,
-      genPhone: manifest.generatorPhone || '',
-      epaId: manifest.generatorEpaId || '',
-      epaWasteNum: wasteCodes,
-      stateWasteCode: '',
-      accumStartDate: '',
-      manifestTrackNo: manifest.manifestTrackingNum || manifest.manifestTrackingNumber || '',
-      contents: '',
-      physicalState: '',
-      hazProps: { flammable: false, corrosive: false, reactivity: false, toxic: false, other: false }
-    };
-    labels.push(label);
-    if (!data.labels) data.labels = [];
-    data.labels.push(label);
+    for (var lc = 0; lc < labelCount; lc++) {
+      var label = {
+        id: Date.now().toString() + '-' + w + '-' + lc,
+        createdAt: new Date().toISOString(),
+        manifestId: manifest.id,
+        wasteLineNum: w,
+        dotShippingName: desc,
+        profileNumber: profileNum,
+        genName: manifest.generatorName || '',
+        genAddress: manifest.genSiteAddress || manifest.generatorAddress || '',
+        genCityStateZip: cityStateZip,
+        genPhone: manifest.generatorPhone || '',
+        epaId: manifest.generatorEpaId || '',
+        epaWasteNum: wasteCodes,
+        stateWasteCode: '',
+        accumStartDate: '',
+        manifestTrackNo: manifest.manifestTrackingNum || manifest.manifestTrackingNumber || '',
+        contents: '',
+        physicalState: '',
+        hazProps: { flammable: false, corrosive: false, reactivity: false, toxic: false, other: false },
+        _batchPrint: isBatchPrint || false
+      };
+      labels.push(label);
+      if (!data.labels) data.labels = [];
+      data.labels.push(label);
+    }
   }
   saveData(data);
   res.json(labels);
@@ -2447,6 +2467,11 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
   html += '</div>';
   html += '</body></html>';
   res.type('html').send(html);
+
+  // Clean up: remove batch-print labels from the database so they don't clutter the Labels tab
+  var manifestId = req.params.manifestId;
+  data.labels = (data.labels || []).filter(function(l) { return !(l.manifestId === manifestId && l._batchPrint); });
+  saveData(data);
 });
 
 // ============================================================
