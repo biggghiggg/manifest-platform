@@ -1894,12 +1894,143 @@
           reload();
         }).catch(function(err){setTsdfResult({error:'Failed to save: '+err.message})});
       }
-      function handleUpload(e){var file=e.target.files[0];if(!file)return;setUploading(true);setResult(null);var formData=new FormData();formData.append('file',file);fetch('/api/import/quickbooks',{method:'POST',body:formData}).then(function(res){return res.json()}).then(function(data){if(data.error){setResult({error:data.error})}else{setResult({success:true,imported:data.imported,skipped:data.skipped||0,total:data.total});reload()}setUploading(false);if(fileRef.current)fileRef.current.value=''}).catch(function(err){setResult({error:'Upload failed: '+err.message});setUploading(false);if(fileRef.current)fileRef.current.value=''})}
+      function handleUpload(e){var file=e.target.files[0];if(!file)return;setUploading(true);setResult(null);var formData=new FormData();formData.append('file',file);fetch('/api/import/quickbooks',{method:'POST',body:formData}).then(function(res){return res.json()}).then(function(data){if(data.error){setResult({error:data.error})}else{setResult({success:true,imported:data.imported,skipped:data.skipped||0,total:data.total});reload();loadBatches()}setUploading(false);if(fileRef.current)fileRef.current.value=''}).catch(function(err){setResult({error:'Upload failed: '+err.message});setUploading(false);if(fileRef.current)fileRef.current.value=''})}
+
+      // Bulk import states
+      var transRef=useRef();
+      var facilRef=useRef();
+      var profRef=useRef();
+      var transResultState=useState(null);var transResult=transResultState[0];var setTransResult=transResultState[1];
+      var facilResultState=useState(null);var facilResult=facilResultState[0];var setFacilResult=facilResultState[1];
+      var profResultState=useState(null);var profResult=profResultState[0];var setProfResult=profResultState[1];
+      var transUpState=useState(false);var transUploading=transUpState[0];var setTransUploading=transUpState[1];
+      var facilUpState=useState(false);var facilUploading=facilUpState[0];var setFacilUploading=facilUpState[1];
+      var profUpState=useState(false);var profUploading=profUpState[0];var setProfUploading=profUpState[1];
+
+      // Import batches
+      var batchState=useState([]);var batches=batchState[0];var setBatches=batchState[1];
+      function loadBatches(){api.get('/api/import-batches').then(function(d){setBatches(d||[])})}
+      useEffect(function(){loadBatches()},[]);
+
+      function handleBulkUpload(endpoint,setRes,setUp,ref){
+        return function(e){
+          var file=e.target.files[0];if(!file)return;
+          setUp(true);setRes(null);
+          var formData=new FormData();formData.append('file',file);
+          fetch(endpoint,{method:'POST',body:formData}).then(function(r){return r.json()}).then(function(d){
+            if(d.error){setRes({error:d.error})}else{setRes({success:true,imported:d.imported,skipped:d.skipped||0});reload();loadBatches()}
+            setUp(false);if(ref.current)ref.current.value='';
+          }).catch(function(err){setRes({error:'Upload failed: '+err.message});setUp(false);if(ref.current)ref.current.value=''});
+        }
+      }
+
+      function handleUndo(batchId){
+        if(!confirm('Undo this import? All records from this batch will be permanently deleted.'))return;
+        api.del('/api/import-batches/'+batchId).then(function(d){
+          if(d&&d.success){loadBatches();reload()}else{alert('Failed to undo import')}
+        }).catch(function(){alert('Error undoing import')});
+      }
+
       return React.createElement('div',null,
-        React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:16}},'Add New TSDF (Facility)'),
+
+        // ===== RECENT IMPORTS (UNDO) =====
+        batches.length>0?React.createElement('div',{style:{marginBottom:24}},
+          React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:16}},'Recent Imports'),
+          React.createElement('div',{className:'card'},
+            React.createElement('p',{style:{color:'#666',marginBottom:12}},'If an import was incorrect, click Undo to delete all records from that batch.'),
+            React.createElement('table',{className:'data-table'},
+              React.createElement('thead',null,
+                React.createElement('tr',null,
+                  React.createElement('th',null,'Type'),
+                  React.createElement('th',null,'Records'),
+                  React.createElement('th',null,'Skipped'),
+                  React.createElement('th',null,'Imported'),
+                  React.createElement('th',null,'Actions')
+                )
+              ),
+              React.createElement('tbody',null,
+                batches.slice().reverse().map(function(b){
+                  return React.createElement('tr',{key:b.id},
+                    React.createElement('td',{style:{textTransform:'capitalize'}},b.description||b.type),
+                    React.createElement('td',null,b.count),
+                    React.createElement('td',null,b.skipped||0),
+                    React.createElement('td',null,new Date(b.importedAt).toLocaleString()),
+                    React.createElement('td',null,
+                      React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){var bid=b.id;return function(){handleUndo(bid)}}()},'Undo Import')
+                    )
+                  )
+                })
+              )
+            )
+          )
+        ):null,
+
+        // ===== BULK IMPORT SECTIONS =====
+        React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:16}},'Bulk Import'),
+
+        React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:24}},
+
+          // Transporters import
+          React.createElement('div',{className:'card'},
+            React.createElement('h4',{style:{marginBottom:8}},'Import Transporters'),
+            React.createElement('p',{style:{color:'#666',fontSize:13,marginBottom:12}},'Upload CSV or Excel with columns: Name, EPA ID, Phone, Address (or Street/City/State/Zip)'),
+            React.createElement('div',{className:'upload-area',onClick:function(){transRef.current&&transRef.current.click()},style:{padding:16}},
+              React.createElement('div',{style:{fontSize:16,fontWeight:600}},'Upload Transporters File'),
+              React.createElement('p',{style:{fontSize:12}},'Excel (.xlsx) or CSV'),
+              React.createElement('input',{ref:transRef,type:'file',accept:'.xlsx,.xls,.csv',style:{display:'none'},onChange:handleBulkUpload('/api/import/transporters',setTransResult,setTransUploading,transRef)})
+            ),
+            transUploading?React.createElement('p',{style:{marginTop:8,color:'#888',fontSize:13}},'Importing...'):null,
+            transResult&&transResult.success?React.createElement('div',{style:{marginTop:8,padding:8,background:'#d1fae5',borderRadius:6,color:'#065f46',fontSize:13}},'Imported '+transResult.imported+' transporters'+(transResult.skipped>0?' ('+transResult.skipped+' skipped)':'')):null,
+            transResult&&transResult.error?React.createElement('div',{style:{marginTop:8,padding:8,background:'#fee2e2',borderRadius:6,color:'#991b1b',fontSize:13}},transResult.error):null
+          ),
+
+          // Facilities import
+          React.createElement('div',{className:'card'},
+            React.createElement('h4',{style:{marginBottom:8}},'Import Facilities (TSDFs)'),
+            React.createElement('p',{style:{color:'#666',fontSize:13,marginBottom:12}},'Upload CSV or Excel with columns: Name, EPA ID, Phone, Address (or Street/City/State/Zip)'),
+            React.createElement('div',{className:'upload-area',onClick:function(){facilRef.current&&facilRef.current.click()},style:{padding:16}},
+              React.createElement('div',{style:{fontSize:16,fontWeight:600}},'Upload Facilities File'),
+              React.createElement('p',{style:{fontSize:12}},'Excel (.xlsx) or CSV'),
+              React.createElement('input',{ref:facilRef,type:'file',accept:'.xlsx,.xls,.csv',style:{display:'none'},onChange:handleBulkUpload('/api/import/facilities',setFacilResult,setFacilUploading,facilRef)})
+            ),
+            facilUploading?React.createElement('p',{style:{marginTop:8,color:'#888',fontSize:13}},'Importing...'):null,
+            facilResult&&facilResult.success?React.createElement('div',{style:{marginTop:8,padding:8,background:'#d1fae5',borderRadius:6,color:'#065f46',fontSize:13}},'Imported '+facilResult.imported+' facilities'+(facilResult.skipped>0?' ('+facilResult.skipped+' skipped)':'')):null,
+            facilResult&&facilResult.error?React.createElement('div',{style:{marginTop:8,padding:8,background:'#fee2e2',borderRadius:6,color:'#991b1b',fontSize:13}},facilResult.error):null
+          ),
+
+          // Waste Streams import
+          React.createElement('div',{className:'card'},
+            React.createElement('h4',{style:{marginBottom:8}},'Import Waste Streams'),
+            React.createElement('p',{style:{color:'#666',fontSize:13,marginBottom:12}},'Upload CSV or Excel with columns: Name, Profile ID, Generator Name, EPA ID, DOT Description, Waste Codes'),
+            React.createElement('div',{className:'upload-area',onClick:function(){profRef.current&&profRef.current.click()},style:{padding:16}},
+              React.createElement('div',{style:{fontSize:16,fontWeight:600}},'Upload Waste Streams File'),
+              React.createElement('p',{style:{fontSize:12}},'Excel (.xlsx) or CSV'),
+              React.createElement('input',{ref:profRef,type:'file',accept:'.xlsx,.xls,.csv',style:{display:'none'},onChange:handleBulkUpload('/api/import/waste-streams-bulk',setProfResult,setProfUploading,profRef)})
+            ),
+            profUploading?React.createElement('p',{style:{marginTop:8,color:'#888',fontSize:13}},'Importing...'):null,
+            profResult&&profResult.success?React.createElement('div',{style:{marginTop:8,padding:8,background:'#d1fae5',borderRadius:6,color:'#065f46',fontSize:13}},'Imported '+profResult.imported+' waste streams'+(profResult.skipped>0?' ('+profResult.skipped+' skipped)':'')):null,
+            profResult&&profResult.error?React.createElement('div',{style:{marginTop:8,padding:8,background:'#fee2e2',borderRadius:6,color:'#991b1b',fontSize:13}},profResult.error):null
+          ),
+
+          // QuickBooks generators import
+          React.createElement('div',{className:'card'},
+            React.createElement('h4',{style:{marginBottom:8}},'Import Generators (QuickBooks)'),
+            React.createElement('p',{style:{color:'#666',fontSize:13,marginBottom:12}},'Upload QuickBooks customer list. Maps Customer Name, Bill/Ship Address, Phone, EPA ID.'),
+            React.createElement('div',{className:'upload-area',onClick:function(){fileRef.current&&fileRef.current.click()},style:{padding:16}},
+              React.createElement('div',{style:{fontSize:16,fontWeight:600}},'Upload QuickBooks File'),
+              React.createElement('p',{style:{fontSize:12}},'Excel (.xlsx) or CSV'),
+              React.createElement('input',{ref:fileRef,type:'file',accept:'.xlsx,.xls,.csv',style:{display:'none'},onChange:handleUpload})
+            ),
+            uploading?React.createElement('p',{style:{marginTop:8,color:'#888',fontSize:13}},'Importing...'):null,
+            result&&result.success?React.createElement('div',{style:{marginTop:8,padding:8,background:'#d1fae5',borderRadius:6,color:'#065f46',fontSize:13}},'Imported '+result.imported+' generators'+(result.skipped>0?' ('+result.skipped+' skipped)':'')):null,
+            result&&result.error?React.createElement('div',{style:{marginTop:8,padding:8,background:'#fee2e2',borderRadius:6,color:'#991b1b',fontSize:13}},result.error):null
+          )
+        ),
+
+        // ===== QUICK ADD TSDF =====
+        React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:16}},'Quick Add TSDF (Facility)'),
         React.createElement('div',{className:'card',style:{marginBottom:24}},
-          React.createElement('h4',{style:{marginBottom:12}},'Quick Add Facility'),
-          React.createElement('p',{style:{color:'#666',marginBottom:16}},'Add a new Treatment, Storage, and Disposal Facility for use on manifests.'),
+          React.createElement('p',{style:{color:'#666',marginBottom:16}},'Add a single Treatment, Storage, and Disposal Facility for use on manifests.'),
           React.createElement('div',{className:'form-grid'},
             React.createElement('div',{className:'form-group'},
               React.createElement('label',null,'Facility Name'),
@@ -1933,39 +2064,6 @@
           React.createElement('button',{className:'btn btn-primary',onClick:saveTsdf,style:{marginTop:12}},'Add Facility'),
           tsdfResult&&tsdfResult.success?React.createElement('div',{style:{marginTop:12,padding:10,background:'#d1fae5',borderRadius:8,color:'#065f46'}},tsdfResult.success):null,
           tsdfResult&&tsdfResult.error?React.createElement('div',{style:{marginTop:12,padding:10,background:'#fee2e2',borderRadius:8,color:'#991b1b'}},tsdfResult.error):null
-        ),
-
-        React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:16}},'Import from QuickBooks'),
-        React.createElement('div',{className:'card'},
-          React.createElement('h4',{style:{marginBottom:12}},'Upload Customer List (Excel or CSV)'),
-          React.createElement('p',{style:{color:'#666',marginBottom:16}},'Export your customer list from QuickBooks. Bill Address maps to mailing address, Ship Address maps to site address.'),
-          React.createElement('div',{className:'upload-area',onClick:function(){fileRef.current&&fileRef.current.click()}},
-            React.createElement('div',{style:{fontSize:24,fontWeight:600}},'Upload File'),
-            React.createElement('p',null,React.createElement('strong',null,'Click to upload'),' or drag and drop'),
-            React.createElement('p',{style:{fontSize:12}},'Excel (.xlsx, .xls) or CSV files'),
-            React.createElement('input',{ref:fileRef,type:'file',accept:'.xlsx,.xls,.csv',style:{display:'none'},onChange:handleUpload})
-          ),
-          uploading?React.createElement('p',{style:{marginTop:12,color:'#888'}},'Importing...'):null,
-          result&&result.success?React.createElement('div',{style:{marginTop:16,padding:12,background:'#d1fae5',borderRadius:8,color:'#065f46'}},'Successfully imported ',React.createElement('strong',null,result.imported),' new generators out of ',result.total,' rows.',(result.skipped>0?' ('+result.skipped+' duplicates skipped)':'')):null,
-          result&&result.error?React.createElement('div',{style:{marginTop:16,padding:12,background:'#fee2e2',borderRadius:8,color:'#991b1b'}},'Error: ',result.error):null
-        ),
-        React.createElement('div',{className:'card',style:{marginTop:20}},
-          React.createElement('h4',{style:{marginBottom:12}},'Column Mapping'),
-          React.createElement('table',{className:'data-table'},
-            React.createElement('thead',null,
-              React.createElement('tr',null,
-                React.createElement('th',null,'QuickBooks Column'),
-                React.createElement('th',null,'Maps To')
-              )
-            ),
-            React.createElement('tbody',null,
-              React.createElement('tr',null,React.createElement('td',null,'Customer full name'),React.createElement('td',null,'Generator Name')),
-              React.createElement('tr',null,React.createElement('td',null,'Bill address'),React.createElement('td',null,'Mailing Address')),
-              React.createElement('tr',null,React.createElement('td',null,'Ship address'),React.createElement('td',null,'Site Address')),
-              React.createElement('tr',null,React.createElement('td',null,'Phone numbers'),React.createElement('td',null,'Phone')),
-              React.createElement('tr',null,React.createElement('td',null,'EPA ID Number'),React.createElement('td',null,'EPA ID'))
-            )
-          )
         )
       );
     }

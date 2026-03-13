@@ -353,6 +353,8 @@ app.post('/api/import/quickbooks', upload.single('file'), function(req, res) {
     }
 
     var imported = 0;
+    var skipped = 0;
+    var batchId = 'import_' + Date.now();
     for (var r2 = headerRowIdx + 1; r2 < rows.length; r2++) {
       var dataRow = rows[r2];
       if (!dataRow || !dataRow[nameCol]) continue;
@@ -363,7 +365,7 @@ app.post('/api/import/quickbooks', upload.single('file'), function(req, res) {
       for (var d = 0; d < data.generators.length; d++) {
         if (data.generators[d].name === name) { exists = true; break; }
       }
-      if (exists) continue;
+      if (exists) { skipped++; continue; }
 
       var phone = phoneCol !== -1 ? String(dataRow[phoneCol] || '').trim() : '';
       var billAddr = billCol !== -1 ? parseAddress(dataRow[billCol]) : { street: '', city: '', state: '', zip: '' };
@@ -385,9 +387,23 @@ app.post('/api/import/quickbooks', upload.single('file'), function(req, res) {
         city: shipAddr.city,
         state: shipAddr.state,
         zip: shipAddr.zip,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        _importBatchId: batchId
       });
       imported++;
+    }
+
+    // Track import batch
+    if (!data._importBatches) data._importBatches = [];
+    if (imported > 0) {
+      data._importBatches.push({
+        id: batchId,
+        type: 'generators',
+        count: imported,
+        skipped: skipped,
+        importedAt: new Date().toISOString(),
+        description: 'QuickBooks generators'
+      });
     }
 
     saveData(data);
@@ -397,6 +413,8 @@ app.post('/api/import/quickbooks', upload.single('file'), function(req, res) {
     res.json({
       success: true,
       imported: imported,
+      skipped: skipped,
+      batchId: batchId,
       total: data.generators.length,
       columns: { name: nameCol, phone: phoneCol, bill: billCol, ship: shipCol, epa: epaCol },
       headers: headers
@@ -405,6 +423,324 @@ app.post('/api/import/quickbooks', upload.single('file'), function(req, res) {
     console.error('Import error:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ============================================================
+// BULK IMPORT - Generic CSV/Excel for Transporters, Facilities, Profiles
+// ============================================================
+
+// Helper: flexible column finder for import
+function findImportCol(headers, keywords) {
+  for (var i = 0; i < headers.length; i++) {
+    var h = headers[i].toLowerCase();
+    var match = true;
+    for (var k = 0; k < keywords.length; k++) {
+      if (h.indexOf(keywords[k].toLowerCase()) === -1) { match = false; break; }
+    }
+    if (match) return i;
+  }
+  return -1;
+}
+
+// Helper: parse address string
+function parseImportAddress(addr) {
+  if (!addr) return { street: '', city: '', state: '', zip: '' };
+  var str = String(addr).trim();
+  var parts = str.split(',');
+  if (parts.length >= 3) {
+    var street = parts[0].trim();
+    var city = parts[1].trim();
+    var rest = parts.slice(2).join(',').trim();
+    var szMatch = rest.match(/([A-Za-z]{2})\s+(\d{5}(-\d{4})?)/);
+    if (szMatch) return { street: street, city: city, state: szMatch[1].toUpperCase(), zip: szMatch[2] };
+    return { street: street, city: city, state: rest.replace(/\d/g,'').trim(), zip: rest.replace(/[^\d-]/g,'').trim() };
+  }
+  if (parts.length === 2) {
+    var szMatch2 = parts[1].trim().match(/([A-Za-z]{2})\s+(\d{5}(-\d{4})?)/);
+    if (szMatch2) return { street: parts[0].trim(), city: '', state: szMatch2[1].toUpperCase(), zip: szMatch2[2] };
+  }
+  var noComma = str.match(/^(.+?),?\s+([A-Za-z]+),?\s+([A-Za-z]{2})\s+(\d{5}(-\d{4})?)$/);
+  if (noComma) return { street: noComma[1], city: noComma[2], state: noComma[3].toUpperCase(), zip: noComma[4] };
+  return { street: str, city: '', state: '', zip: '' };
+}
+
+// Bulk import transporters
+app.post('/api/import/transporters', upload.single('file'), function(req, res) {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    var workbook = XLSX.readFile(req.file.path);
+    var sheet = workbook.Sheets[workbook.SheetNames[0]];
+    var rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+    // Find header row
+    var headerRowIdx = 0;
+    var headers = (rows[0] || []).map(function(h) { return String(h || '').trim(); });
+    for (var r = 0; r < Math.min(rows.length, 10); r++) {
+      var row = rows[r] || [];
+      for (var c = 0; c < row.length; c++) {
+        var cell = String(row[c] || '').toLowerCase();
+        if (cell.indexOf('name') !== -1 || cell.indexOf('transporter') !== -1 || cell.indexOf('company') !== -1) {
+          headerRowIdx = r;
+          headers = row.map(function(h) { return String(h || '').trim(); });
+          break;
+        }
+      }
+    }
+
+    var nameCol = findImportCol(headers, ['name']);
+    if (nameCol === -1) nameCol = findImportCol(headers, ['company']);
+    if (nameCol === -1) nameCol = findImportCol(headers, ['transporter']);
+    if (nameCol === -1) nameCol = 0;
+    var epaCol = findImportCol(headers, ['epa']);
+    var phoneCol = findImportCol(headers, ['phone']);
+    var addressCol = findImportCol(headers, ['address']);
+    if (addressCol === -1) addressCol = findImportCol(headers, ['street']);
+    var cityCol = findImportCol(headers, ['city']);
+    var stateCol = findImportCol(headers, ['state']);
+    var zipCol = findImportCol(headers, ['zip']);
+
+    var imported = 0; var skipped = 0;
+    var batchId = 'import_' + Date.now();
+    for (var r2 = headerRowIdx + 1; r2 < rows.length; r2++) {
+      var dataRow = rows[r2];
+      if (!dataRow || !dataRow[nameCol]) continue;
+      var name = String(dataRow[nameCol] || '').trim();
+      if (!name) continue;
+      var exists = false;
+      for (var d = 0; d < (data.transporters || []).length; d++) {
+        if ((data.transporters[d].name || '').toLowerCase() === name.toLowerCase()) { exists = true; break; }
+      }
+      if (exists) { skipped++; continue; }
+
+      var addr = addressCol !== -1 ? String(dataRow[addressCol] || '').trim() : '';
+      var city = cityCol !== -1 ? String(dataRow[cityCol] || '').trim() : '';
+      var state = stateCol !== -1 ? String(dataRow[stateCol] || '').trim() : '';
+      var zip = zipCol !== -1 ? String(dataRow[zipCol] || '').trim() : '';
+      if (!city && !state && addr) { var pa = parseImportAddress(addr); addr = pa.street; city = pa.city; state = pa.state; zip = pa.zip; }
+
+      if (!data.transporters) data.transporters = [];
+      data.transporters.push({
+        id: Date.now().toString() + '_t' + r2,
+        name: name,
+        epaId: epaCol !== -1 ? String(dataRow[epaCol] || '').trim() : '',
+        phone: phoneCol !== -1 ? String(dataRow[phoneCol] || '').trim() : '',
+        siteAddress: addr, city: city, state: state, zip: zip,
+        createdAt: new Date().toISOString(),
+        _importBatchId: batchId
+      });
+      imported++;
+    }
+
+    if (!data._importBatches) data._importBatches = [];
+    if (imported > 0) {
+      data._importBatches.push({ id: batchId, type: 'transporters', count: imported, skipped: skipped, importedAt: new Date().toISOString(), description: 'Bulk transporters' });
+    }
+    saveData(data);
+    broadcast('update', { collection: 'transporters', action: 'import' });
+    try { fs.unlinkSync(req.file.path); } catch (e) {}
+    res.json({ success: true, imported: imported, skipped: skipped, batchId: batchId });
+  } catch (err) { console.error('Import transporters error:', err); res.status(500).json({ error: err.message }); }
+});
+
+// Bulk import facilities (TSDFs)
+app.post('/api/import/facilities', upload.single('file'), function(req, res) {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    var workbook = XLSX.readFile(req.file.path);
+    var sheet = workbook.Sheets[workbook.SheetNames[0]];
+    var rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+    var headerRowIdx = 0;
+    var headers = (rows[0] || []).map(function(h) { return String(h || '').trim(); });
+    for (var r = 0; r < Math.min(rows.length, 10); r++) {
+      var row = rows[r] || [];
+      for (var c = 0; c < row.length; c++) {
+        var cell = String(row[c] || '').toLowerCase();
+        if (cell.indexOf('name') !== -1 || cell.indexOf('facility') !== -1 || cell.indexOf('tsdf') !== -1) {
+          headerRowIdx = r;
+          headers = row.map(function(h) { return String(h || '').trim(); });
+          break;
+        }
+      }
+    }
+
+    var nameCol = findImportCol(headers, ['name']);
+    if (nameCol === -1) nameCol = findImportCol(headers, ['facility']);
+    if (nameCol === -1) nameCol = findImportCol(headers, ['tsdf']);
+    if (nameCol === -1) nameCol = 0;
+    var epaCol = findImportCol(headers, ['epa']);
+    var phoneCol = findImportCol(headers, ['phone']);
+    var addressCol = findImportCol(headers, ['address']);
+    if (addressCol === -1) addressCol = findImportCol(headers, ['street']);
+    var cityCol = findImportCol(headers, ['city']);
+    var stateCol = findImportCol(headers, ['state']);
+    var zipCol = findImportCol(headers, ['zip']);
+
+    var imported = 0; var skipped = 0;
+    var batchId = 'import_' + Date.now();
+    for (var r2 = headerRowIdx + 1; r2 < rows.length; r2++) {
+      var dataRow = rows[r2];
+      if (!dataRow || !dataRow[nameCol]) continue;
+      var name = String(dataRow[nameCol] || '').trim();
+      if (!name) continue;
+      var exists = false;
+      for (var d = 0; d < (data.facilities || []).length; d++) {
+        if ((data.facilities[d].name || '').toLowerCase() === name.toLowerCase()) { exists = true; break; }
+      }
+      if (exists) { skipped++; continue; }
+
+      var addr = addressCol !== -1 ? String(dataRow[addressCol] || '').trim() : '';
+      var city = cityCol !== -1 ? String(dataRow[cityCol] || '').trim() : '';
+      var state = stateCol !== -1 ? String(dataRow[stateCol] || '').trim() : '';
+      var zip = zipCol !== -1 ? String(dataRow[zipCol] || '').trim() : '';
+      if (!city && !state && addr) { var pa = parseImportAddress(addr); addr = pa.street; city = pa.city; state = pa.state; zip = pa.zip; }
+
+      if (!data.facilities) data.facilities = [];
+      data.facilities.push({
+        id: Date.now().toString() + '_f' + r2,
+        name: name,
+        epaId: epaCol !== -1 ? String(dataRow[epaCol] || '').trim() : '',
+        phone: phoneCol !== -1 ? String(dataRow[phoneCol] || '').trim() : '',
+        siteAddress: addr, city: city, state: state, zip: zip,
+        createdAt: new Date().toISOString(),
+        _importBatchId: batchId
+      });
+      imported++;
+    }
+
+    if (!data._importBatches) data._importBatches = [];
+    if (imported > 0) {
+      data._importBatches.push({ id: batchId, type: 'facilities', count: imported, skipped: skipped, importedAt: new Date().toISOString(), description: 'Bulk facilities/TSDFs' });
+    }
+    saveData(data);
+    broadcast('update', { collection: 'facilities', action: 'import' });
+    try { fs.unlinkSync(req.file.path); } catch (e) {}
+    res.json({ success: true, imported: imported, skipped: skipped, batchId: batchId });
+  } catch (err) { console.error('Import facilities error:', err); res.status(500).json({ error: err.message }); }
+});
+
+// Bulk import waste streams (profiles from CSV/Excel)
+app.post('/api/import/waste-streams-bulk', upload.single('file'), function(req, res) {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    var workbook = XLSX.readFile(req.file.path);
+    var sheet = workbook.Sheets[workbook.SheetNames[0]];
+    var rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+    var headerRowIdx = 0;
+    var headers = (rows[0] || []).map(function(h) { return String(h || '').trim(); });
+    for (var r = 0; r < Math.min(rows.length, 10); r++) {
+      var row = rows[r] || [];
+      for (var c = 0; c < row.length; c++) {
+        var cell = String(row[c] || '').toLowerCase();
+        if (cell.indexOf('profile') !== -1 || cell.indexOf('waste') !== -1 || cell.indexOf('name') !== -1 || cell.indexOf('generator') !== -1 || cell.indexOf('dot') !== -1 || cell.indexOf('description') !== -1) {
+          headerRowIdx = r;
+          headers = row.map(function(h) { return String(h || '').trim(); });
+          break;
+        }
+      }
+    }
+
+    // Try to find columns flexibly
+    var nameCol = findImportCol(headers, ['name']);
+    if (nameCol === -1) nameCol = findImportCol(headers, ['waste']);
+    var profileIdCol = findImportCol(headers, ['profile']);
+    if (profileIdCol === -1) profileIdCol = findImportCol(headers, ['id']);
+    var genNameCol = findImportCol(headers, ['generator']);
+    var epaCol = findImportCol(headers, ['epa']);
+    var descCol = findImportCol(headers, ['description']);
+    if (descCol === -1) descCol = findImportCol(headers, ['dot']);
+    if (descCol === -1) descCol = findImportCol(headers, ['shipping']);
+    var codesCol = findImportCol(headers, ['code']);
+    if (codesCol === -1) codesCol = findImportCol(headers, ['hazardous']);
+    var stateCodesCol = findImportCol(headers, ['state']);
+
+    var imported = 0; var skipped = 0;
+    var batchId = 'import_' + Date.now();
+    for (var r2 = headerRowIdx + 1; r2 < rows.length; r2++) {
+      var dataRow = rows[r2];
+      if (!dataRow) continue;
+
+      // Build a name from available data
+      var wsName = nameCol !== -1 ? String(dataRow[nameCol] || '').trim() : '';
+      var profileId = profileIdCol !== -1 ? String(dataRow[profileIdCol] || '').trim() : '';
+      var desc = descCol !== -1 ? String(dataRow[descCol] || '').trim() : '';
+      var genName = genNameCol !== -1 ? String(dataRow[genNameCol] || '').trim() : '';
+
+      // Need at least a name or profileId
+      if (!wsName && !profileId && !desc) continue;
+      if (!wsName) wsName = profileId ? (profileId + (genName ? ' - ' + genName : '')) : desc.substring(0, 60);
+
+      // Check for duplicate by name or profileId
+      var exists = false;
+      for (var d = 0; d < (data.wasteStreams || []).length; d++) {
+        if ((data.wasteStreams[d].name || '').toLowerCase() === wsName.toLowerCase()) { exists = true; break; }
+        if (profileId && (data.wasteStreams[d].profileId || '') === profileId) { exists = true; break; }
+      }
+      if (exists) { skipped++; continue; }
+
+      var wasteStream = {
+        id: Date.now().toString() + '_ws' + r2,
+        name: wsName,
+        profileId: profileId,
+        generatorName: genName,
+        generatorEpaId: epaCol !== -1 ? String(dataRow[epaCol] || '').trim() : '',
+        dotDescription: desc,
+        wasteCodes: codesCol !== -1 ? String(dataRow[codesCol] || '').trim() : '',
+        stateCodes: stateCodesCol !== -1 ? String(dataRow[stateCodesCol] || '').trim() : '',
+        createdAt: new Date().toISOString(),
+        _importBatchId: batchId
+      };
+
+      if (!data.wasteStreams) data.wasteStreams = [];
+      data.wasteStreams.push(wasteStream);
+
+      // Auto-link to matching generator
+      if (typeof autoLinkWasteStreamToGenerator === 'function') {
+        autoLinkWasteStreamToGenerator(wasteStream);
+      }
+      imported++;
+    }
+
+    if (!data._importBatches) data._importBatches = [];
+    if (imported > 0) {
+      data._importBatches.push({ id: batchId, type: 'wasteStreams', count: imported, skipped: skipped, importedAt: new Date().toISOString(), description: 'Bulk waste streams' });
+    }
+    saveData(data);
+    broadcast('update', { collection: 'wasteStreams', action: 'import' });
+    try { fs.unlinkSync(req.file.path); } catch (e) {}
+    res.json({ success: true, imported: imported, skipped: skipped, batchId: batchId });
+  } catch (err) { console.error('Import waste streams error:', err); res.status(500).json({ error: err.message }); }
+});
+
+// Get import batches
+app.get('/api/import-batches', function(req, res) {
+  res.json(data._importBatches || []);
+});
+
+// Undo (delete) an import batch
+app.delete('/api/import-batches/:batchId', function(req, res) {
+  var batchId = req.params.batchId;
+  var batch = null;
+  var batches = data._importBatches || [];
+  for (var i = 0; i < batches.length; i++) {
+    if (batches[i].id === batchId) { batch = batches[i]; break; }
+  }
+  if (!batch) return res.status(404).json({ error: 'Import batch not found' });
+
+  var collection = batch.type;
+  var before = (data[collection] || []).length;
+  data[collection] = (data[collection] || []).filter(function(item) {
+    return item._importBatchId !== batchId;
+  });
+  var removed = before - (data[collection] || []).length;
+
+  // Remove the batch record
+  data._importBatches = batches.filter(function(b) { return b.id !== batchId; });
+
+  saveData(data);
+  broadcast('update', { collection: collection, action: 'import-undo' });
+  res.json({ success: true, removed: removed, collection: collection });
 });
 
 // One-time backfill: link existing imported profiles to generators
