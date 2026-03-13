@@ -1431,12 +1431,34 @@
                                 React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){removeProfileFromGenerator(item,w.id)}},'Remove')
                               )}):React.createElement('p',{style:{color:'#999',fontSize:13}},'No profiles linked yet')
                             ),
-                            React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center',marginBottom:16}},
+                            React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:16}},
                               React.createElement('select',{value:'',onChange:function(e){if(e.target.value){addProfileToGenerator(item,e.target.value);e.target.value=''}},style:{padding:'6px 8px'}},
                                 React.createElement('option',{value:''},'-- Add Profile --'),
                                 availableWastes.map(function(w){return React.createElement('option',{key:w.id,value:w.id},w.name)})
                               ),
-                              React.createElement('button',{className:'btn btn-sm btn-primary',onClick:function(){onNewManifest(item)}},'New Manifest')
+                              React.createElement('button',{className:'btn btn-sm btn-primary',onClick:function(){onNewManifest(item)}},'New Manifest'),
+                              (function(){
+                                var genItem=item;
+                                return React.createElement('label',{className:'btn btn-sm',style:{background:'#7c3aed',color:'#fff',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:4,margin:0}},
+                                  'Import Profile (PDF)',
+                                  React.createElement('input',{type:'file',accept:'.pdf',style:{display:'none'},onChange:function(e){
+                                    var file=e.target.files[0];if(!file)return;
+                                    var formData=new FormData();formData.append('file',file);
+                                    fetch('/api/import/waste-profile',{method:'POST',body:formData}).then(function(r){return r.json()}).then(function(d){
+                                      if(d.success&&d.wasteStream){
+                                        addProfileToGenerator(genItem,d.wasteStream.id);
+                                        reload();
+                                        alert('Imported: '+d.wasteStream.name+(d.source?' ('+d.source+')':''));
+                                      }else if(d.error){
+                                        alert('Import error: '+d.error);
+                                      }else{
+                                        alert('Could not parse profile from PDF');
+                                      }
+                                    }).catch(function(err){alert('Upload failed: '+err.message)});
+                                    e.target.value='';
+                                  }})
+                                );
+                              })()
                             ),
                             React.createElement('h5',{style:{marginBottom:8,marginTop:4,color:'#555',borderTop:'1px solid #e5e7eb',paddingTop:12}},'Archived Manifests'),
                             genManifests.length>0?genManifests.map(function(m){
