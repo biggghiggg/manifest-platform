@@ -1315,11 +1315,13 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
       if (isPRR) {
         console.log('Detected PRR profile format');
 
-        // Approval No. (profile ID)
+        // Template Name = original PDF filename (without .pdf extension)
+        var prrFileName = (req.file.originalname || '').replace(/\.pdf$/i, '').trim();
+
+        // Approval No. → Profile ID
         var prrProfileId = '';
         var prrApprMatch = fullText.match(/APPROVAL\s*NO\.?\s*:?\s*([\w\d-]+)/i);
         if (prrApprMatch) prrProfileId = prrApprMatch[1].trim();
-        // Fallback: Code No.
         if (!prrProfileId) {
           var prrCodeMatch = fullText.match(/CODE\s*NO\.?\s*:?\s*([\w\d-]+)/i);
           if (prrCodeMatch) prrProfileId = prrCodeMatch[1].trim();
@@ -1330,7 +1332,6 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
         var prrGnMatch = fullText.match(/GENERATOR\s*NAME\s*\n?\s*([^\n]+)/i);
         if (prrGnMatch) {
           prrGenName = prrGnMatch[1].trim();
-          // Clean up: remove trailing field labels that may have been captured
           prrGenName = prrGenName.replace(/\s*(GENERATOR EPA|FACILITY ADDRESS|TRANSPORTER|PHONE).*$/i, '').trim();
         }
 
@@ -1339,7 +1340,6 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
         var prrEpaMatch = fullText.match(/GENERATOR\s*EPA\s*ID#?\s*:?\s*\n?\s*([A-Z]{2}[A-Z0-9]{8,12})/i);
         if (prrEpaMatch) prrEpaId = prrEpaMatch[1].trim();
         if (!prrEpaId) {
-          // Look for standalone EPA ID pattern near generator section
           var prrGenBlock = fullText.match(/GENERATOR[\s\S]{0,500}/i);
           if (prrGenBlock) {
             var prrEpaInGen = prrGenBlock[0].match(/\b([A-Z]{2}[A-Z0-9]{8,12})\b/);
@@ -1347,15 +1347,7 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
           }
         }
 
-        // Waste Description
-        var prrWasteDesc = '';
-        var prrWdMatch = fullText.match(/WASTE\s*DESCRIPTION\s*\n?\s*([^\n]+)/i);
-        if (prrWdMatch) {
-          prrWasteDesc = prrWdMatch[1].trim();
-          prrWasteDesc = prrWasteDesc.replace(/\s*PROCESS GENERATING.*$/i, '').trim();
-        }
-
-        // F. Shipping Name
+        // F. Shipping Name → US DOT Description (full line including all components)
         var prrShipName = '';
         var prrSnMatch = fullText.match(/(?:F\.\s*)?SHIPPING\s*NAME[:\s]*\n?\s*([^\n]+)/i);
         if (prrSnMatch) {
@@ -1363,33 +1355,58 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
           prrShipName = prrShipName.replace(/\s*HAZARDOUS\s*CLASS.*$/i, '').trim();
         }
 
-        // Hazardous Class + ID# (UN/NA) + PG + RQ
+        // Parse UN/NA, Hazard Class, and Packing Group from the shipping name line
+        // PRR puts it all on one line, e.g.: "RQ, Waste Flammable Liquids, N.O.S., 3, UN1993, PG II"
+        // or from separate fields on the form
         var prrHazClass = '';
         var prrUnNum = '';
         var prrPG = '';
-        var prrRQ = '';
 
-        var prrHcMatch = fullText.match(/HAZARDOUS\s*CLASS[:\s]*([^\s]+)/i);
-        if (prrHcMatch) prrHazClass = prrHcMatch[1].trim().replace(/ID#.*$/i, '').trim();
+        // Extract UN/NA from shipping name line first
+        var prrUnInShip = prrShipName.match(/\b(UN\s*\d{4,5}|NA\s*\d{4,5})\b/i);
+        if (prrUnInShip) prrUnNum = prrUnInShip[1].replace(/\s+/g, '').toUpperCase();
 
-        var prrIdMatch = fullText.match(/ID#[:\s]*((?:UN|NA)\s*\d{4,5})/i);
-        if (prrIdMatch) prrUnNum = prrIdMatch[1].replace(/\s+/g, '').trim();
+        // Extract Packing Group from shipping name (PG I, PG II, PG III, or just I, II, III at end)
+        var prrPgInShip = prrShipName.match(/\bPG\s*(I{1,3})\b/i) || prrShipName.match(/,\s*(I{1,3})\s*$/);
+        if (prrPgInShip) prrPG = prrPgInShip[1].toUpperCase();
+
+        // Extract Hazard Class from shipping name (a number like 3, 4.1, 6.1, 8, 9 etc.)
+        // Look for standalone hazard class number - typically after a comma, before UN number
+        var prrHcInShip = prrShipName.match(/,\s*(\d(?:\.\d)?)\s*,/);
+        if (prrHcInShip) prrHazClass = prrHcInShip[1];
+
+        // Also try the separate HAZARDOUS CLASS field on the form as fallback
+        if (!prrHazClass) {
+          var prrHcMatch = fullText.match(/HAZARDOUS\s*CLASS[:\s]*([0-9]+(?:\.[0-9])?)/i);
+          if (prrHcMatch) prrHazClass = prrHcMatch[1].trim();
+        }
+        // Fallback: ID# field on form
         if (!prrUnNum) {
-          // Try to find UN/NA in shipping name
-          var prrUnInShip = prrShipName.match(/\b(UN\d{4,5}|NA\d{4,5})\b/i);
-          if (prrUnInShip) prrUnNum = prrUnInShip[1];
+          var prrIdMatch = fullText.match(/ID#[:\s]*((?:UN|NA)\s*\d{4,5})/i);
+          if (prrIdMatch) prrUnNum = prrIdMatch[1].replace(/\s+/g, '').toUpperCase();
+        }
+        // Fallback: PG field on form
+        if (!prrPG) {
+          var prrPgMatch = fullText.match(/\bPG[:\s]*(I{1,3})\b/i);
+          if (prrPgMatch) prrPG = prrPgMatch[1].toUpperCase();
         }
 
-        var prrPgMatch = fullText.match(/\bPG[:\s]*(I{1,3})\b/i);
-        if (prrPgMatch) prrPG = prrPgMatch[1].trim();
+        // Build clean DOT description - strip out the parsed components so the description is clean
+        var prrDotDesc = prrShipName ? prrShipName.toUpperCase() : '';
+        // Remove UN/NA number, PG, and standalone hazard class number from the DOT description
+        // so the description field is just the proper shipping name
+        prrDotDesc = prrDotDesc.replace(/,?\s*UN\s*\d{4,5}/i, '');
+        prrDotDesc = prrDotDesc.replace(/,?\s*NA\s*\d{4,5}/i, '');
+        prrDotDesc = prrDotDesc.replace(/,?\s*PG\s*I{1,3}/i, '');
+        prrDotDesc = prrDotDesc.replace(/,?\s*\b(I{1,3})\s*$/i, '');
+        // Remove trailing hazard class number (e.g. ", 3," or ", 8,")
+        prrDotDesc = prrDotDesc.replace(/,\s*\d(?:\.\d)?\s*,/g, ',');
+        prrDotDesc = prrDotDesc.replace(/,\s*\d(?:\.\d)?\s*$/g, '');
+        prrDotDesc = prrDotDesc.replace(/,\s*$/, '').replace(/\s+/g, ' ').trim();
 
-        var prrRqMatch = fullText.match(/\bRQ[:\s]*(\d+)\s*lb/i);
-        if (prrRqMatch) prrRQ = prrRqMatch[1].trim();
-
-        // Is hazardous?
         var prrIsHaz = !!(prrHazClass || prrUnNum);
 
-        // USEPA Waste Code
+        // USEPA WASTE CODE → RCRA waste codes
         var prrRcraCodes = '';
         var prrRcraMatch = fullText.match(/USEPA\s*WASTE\s*CODE[:\s]*\n?\s*([A-Z0-9][\w\s,.-]*)/i);
         if (prrRcraMatch) {
@@ -1397,7 +1414,7 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
           if (prrRcraCodes.toLowerCase() === 'none' || prrRcraCodes.match(/^STATE/i)) prrRcraCodes = '';
         }
 
-        // State Code
+        // STATE CODE → State waste codes
         var prrStateCodes = '';
         var prrScMatch = fullText.match(/STATE\s*CODE[:\s]*\n?\s*([A-Z0-9][\w\s,.-]*)/i);
         if (prrScMatch) {
@@ -1406,28 +1423,9 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
           if (prrStateCodes.toLowerCase() === 'none') prrStateCodes = '';
         }
 
-        // Physical State
-        var prrPhysical = '';
-        if (fullText.match(/SOLID/i) && fullText.indexOf('PHYSICALSTATE') !== -1) {
-          // Check checkboxes near physical state section
-          var physBlock = fullText.match(/PHYSICALSTATE[\s\S]{0,200}/i);
-          if (physBlock) {
-            if (physBlock[0].match(/SOLID/)) prrPhysical = 'Solid';
-            if (physBlock[0].match(/LIQUID(?!\/)/) && physBlock[0].indexOf('LIQUID/SOLID') === -1) prrPhysical = 'Liquid';
-            if (physBlock[0].match(/SLUDGE/)) prrPhysical = 'Sludge';
-          }
-        }
-
-        // Uppercase DOT shipping name
-        var prrDotDesc = prrShipName ? prrShipName.toUpperCase() : '';
-        // If N.O.S., append waste description
-        if (prrDotDesc && prrDotDesc.match(/N\.O\.S\.?\s*$/) && prrWasteDesc) {
-          prrDotDesc = prrDotDesc + ' (' + prrWasteDesc.toUpperCase() + ')';
-        }
-
         var prrWasteStream = {
           id: Date.now().toString(),
-          name: prrWasteDesc || 'PRR Profile ' + prrProfileId,
+          name: prrFileName || 'PRR Profile ' + prrProfileId,
           dotDescription: prrDotDesc,
           hm: prrIsHaz ? 'X' : '',
           containerType: '',
@@ -1438,11 +1436,10 @@ app.post('/api/import/waste-profile', upload.single('file'), function(req, res) 
           packingGroup: prrPG,
           stateWasteCodes: prrStateCodes,
           ergNum: '',
-          profileId: prrProfileId ? 'PRR-' + prrProfileId : '',
+          profileId: prrProfileId,
           source: 'PRR',
           generatorName: prrGenName,
           generatorEpaId: prrEpaId,
-          physicalState: prrPhysical,
           createdAt: new Date().toISOString()
         };
 
