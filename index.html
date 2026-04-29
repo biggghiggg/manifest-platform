@@ -76,6 +76,25 @@
       put:function(url,body){return fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json()})},
       del:function(url){return fetch(url,{method:'DELETE'}).then(function(r){return r.json()})}
     };
+
+    // Per-browser printer offset helper - reads from localStorage so each computer/printer
+    // can have independent alignment without affecting other users
+    function printOpen(url, target) {
+      var colOff = parseFloat(localStorage.getItem('ies_printerColOffset') || '0') || 0;
+      var rowOff = parseFloat(localStorage.getItem('ies_printerRowOffset') || '0') || 0;
+      var colOffLabel = parseFloat(localStorage.getItem('ies_printerColOffsetLabel') || '0') || 0;
+      var rowOffLabel = parseFloat(localStorage.getItem('ies_printerRowOffsetLabel') || '0') || 0;
+      // Determine if this is a label print
+      var isLabel = url.indexOf('/label/') !== -1 || url.indexOf('/labels/') !== -1;
+      var addCol = isLabel ? colOffLabel : colOff;
+      var addRow = isLabel ? rowOffLabel : rowOff;
+      if (addCol !== 0 || addRow !== 0) {
+        var sep = url.indexOf('?') === -1 ? '?' : '&';
+        url = url + sep + 'colOffset=' + addCol + '&rowOffset=' + addRow;
+      }
+      window.open(url, target || '_blank');
+    }
+
     var CONTAINER_TYPES=[{code:'BA',label:'Burlap Bags'},{code:'BX',label:'Box'},{code:'CF',label:'Fiber/Cardboard Boxes'},{code:'CM',label:'Metal Boxes'},{code:'CW',label:'Wooden Boxes'},{code:'CY',label:'Cylinders'},{code:'DF',label:'Fiberboard Drums'},{code:'DM',label:'Metal Drums'},{code:'DP',label:'Plastic Drums'},{code:'DW',label:'Wooden Drums'},{code:'HG',label:'Hopper/Gondola Cars'},{code:'TC',label:'Tank Cars'},{code:'TP',label:'Portable Tanks'},{code:'TT',label:'Dump Truck/Trailer'}];
     var CONTAINER_SIZES=['5 gal','15 gal','30 gal','55 gal','85 gal','CYB','Pallet','275 gal tote','330 gal tote','20 yard bin','40 yard bin'];
     var UNIT_TYPES=[{code:'G',label:'Gallons'},{code:'K',label:'Kilograms'},{code:'L',label:'Liters'},{code:'M',label:'Metric Tons'},{code:'N',label:'Cubic Yards'},{code:'P',label:'Pounds'},{code:'T',label:'Tons (Short)'},{code:'Y',label:'Cubic Meters'}];
@@ -162,7 +181,7 @@
         for (var k = 0; k < keys.length; k++) { total += (parseInt(counts[keys[k]]) || 0); }
         if (total === 0) { alert('Please select at least 1 label to print.'); return; }
         api.post('/api/labels/from-manifest/' + manifestId, { counts: counts, batchPrint: true }).then(function() {
-          window.open('/api/print/labels/manifest/' + manifestId, '_blank');
+          printOpen('/api/print/labels/manifest/' + manifestId);
           if (onDone) onDone();
           onClose();
         }).catch(function() { alert('Error generating labels'); });
@@ -238,6 +257,7 @@
             React.createElement('button',{className:'nav-tab'+(tab==='facilities'?' active':''),onClick:function(){setTab('facilities')}},'Facilities'),
             React.createElement('button',{className:'nav-tab'+(tab==='waste'?' active':''),onClick:function(){setTab('waste')}},'Waste Streams'),
             React.createElement('button',{className:'nav-tab'+(tab==='profiles'?' active':''),onClick:function(){setTab('profiles')}},'Profiles'),
+            React.createElement('button',{className:'nav-tab'+(tab==='pickups'?' active':''),onClick:function(){setTab('pickups')},style:{color:tab==='pickups'?'#fff':'rgba(255,255,255,0.85)'}},'Pickups'),
             React.createElement('button',{className:'nav-tab'+(tab==='import'?' active':''),onClick:function(){setTab('import')}},'Import'),
             React.createElement('button',{className:'nav-tab'+(tab==='alignment'?' active':''),onClick:function(){setTab('alignment')},style:{color:tab==='alignment'?'#fff':'rgba(255,255,255,0.4)'}},'Alignment')
           ),
@@ -253,6 +273,7 @@
           tab==='facilities'?React.createElement(ProfileTab,{data:data,type:'facilities',label:{singular:'Facility',plural:'Facilities'},reload:loadAllData}):null,
           tab==='waste'?React.createElement(WasteStreamsTab,{data:data,reload:loadAllData}):null,
           tab==='profiles'?React.createElement(ProfilesTab,{data:data,reload:loadAllData}):null,
+          tab==='pickups'?React.createElement(PickupsTab,{data:data,reload:loadAllData}):null,
           tab==='import'?React.createElement(ImportTab,{reload:loadAllData}):null,
           tab==='alignment'?React.createElement(AlignmentTabs,null):null
         ),
@@ -275,7 +296,7 @@
       function handleSave(f){var p=editing?api.put('/api/manifests/'+editing.id,f):api.post('/api/manifests',f);p.then(function(){reload();setShowModal(false);setEditing(null)})}
       function handleDelete(id){if(confirm('Delete this manifest?')){api.del('/api/manifests/'+id).then(reload)}}
       function handleArchive(m){if(confirm('Archive this document? It will move to the generator tab.')){api.put('/api/manifests/'+m.id,Object.assign({},m,{status:'archived'})).then(reload)}}
-      function handlePrint(id){window.open('/api/print/'+(isNonHaz?'nonhaz':'manifest')+'/'+id,'_blank')}
+      function handlePrint(id){printOpen('/api/print/'+(isNonHaz?'nonhaz':'manifest')+'/'+id)}
       function handlePreview(m){var previewData=Object.assign({},m);var wl=[];var wlc=parseInt(m.wasteLineCount)||4;for(var i=1;i<=wlc;i++){wl.push({hm:m['waste'+i+'HM']||'',description:m['waste'+i+'Description']||'',containerNum:m['waste'+i+'ContainerNum']||'',containerType:m['waste'+i+'ContainerType']||'',containerSize:m['waste'+i+'ContainerSize']||'',qty:m['waste'+i+'Qty']||'',unit:m['waste'+i+'Unit']||'',wasteCodes:m['waste'+i+'WasteCodes']||'',profileId:m['waste'+i+'ProfileId']||''})}previewData.wasteLines=wl;setPreviewing(previewData)}
       var items=(data.manifests||[]).filter(function(m){var mType=m.manifestType||'hazardous';if(mType!==manifestType)return false;if(m.status==='archived')return false;var s=search.toLowerCase();return !s||(m.manifestNum||'').toLowerCase().indexOf(s)>=0||(m.generatorName||'').toLowerCase().indexOf(s)>=0});
       return React.createElement('div',null,
@@ -309,8 +330,8 @@
                 React.createElement('td',{style:{display:'flex',gap:4,flexWrap:'wrap'}},
                   React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){setEditing(m);setShowModal(true)}},'Edit'),
                   React.createElement('button',{className:'btn btn-sm btn-success',onClick:function(){handlePreview(m)}},'Preview'),
-                  React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id,'_blank')}},'Print with Epson'),
-                  React.createElement('button',{className:'btn btn-sm',style:{background:'#6d28d9',color:'#fff'},onClick:function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id+'?page=2','_blank')}},'Cont.'),
+                  React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){printOpen('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id)}},'Print with Epson'),
+                  React.createElement('button',{className:'btn btn-sm',style:{background:'#6d28d9',color:'#fff'},onClick:function(){printOpen('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+m.id+'?page=2')}},'Cont.'),
                   React.createElement('button',{className:'btn btn-sm',style:{background:'#0891b2',color:'#fff'},onClick:function(){if(onPrintLabels)onPrintLabels(m.id)}},'Print Labels'),
                   React.createElement('button',{className:'btn btn-sm',style:{background:'#6b7280',color:'#fff'},onClick:function(){handleArchive(m)}},'Archive'),
                   React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){handleDelete(m.id)}},'X')
@@ -807,8 +828,8 @@
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
               <button className="btn btn-success" onClick={function(){if(onPreview)onPreview(form)}}>Preview</button>
-              {savedId ? <button className="btn btn-print" onClick={function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+savedId,'_blank')}}>Print with Epson</button> : null}
-              {savedId ? <button className="btn btn-sm" style={{background:'#6d28d9',color:'#fff',marginLeft:4}} onClick={function(){window.open('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+savedId+'?page=2','_blank')}}>Print Cont.</button> : null}
+              {savedId ? <button className="btn btn-print" onClick={function(){printOpen('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+savedId)}}>Print with Epson</button> : null}
+              {savedId ? <button className="btn btn-sm" style={{background:'#6d28d9',color:'#fff',marginLeft:4}} onClick={function(){printOpen('/api/print/'+(isNonHaz?'nonhaz-direct':'direct')+'/'+savedId+'?page=2')}}>Print Cont.</button> : null}
               {savedId ? <button className="btn btn-sm" style={{background:'#0891b2',color:'#fff',marginLeft:4}} onClick={function(){if(onPrintLabels)onPrintLabels(savedId)}}>Print Labels</button> : null}
               <button className="btn btn-sm" style={{background:'#3b82f6',color:'#fff'}} onClick={function(){
                 setShowContinuation(true);
@@ -881,13 +902,13 @@
                 var printPath = isNonHaz ? 'nonhaz-direct' : 'direct';
                 if (savedId) {
                   api.put('/api/manifests/' + savedId, payload).then(function() {
-                    window.open('/api/print/' + printPath + '/' + savedId + '?page=2', '_blank');
+                    printOpen('/api/print/' + printPath + '/' + savedId + '?page=2');
                   });
                 } else {
                   api.post('/api/manifests', payload).then(function(resp) {
                     if (resp && resp.id) {
                       setSavedId(resp.id);
-                      window.open('/api/print/' + printPath + '/' + resp.id + '?page=2', '_blank');
+                      printOpen('/api/print/' + printPath + '/' + resp.id + '?page=2');
                     }
                   });
                 }
@@ -1180,7 +1201,7 @@
             <div style={{background:'#006600',color:'#fff',padding:'8px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <span style={{fontWeight:700,fontSize:14}}>UNIFORM HAZARDOUS WASTE MANIFEST - EPA Form 8700-22 (Preview)</span>
               <div style={{display:'flex',gap:8}}>
-                {d.id ? <button className="btn btn-sm" style={{background:'#fff',color:'#333'}} onClick={function(){window.open('/api/print/direct/'+d.id,'_blank')}}>Print with Epson</button> : null}
+                {d.id ? <button className="btn btn-sm" style={{background:'#fff',color:'#333'}} onClick={function(){printOpen('/api/print/direct/'+d.id)}}>Print with Epson</button> : null}
                 <button className="btn btn-sm" style={{background:'#fff',color:'#333'}} onClick={function(){var pw=window.open('','_blank');pw.document.write('<html><head><title>Manifest Preview</title></head><body>');pw.document.write(document.querySelector('.modal-overlay:last-child > div').innerHTML);pw.document.write('</body></html>');pw.document.close();pw.print()}}>Print Preview</button>
                 <button className="btn btn-sm" style={{background:'rgba(255,255,255,0.3)',color:'#fff'}} onClick={onClose}>Close</button>
               </div>
@@ -1475,7 +1496,7 @@
                                   m.facilityName?React.createElement('span',{style:{marginLeft:8,fontSize:11,color:'#888'}},'F: '+m.facilityName):null
                                 ),
                                 React.createElement('div',{style:{display:'flex',gap:4}},
-                                  React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/'+(isNH?'nonhaz-direct':'direct')+'/'+m.id,'_blank')}},'Print with Epson'),
+                                  React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){printOpen('/api/print/'+(isNH?'nonhaz-direct':'direct')+'/'+m.id)}},'Print with Epson'),
                                   React.createElement('button',{className:'btn btn-sm',style:{background:'#0891b2',color:'#fff'},onClick:function(){var mid=m.id;return function(){if(onPrintLabels)onPrintLabels(mid)}}()},'Print Labels'),
                                   React.createElement('button',{className:'btn btn-sm btn-secondary',onClick:function(){if(onEditManifest)onEditManifest(m)}},'Edit'),
                                   React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){var mid=m.id;return function(){if(confirm('Delete this manifest permanently?')){api.del('/api/manifests/'+mid).then(reload)}}}()},'X')
@@ -1494,7 +1515,7 @@
                                     React.createElement('span',{style:{marginLeft:8,fontSize:11,color:'#999'}},'Printed: '+bPrintDate)
                                   ),
                                   React.createElement('div',{style:{display:'flex',gap:4}},
-                                    React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){window.open('/api/print/bol/'+b.id,'_blank')}},'Print with Epson'),
+                                    React.createElement('button',{className:'btn btn-sm btn-print',onClick:function(){printOpen('/api/print/bol/'+b.id)}},'Print with Epson'),
                                     React.createElement('button',{className:'btn btn-sm btn-danger',onClick:function(){var bid=b.id;return function(){if(confirm('Delete this BOL permanently?')){api.del('/api/bols/'+bid).then(reload)}}}()},'X')
                                   )
                                 )
@@ -1896,6 +1917,584 @@
           React.createElement('button',{className:'btn btn-secondary',onClick:onClose},'Cancel'),
           React.createElement('button',{className:'btn btn-primary',onClick:function(){onSave(form)}},'Save Waste Stream')
         )
+      );
+    }
+
+    // ============================================================
+    // WEEKLY SCHEDULE TAB
+    // ============================================================
+    function WeeklyScheduleTab(props) {
+      var data = props.data;
+      var reload = props.reload;
+      var allPickups = data.pickups || [];
+
+      // Week navigation
+      var s1=useState(0);var weekOffset=s1[0];var setWeekOffset=s1[1];
+
+      // Compute the Monday of the current offset week
+      function getWeekStart(offset) {
+        var now = new Date();
+        var day = now.getDay();
+        var diffToMon = (day === 0 ? -6 : 1 - day);
+        var monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMon + (offset * 7));
+        return monday;
+      }
+
+      var weekStart = getWeekStart(weekOffset);
+      var weekDays = [];
+      var dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      for (var d = 0; d < 7; d++) {
+        var dt = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + d);
+        weekDays.push({
+          date: dt,
+          label: dayLabels[d],
+          dateStr: dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0'),
+          shortDate: (dt.getMonth() + 1) + '/' + dt.getDate()
+        });
+      }
+
+      var weekLabel = (weekStart.getMonth() + 1) + '/' + weekStart.getDate() + '/' + weekStart.getFullYear();
+      var weekEndDate = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6);
+      var weekEndLabel = (weekEndDate.getMonth() + 1) + '/' + weekEndDate.getDate() + '/' + weekEndDate.getFullYear();
+
+      // Get only assigned (non-archived) pickups that have a date in this week
+      var weekDateStrs = {};
+      for (var wd = 0; wd < weekDays.length; wd++) {
+        weekDateStrs[weekDays[wd].dateStr] = true;
+      }
+
+      var assignedPickups = allPickups.filter(function(p) {
+        return p.status === 'assigned' && p.assignedDriver && p.assignedDate && weekDateStrs[p.assignedDate];
+      });
+
+      // Build driver list from assigned pickups this week
+      var driverMap = {};
+      for (var ap = 0; ap < assignedPickups.length; ap++) {
+        var pk = assignedPickups[ap];
+        var dName = pk.assignedDriver;
+        if (!driverMap[dName]) driverMap[dName] = {};
+        if (!driverMap[dName][pk.assignedDate]) driverMap[dName][pk.assignedDate] = [];
+        driverMap[dName][pk.assignedDate].push(pk);
+      }
+
+      // Also include all known drivers even if they have no jobs
+      var s2=useState([]);var allDrivers=s2[0];var setAllDrivers=s2[1];
+      useEffect(function() {
+        api.get('/api/drivers').then(function(d) {
+          var all = (d.drivers || []).concat(d.transporters || []);
+          var unique = [];
+          var seen = {};
+          for (var i = 0; i < all.length; i++) {
+            var low = all[i].toLowerCase();
+            if (!seen[low]) { seen[low] = true; unique.push(all[i]); }
+          }
+          unique.sort(function(a, b) { return a.localeCompare(b); });
+          setAllDrivers(unique);
+        });
+      }, [data]);
+
+      // Merge drivers: all known + any from this week's assignments
+      var driverNames = allDrivers.slice();
+      var driverSeen = {};
+      for (var dn = 0; dn < driverNames.length; dn++) driverSeen[driverNames[dn].toLowerCase()] = true;
+      var mapKeys = Object.keys(driverMap);
+      for (var mk = 0; mk < mapKeys.length; mk++) {
+        if (!driverSeen[mapKeys[mk].toLowerCase()]) {
+          driverNames.push(mapKeys[mk]);
+          driverSeen[mapKeys[mk].toLowerCase()] = true;
+        }
+      }
+      driverNames.sort(function(a, b) { return a.localeCompare(b); });
+
+      // Only show drivers who have at least one job this week (cleaner view), plus option to show all
+      var s3=useState(false);var showAllDrivers=s3[0];var setShowAllDrivers=s3[1];
+      var displayDrivers = showAllDrivers ? driverNames : driverNames.filter(function(dn) { return !!driverMap[dn]; });
+
+      // Today string for highlighting
+      var today = new Date();
+      var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+      function priorityColor(pri) {
+        if (pri === 'emergency') return '#fef2f2';
+        if (pri === 'urgent') return '#fffbeb';
+        return '#f0fdf4';
+      }
+
+      function priorityBorder(pri) {
+        if (pri === 'emergency') return '#dc2626';
+        if (pri === 'urgent') return '#f59e0b';
+        return '#10b981';
+      }
+
+      // Unassigned pickups (new, no driver yet)
+      var unassignedPickups = allPickups.filter(function(p) { return p.status === 'new'; });
+
+      return React.createElement('div', null,
+        // Header
+        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 } },
+          React.createElement('h2', { style: { margin: 0 } }, 'Weekly Schedule'),
+          React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
+            React.createElement('button', { className: 'btn btn-sm', style: { background: '#1e40af', color: '#fff', fontWeight: 'bold', padding: '6px 14px' }, onClick: function() { setWeekOffset(weekOffset - 1); } }, '<< Prev'),
+            React.createElement('span', { style: { fontWeight: 'bold', fontSize: 15, minWidth: 200, textAlign: 'center' } }, weekLabel + '  -  ' + weekEndLabel),
+            React.createElement('button', { className: 'btn btn-sm', style: { background: '#1e40af', color: '#fff', fontWeight: 'bold', padding: '6px 14px' }, onClick: function() { setWeekOffset(weekOffset + 1); } }, 'Next >>'),
+            React.createElement('button', { className: 'btn btn-sm', style: { background: weekOffset === 0 ? '#6b7280' : '#3b82f6', color: '#fff', marginLeft: 8 }, onClick: function() { setWeekOffset(0); } }, 'This Week'),
+            React.createElement('button', { className: 'btn btn-sm', style: { background: showAllDrivers ? '#8b5cf6' : '#6b7280', color: '#fff' }, onClick: function() { setShowAllDrivers(!showAllDrivers); } }, showAllDrivers ? 'Active Drivers Only' : 'Show All Drivers')
+          )
+        ),
+
+        // Unassigned jobs banner
+        unassignedPickups.length > 0 ?
+          React.createElement('div', { style: { background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 } },
+            React.createElement('span', { style: { fontWeight: 'bold', color: '#92400e', fontSize: 14 } }, unassignedPickups.length + ' unassigned pickup' + (unassignedPickups.length > 1 ? 's' : '') + ' awaiting scheduling'),
+            React.createElement('span', { style: { fontSize: 12, color: '#a16207' } }, '- Go to the Pickups tab to assign drivers')
+          ) : null,
+
+        // Schedule grid
+        displayDrivers.length === 0 ?
+          React.createElement('div', { style: { textAlign: 'center', padding: 40, color: '#9ca3af' } }, 'No drivers with assigned jobs this week.' + (showAllDrivers ? '' : ' Click "Show All Drivers" to see all.'))
+        :
+          React.createElement('div', { style: { overflowX: 'auto' } },
+            React.createElement('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+              // Header row
+              React.createElement('thead', null,
+                React.createElement('tr', null,
+                  React.createElement('th', { style: { position: 'sticky', left: 0, background: '#1e293b', color: '#fff', padding: '10px 14px', textAlign: 'left', minWidth: 140, zIndex: 2, borderRight: '2px solid #334155' } }, 'Driver'),
+                  weekDays.map(function(wd) {
+                    var isToday = wd.dateStr === todayStr;
+                    return React.createElement('th', { key: wd.dateStr, style: { background: isToday ? '#2563eb' : '#1e293b', color: '#fff', padding: '10px 8px', textAlign: 'center', minWidth: 130, borderLeft: '1px solid #334155' } },
+                      React.createElement('div', { style: { fontWeight: 'bold', fontSize: 13 } }, wd.label),
+                      React.createElement('div', { style: { fontSize: 11, opacity: 0.8 } }, wd.shortDate)
+                    );
+                  })
+                )
+              ),
+              // Driver rows
+              React.createElement('tbody', null,
+                displayDrivers.map(function(driverName, dIdx) {
+                  var driverJobs = driverMap[driverName] || {};
+                  var totalJobsThisWeek = 0;
+                  var dk = Object.keys(driverJobs);
+                  for (var dki = 0; dki < dk.length; dki++) totalJobsThisWeek += driverJobs[dk[dki]].length;
+
+                  return React.createElement('tr', { key: driverName, style: { background: dIdx % 2 === 0 ? '#fff' : '#f8fafc' } },
+                    React.createElement('td', { style: { position: 'sticky', left: 0, background: dIdx % 2 === 0 ? '#fff' : '#f8fafc', padding: '8px 14px', fontWeight: 'bold', color: '#1e293b', borderRight: '2px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', zIndex: 1, whiteSpace: 'nowrap' } },
+                      driverName,
+                      totalJobsThisWeek > 0 ? React.createElement('span', { style: { marginLeft: 6, background: '#8b5cf6', color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11 } }, totalJobsThisWeek) : null
+                    ),
+                    weekDays.map(function(wd) {
+                      var dayJobs = driverJobs[wd.dateStr] || [];
+                      var isToday = wd.dateStr === todayStr;
+                      return React.createElement('td', { key: wd.dateStr, style: { padding: 4, borderLeft: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', verticalAlign: 'top', background: isToday ? '#eff6ff' : 'inherit', minHeight: 60 } },
+                        dayJobs.length === 0 ?
+                          React.createElement('div', { style: { color: '#d1d5db', textAlign: 'center', padding: 8, fontSize: 18 } }, '-')
+                        :
+                          dayJobs.map(function(job) {
+                            return React.createElement('div', { key: job.id, style: { background: priorityColor(job.priority), border: '1px solid ' + priorityBorder(job.priority), borderLeft: '3px solid ' + priorityBorder(job.priority), borderRadius: 6, padding: '6px 8px', marginBottom: 4, cursor: 'default' }, title: 'Waste: ' + (job.wasteDescription || '') + '\nQty: ' + (job.containerCount || '?') + ' x ' + (job.containerSize || '') + '\nContact: ' + (job.contactName || '') + ' ' + (job.contactPhone || '') + '\nNotes: ' + (job.notes || '') },
+                              React.createElement('div', { style: { fontWeight: 'bold', fontSize: 12, color: '#1e293b', marginBottom: 2 } }, job.generatorName || 'Unknown'),
+                              React.createElement('div', { style: { fontSize: 11, color: '#4b5563' } }, (job.containerCount || '?') + ' x ' + (job.containerSize || '?')),
+                              React.createElement('div', { style: { fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 140 } }, job.wasteDescription || ''),
+                              job.requestedTimeWindow ? React.createElement('div', { style: { fontSize: 10, color: '#7c3aed', fontWeight: 'bold', marginTop: 2 } }, job.requestedTimeWindow) : null
+                            );
+                          })
+                      );
+                    })
+                  );
+                })
+              )
+            )
+          )
+      );
+    }
+
+    // ============================================================
+    // JOB PICKUPS TAB
+    // ============================================================
+    function PickupsTab(props) {
+      var data = props.data;
+      var reload = props.reload;
+      var allPickups = data.pickups || [];
+
+      // States
+      var s1=useState(false);var showForm=s1[0];var setShowForm=s1[1];
+      var s2=useState(null);var editing=s2[0];var setEditing=s2[1];
+      var s3=useState('active');var viewMode=s3[0];var setViewMode=s3[1];
+      var s4=useState('');var filterPriority=s4[0];var setFilterPriority=s4[1];
+      var s5=useState('');var searchText=s5[0];var setSearchText=s5[1];
+      var s6=useState(null);var assigningId=s6[0];var setAssigningId=s6[1];
+      var s7=useState('');var assignDriver=s7[0];var setAssignDriver=s7[1];
+      var s8=useState('');var assignDate=s8[0];var setAssignDate=s8[1];
+      var s9=useState([]);var driverList=s9[0];var setDriverList=s9[1];
+      var s10=useState('');var customDriver=s10[0];var setCustomDriver=s10[1];
+      var s11=useState(false);var showAddDriver=s11[0];var setShowAddDriver=s11[1];
+      var s12=useState('');var newDriverName=s12[0];var setNewDriverName=s12[1];
+      var s13=useState([]);var rbDrivers=s13[0];var setRbDrivers=s13[1];
+
+      // Load drivers (includes RouteBoard drivers)
+      useEffect(function() {
+        api.get('/api/drivers').then(function(d) {
+          // RouteBoard drivers have id + name (these are the ones that map to the schedule)
+          var routeBoardList = d.routeBoardDrivers || [];
+          setRbDrivers(routeBoardList);
+          // Also build a flat name list for display
+          var all = routeBoardList.map(function(rb) { return rb.name; });
+          // Add local drivers and transporters as fallback
+          var localAll = (d.drivers || []).concat(d.transporters || []);
+          for (var i = 0; i < localAll.length; i++) {
+            var low = localAll[i].toLowerCase();
+            var found = false;
+            for (var j = 0; j < all.length; j++) { if (all[j].toLowerCase() === low) { found = true; break; } }
+            if (!found) all.push(localAll[i]);
+          }
+          all.sort(function(a, b) { return a.localeCompare(b); });
+          setDriverList(all);
+        });
+      }, [data]);
+
+      // Generators for dropdown
+      var generators = (data.generators || []).slice().sort(function(a, b) { return (a.name || '').localeCompare(b.name || ''); });
+
+      // Filter pickups
+      var activePickups = allPickups.filter(function(p) { return p.status !== 'archived'; });
+      var archivedPickups = allPickups.filter(function(p) { return p.status === 'archived'; });
+
+      var displayPickups = viewMode === 'active' ? activePickups : archivedPickups;
+
+      if (filterPriority) {
+        displayPickups = displayPickups.filter(function(p) { return p.priority === filterPriority; });
+      }
+      if (searchText) {
+        var st = searchText.toLowerCase();
+        displayPickups = displayPickups.filter(function(p) {
+          return (p.generatorName || '').toLowerCase().indexOf(st) !== -1 ||
+                 (p.wasteDescription || '').toLowerCase().indexOf(st) !== -1 ||
+                 (p.salesPerson || '').toLowerCase().indexOf(st) !== -1 ||
+                 (p.assignedDriver || '').toLowerCase().indexOf(st) !== -1 ||
+                 (p.notes || '').toLowerCase().indexOf(st) !== -1;
+        });
+      }
+
+      // Sort: urgent first, then by requested date
+      displayPickups = displayPickups.slice().sort(function(a, b) {
+        var priOrder = { emergency: 0, urgent: 1, routine: 2 };
+        var pa = priOrder[a.priority] !== undefined ? priOrder[a.priority] : 2;
+        var pb = priOrder[b.priority] !== undefined ? priOrder[b.priority] : 2;
+        if (pa !== pb) return pa - pb;
+        return (a.requestedDate || '').localeCompare(b.requestedDate || '');
+      });
+
+      // Form state
+      var s20=useState({});var form=s20[0];var setForm=s20[1];
+
+      function openNewForm() {
+        setForm({ generatorId: '', contactName: '', contactPhone: '', wasteDescription: '', containerCount: '', containerSize: '', containerType: '', requestedDate: '', requestedTimeWindow: '', priority: 'routine', notes: '', salesPerson: '' });
+        setEditing(null);
+        setShowForm(true);
+      }
+
+      function openEditForm(pickup) {
+        setForm(Object.assign({}, pickup));
+        setEditing(pickup);
+        setShowForm(true);
+      }
+
+      function onGeneratorSelect(genId) {
+        var gen = null;
+        for (var i = 0; i < generators.length; i++) {
+          if (generators[i].id === genId) { gen = generators[i]; break; }
+        }
+        if (gen) {
+          setForm(function(prev) {
+            return Object.assign({}, prev, {
+              generatorId: gen.id,
+              generatorName: gen.name || '',
+              generatorAddress: gen.address || gen.siteAddress || '',
+              generatorCity: gen.city || gen.siteCity || '',
+              generatorState: gen.state || gen.siteState || '',
+              generatorZip: gen.zip || gen.siteZip || '',
+              generatorPhone: gen.phone || '',
+              generatorEpaId: gen.epaId || '',
+              contactName: prev.contactName || gen.contactName || '',
+              contactPhone: prev.contactPhone || gen.phone || ''
+            });
+          });
+        }
+      }
+
+      function handleSubmit() {
+        if (!form.generatorName) { alert('Please select a generator'); return; }
+        if (!form.wasteDescription) { alert('Please enter waste description'); return; }
+        var payload = Object.assign({}, form);
+        var promise;
+        if (editing) {
+          promise = api.put('/api/pickups/' + editing.id, payload);
+        } else {
+          promise = api.post('/api/pickups', payload);
+        }
+        promise.then(function() {
+          setShowForm(false);
+          setEditing(null);
+          reload();
+        });
+      }
+
+      function handleAssign(pickupId) {
+        if (!assignDriver && !customDriver) { alert('Please select or enter a driver'); return; }
+        var driverName = customDriver || assignDriver;
+        // Find RouteBoard driver ID by name so job goes to the right driver on the schedule
+        var rbDriverId = '';
+        for (var rd = 0; rd < rbDrivers.length; rd++) {
+          if (rbDrivers[rd].name.toLowerCase() === driverName.toLowerCase()) {
+            rbDriverId = rbDrivers[rd].id;
+            break;
+          }
+        }
+        api.put('/api/pickups/' + pickupId + '/assign', { driver: driverName, driverId: rbDriverId, date: assignDate }).then(function() {
+          setAssigningId(null);
+          setAssignDriver('');
+          setAssignDate('');
+          setCustomDriver('');
+          reload();
+        });
+      }
+
+      function handleArchive(pickupId) {
+        api.put('/api/pickups/' + pickupId + '/archive').then(reload);
+      }
+
+      function handleUnarchive(pickupId) {
+        api.put('/api/pickups/' + pickupId + '/unarchive').then(reload);
+      }
+
+      function handleDeletePickup(pickupId) {
+        if (!confirm('Delete this pickup job?')) return;
+        api.del('/api/pickups/' + pickupId).then(reload);
+      }
+
+      function addNewDriver() {
+        if (!newDriverName.trim()) return;
+        api.post('/api/drivers', { name: newDriverName.trim() }).then(function() {
+          setDriverList(function(prev) { return prev.concat([newDriverName.trim()]).sort(function(a,b){return a.localeCompare(b)}); });
+          setAssignDriver(newDriverName.trim());
+          setNewDriverName('');
+          setShowAddDriver(false);
+        });
+      }
+
+      function priorityBadge(pri) {
+        var colors = { emergency: '#dc2626', urgent: '#f59e0b', routine: '#10b981' };
+        var labels = { emergency: 'EMERGENCY', urgent: 'URGENT', routine: 'Routine' };
+        return React.createElement('span', { style: { background: colors[pri] || '#6b7280', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold' } }, labels[pri] || pri);
+      }
+
+      function statusBadge(st) {
+        var colors = { 'new': '#3b82f6', assigned: '#8b5cf6', archived: '#6b7280' };
+        var labels = { 'new': 'NEW', assigned: 'ASSIGNED', archived: 'ARCHIVED' };
+        return React.createElement('span', { style: { background: colors[st] || '#6b7280', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', marginLeft: 6 } }, labels[st] || st);
+      }
+
+      // ---- Render ----
+      return React.createElement('div', null,
+        // Header bar
+        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 } },
+          React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
+            React.createElement('h2', { style: { margin: 0 } }, 'Job Pickups'),
+            React.createElement('span', { style: { background: '#3b82f6', color: '#fff', borderRadius: 12, padding: '2px 10px', fontSize: 12, fontWeight: 'bold' } }, activePickups.filter(function(p){return p.status==='new'}).length + ' New'),
+            React.createElement('span', { style: { background: '#8b5cf6', color: '#fff', borderRadius: 12, padding: '2px 10px', fontSize: 12, fontWeight: 'bold' } }, activePickups.filter(function(p){return p.status==='assigned'}).length + ' Assigned')
+          ),
+          React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
+            React.createElement('input', { type: 'text', placeholder: 'Search...', value: searchText, onChange: function(e) { setSearchText(e.target.value); }, style: { padding: '6px 10px', borderRadius: 4, border: '1px solid #d1d5db', fontSize: 13, width: 160 } }),
+            React.createElement('select', { value: filterPriority, onChange: function(e) { setFilterPriority(e.target.value); }, style: { padding: '6px 8px', borderRadius: 4, border: '1px solid #d1d5db', fontSize: 13 } },
+              React.createElement('option', { value: '' }, 'All Priorities'),
+              React.createElement('option', { value: 'emergency' }, 'Emergency'),
+              React.createElement('option', { value: 'urgent' }, 'Urgent'),
+              React.createElement('option', { value: 'routine' }, 'Routine')
+            ),
+            React.createElement('button', { className: 'btn btn-sm', style: { background: viewMode === 'active' ? '#1e40af' : '#6b7280', color: '#fff' }, onClick: function() { setViewMode('active'); } }, 'Active'),
+            React.createElement('button', { className: 'btn btn-sm', style: { background: viewMode === 'archived' ? '#1e40af' : '#6b7280', color: '#fff' }, onClick: function() { setViewMode('archived'); } }, 'Archive'),
+            React.createElement('button', { className: 'btn btn-sm', style: { background: '#10b981', color: '#fff', fontWeight: 'bold' }, onClick: openNewForm }, '+ New Pickup')
+          )
+        ),
+
+        // Pickup cards
+        displayPickups.length === 0 ?
+          React.createElement('div', { style: { textAlign: 'center', padding: 40, color: '#9ca3af' } },
+            viewMode === 'active' ? 'No active pickup jobs. Click "+ New Pickup" to create one.' : 'No archived jobs.'
+          )
+        :
+          React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+            displayPickups.map(function(pickup) {
+              var isAssigning = assigningId === pickup.id;
+              return React.createElement('div', { key: pickup.id, style: { background: '#fff', border: '1px solid ' + (pickup.priority === 'emergency' ? '#fca5a5' : pickup.priority === 'urgent' ? '#fde68a' : '#e5e7eb'), borderLeft: '4px solid ' + (pickup.priority === 'emergency' ? '#dc2626' : pickup.priority === 'urgent' ? '#f59e0b' : '#10b981'), borderRadius: 8, padding: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' } },
+                // Card header
+                React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 } },
+                  React.createElement('div', null,
+                    React.createElement('span', { style: { fontWeight: 'bold', fontSize: 15 } }, pickup.generatorName || 'Unknown Generator'),
+                    statusBadge(pickup.status),
+                    priorityBadge(pickup.priority)
+                  ),
+                  React.createElement('div', { style: { display: 'flex', gap: 4 } },
+                    viewMode === 'active' && pickup.status !== 'assigned' ?
+                      React.createElement('button', { className: 'btn btn-sm', style: { background: '#8b5cf6', color: '#fff', fontSize: 11 }, onClick: function() { setAssigningId(pickup.id); setAssignDate(pickup.requestedDate || ''); } }, 'Assign Driver')
+                    : null,
+                    viewMode === 'active' && pickup.status === 'assigned' ?
+                      React.createElement('button', { className: 'btn btn-sm', style: { background: '#6b7280', color: '#fff', fontSize: 11 }, onClick: function() { handleArchive(pickup.id); } }, 'Complete & Archive')
+                    : null,
+                    viewMode === 'archived' ?
+                      React.createElement('button', { className: 'btn btn-sm', style: { background: '#3b82f6', color: '#fff', fontSize: 11 }, onClick: function() { handleUnarchive(pickup.id); } }, 'Restore')
+                    : null,
+                    React.createElement('button', { className: 'btn btn-sm', style: { background: '#f59e0b', color: '#fff', fontSize: 11 }, onClick: function() { openEditForm(pickup); } }, 'Edit'),
+                    React.createElement('button', { className: 'btn btn-sm', style: { background: '#ef4444', color: '#fff', fontSize: 11 }, onClick: function() { handleDeletePickup(pickup.id); } }, 'X')
+                  )
+                ),
+
+                // Card body - info grid
+                React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '6px 16px', fontSize: 13, color: '#374151' } },
+                  React.createElement('div', null, React.createElement('strong', null, 'Waste: '), pickup.wasteDescription || '-'),
+                  React.createElement('div', null, React.createElement('strong', null, 'Qty: '), (pickup.containerCount || '-') + ' x ' + (pickup.containerSize || '') + ' ' + (pickup.containerType || '')),
+                  React.createElement('div', null, React.createElement('strong', null, 'Pickup Date: '), pickup.requestedDate ? new Date(pickup.requestedDate + 'T00:00:00').toLocaleDateString() : 'TBD'),
+                  pickup.requestedTimeWindow ? React.createElement('div', null, React.createElement('strong', null, 'Time: '), pickup.requestedTimeWindow) : null,
+                  React.createElement('div', null, React.createElement('strong', null, 'Address: '), [pickup.generatorAddress, pickup.generatorCity, pickup.generatorState, pickup.generatorZip].filter(Boolean).join(', ') || '-'),
+                  React.createElement('div', null, React.createElement('strong', null, 'Contact: '), (pickup.contactName || '-') + (pickup.contactPhone ? ' (' + pickup.contactPhone + ')' : '')),
+                  React.createElement('div', null, React.createElement('strong', null, 'EPA ID: '), pickup.generatorEpaId || '-'),
+                  React.createElement('div', null, React.createElement('strong', null, 'Salesperson: '), pickup.salesPerson || '-'),
+                  pickup.assignedDriver ? React.createElement('div', null, React.createElement('strong', null, 'Driver: '), React.createElement('span', { style: { color: '#7c3aed', fontWeight: 'bold' } }, pickup.assignedDriver), pickup.assignedDate ? ' (' + new Date(pickup.assignedDate + 'T00:00:00').toLocaleDateString() + ')' : '') : null
+                ),
+
+                // Notes
+                pickup.notes ? React.createElement('div', { style: { marginTop: 6, padding: '6px 10px', background: '#fffbeb', borderRadius: 4, fontSize: 12, color: '#92400e' } }, React.createElement('strong', null, 'Notes: '), pickup.notes) : null,
+
+                // Assignment inline panel
+                isAssigning ? React.createElement('div', { style: { marginTop: 10, padding: 12, background: '#f3f4f6', borderRadius: 8, border: '1px solid #d1d5db' } },
+                  React.createElement('div', { style: { fontWeight: 'bold', marginBottom: 8, color: '#1e40af' } }, 'Assign Driver', React.createElement('span', { style: { fontSize: 11, fontWeight: 'normal', color: '#7c3aed', marginLeft: 8 } }, '(auto-sends to Weekly Schedule)')),
+                  React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } },
+                    React.createElement('select', { value: assignDriver, onChange: function(e) { setAssignDriver(e.target.value); setCustomDriver(''); }, style: { padding: '6px 8px', borderRadius: 4, border: '1px solid #d1d5db', minWidth: 180 } },
+                      React.createElement('option', { value: '' }, '-- Select Driver --'),
+                      driverList.map(function(d) { return React.createElement('option', { key: d, value: d }, d); })
+                    ),
+                    React.createElement('span', { style: { color: '#6b7280', fontSize: 12 } }, 'or'),
+                    React.createElement('input', { type: 'text', placeholder: 'Type driver name...', value: customDriver, onChange: function(e) { setCustomDriver(e.target.value); setAssignDriver(''); }, style: { padding: '6px 8px', borderRadius: 4, border: '1px solid #d1d5db', width: 160 } }),
+                    React.createElement('input', { type: 'date', value: assignDate, onChange: function(e) { setAssignDate(e.target.value); }, style: { padding: '6px 8px', borderRadius: 4, border: '1px solid #d1d5db' } }),
+                    React.createElement('button', { className: 'btn btn-sm', style: { background: '#10b981', color: '#fff', fontWeight: 'bold' }, onClick: function() { handleAssign(pickup.id); } }, 'Assign'),
+                    React.createElement('button', { className: 'btn btn-sm', style: { background: '#6b7280', color: '#fff' }, onClick: function() { setAssigningId(null); } }, 'Cancel'),
+                    React.createElement('button', { className: 'btn btn-sm', style: { background: '#2563eb', color: '#fff', fontSize: 11 }, onClick: function() { setShowAddDriver(true); } }, '+ Add Driver')
+                  ),
+                  // Add new driver inline
+                  showAddDriver ? React.createElement('div', { style: { marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' } },
+                    React.createElement('input', { type: 'text', placeholder: 'New driver name...', value: newDriverName, onChange: function(e) { setNewDriverName(e.target.value); }, style: { padding: '6px 8px', borderRadius: 4, border: '1px solid #d1d5db', width: 180 } }),
+                    React.createElement('button', { className: 'btn btn-sm', style: { background: '#10b981', color: '#fff' }, onClick: addNewDriver }, 'Save'),
+                    React.createElement('button', { className: 'btn btn-sm', style: { background: '#6b7280', color: '#fff' }, onClick: function() { setShowAddDriver(false); setNewDriverName(''); } }, 'Cancel')
+                  ) : null
+                ) : null,
+
+                // Metadata footer
+                React.createElement('div', { style: { marginTop: 6, fontSize: 11, color: '#9ca3af', display: 'flex', gap: 12 } },
+                  React.createElement('span', null, 'Created: ' + new Date(pickup.createdAt).toLocaleDateString()),
+                  pickup.updatedAt !== pickup.createdAt ? React.createElement('span', null, 'Updated: ' + new Date(pickup.updatedAt).toLocaleDateString()) : null
+                )
+              );
+            })
+          ),
+
+        // New/Edit Pickup Modal
+        showForm ? React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 } },
+          React.createElement('div', { style: { background: '#fff', borderRadius: 12, padding: 24, maxWidth: 650, width: '95%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' } },
+            React.createElement('h3', { style: { marginTop: 0, marginBottom: 16, color: '#1e40af' } }, editing ? 'Edit Pickup Job' : 'New Pickup Job'),
+
+            // Generator selection
+            React.createElement('div', { style: { marginBottom: 12 } },
+              React.createElement('label', { style: { fontWeight: 'bold', fontSize: 13, display: 'block', marginBottom: 4 } }, 'Generator / Customer *'),
+              React.createElement('select', { value: form.generatorId || '', onChange: function(e) { onGeneratorSelect(e.target.value); }, style: { width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid #d1d5db', fontSize: 14 } },
+                React.createElement('option', { value: '' }, '-- Select Generator --'),
+                generators.map(function(g) { return React.createElement('option', { key: g.id, value: g.id }, g.name + (g.siteCity ? ' (' + g.siteCity + ')' : g.city ? ' (' + g.city + ')' : '')); })
+              ),
+              form.generatorName ? React.createElement('div', { style: { fontSize: 12, color: '#6b7280', marginTop: 4 } },
+                [form.generatorAddress, form.generatorCity, form.generatorState, form.generatorZip].filter(Boolean).join(', '),
+                form.generatorPhone ? ' | ' + form.generatorPhone : '',
+                form.generatorEpaId ? ' | EPA: ' + form.generatorEpaId : ''
+              ) : null
+            ),
+
+            // Two column layout
+            React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
+              // Contact name
+              React.createElement('div', null,
+                React.createElement('label', { style: { fontWeight: 'bold', fontSize: 13, display: 'block', marginBottom: 4 } }, 'Site Contact Name'),
+                React.createElement('input', { type: 'text', value: form.contactName || '', onChange: function(e) { setForm(function(p) { return Object.assign({}, p, { contactName: e.target.value }); }); }, style: { width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid #d1d5db', boxSizing: 'border-box' } })
+              ),
+              // Contact phone
+              React.createElement('div', null,
+                React.createElement('label', { style: { fontWeight: 'bold', fontSize: 13, display: 'block', marginBottom: 4 } }, 'Site Contact Phone'),
+                React.createElement('input', { type: 'text', value: form.contactPhone || '', onChange: function(e) { setForm(function(p) { return Object.assign({}, p, { contactPhone: e.target.value }); }); }, style: { width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid #d1d5db', boxSizing: 'border-box' } })
+              )
+            ),
+
+            // Waste description
+            React.createElement('div', { style: { marginTop: 12 } },
+              React.createElement('label', { style: { fontWeight: 'bold', fontSize: 13, display: 'block', marginBottom: 4 } }, 'Waste Description *'),
+              React.createElement('textarea', { value: form.wasteDescription || '', onChange: function(e) { setForm(function(p) { return Object.assign({}, p, { wasteDescription: e.target.value }); }); }, rows: 2, style: { width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid #d1d5db', boxSizing: 'border-box', fontFamily: 'inherit' } })
+            ),
+
+            // Container info
+            React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 12 } },
+              React.createElement('div', null,
+                React.createElement('label', { style: { fontWeight: 'bold', fontSize: 13, display: 'block', marginBottom: 4 } }, 'Container Count'),
+                React.createElement('input', { type: 'number', min: '0', value: form.containerCount || '', onChange: function(e) { setForm(function(p) { return Object.assign({}, p, { containerCount: e.target.value }); }); }, style: { width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid #d1d5db', boxSizing: 'border-box' } })
+              ),
+              React.createElement('div', null,
+                React.createElement('label', { style: { fontWeight: 'bold', fontSize: 13, display: 'block', marginBottom: 4 } }, 'Container Size'),
+                React.createElement('select', { value: form.containerSize || '', onChange: function(e) { setForm(function(p) { return Object.assign({}, p, { containerSize: e.target.value }); }); }, style: { width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid #d1d5db' } },
+                  React.createElement('option', { value: '' }, '--'),
+                  CONTAINER_SIZES.map(function(s) { return React.createElement('option', { key: s, value: s }, s); })
+                )
+              ),
+              React.createElement('div', null,
+                React.createElement('label', { style: { fontWeight: 'bold', fontSize: 13, display: 'block', marginBottom: 4 } }, 'Container Type'),
+                React.createElement('select', { value: form.containerType || '', onChange: function(e) { setForm(function(p) { return Object.assign({}, p, { containerType: e.target.value }); }); }, style: { width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid #d1d5db' } },
+                  React.createElement('option', { value: '' }, '--'),
+                  CONTAINER_TYPES.map(function(ct) { return React.createElement('option', { key: ct.code, value: ct.label }, ct.label); })
+                )
+              )
+            ),
+
+            // Date/time + priority row
+            React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 12 } },
+              React.createElement('div', null,
+                React.createElement('label', { style: { fontWeight: 'bold', fontSize: 13, display: 'block', marginBottom: 4 } }, 'Requested Pickup Date'),
+                React.createElement('input', { type: 'date', value: form.requestedDate || '', onChange: function(e) { setForm(function(p) { return Object.assign({}, p, { requestedDate: e.target.value }); }); }, style: { width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid #d1d5db', boxSizing: 'border-box' } })
+              ),
+              React.createElement('div', null,
+                React.createElement('label', { style: { fontWeight: 'bold', fontSize: 13, display: 'block', marginBottom: 4 } }, 'Time Window'),
+                React.createElement('input', { type: 'text', placeholder: 'e.g. 8am-12pm', value: form.requestedTimeWindow || '', onChange: function(e) { setForm(function(p) { return Object.assign({}, p, { requestedTimeWindow: e.target.value }); }); }, style: { width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid #d1d5db', boxSizing: 'border-box' } })
+              ),
+              React.createElement('div', null,
+                React.createElement('label', { style: { fontWeight: 'bold', fontSize: 13, display: 'block', marginBottom: 4 } }, 'Priority'),
+                React.createElement('select', { value: form.priority || 'routine', onChange: function(e) { setForm(function(p) { return Object.assign({}, p, { priority: e.target.value }); }); }, style: { width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid #d1d5db' } },
+                  React.createElement('option', { value: 'routine' }, 'Routine'),
+                  React.createElement('option', { value: 'urgent' }, 'Urgent'),
+                  React.createElement('option', { value: 'emergency' }, 'Emergency')
+                )
+              )
+            ),
+
+            // Salesperson
+            React.createElement('div', { style: { marginTop: 12 } },
+              React.createElement('label', { style: { fontWeight: 'bold', fontSize: 13, display: 'block', marginBottom: 4 } }, 'Salesperson'),
+              React.createElement('input', { type: 'text', value: form.salesPerson || '', onChange: function(e) { setForm(function(p) { return Object.assign({}, p, { salesPerson: e.target.value }); }); }, style: { width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid #d1d5db', boxSizing: 'border-box' } })
+            ),
+
+            // Notes
+            React.createElement('div', { style: { marginTop: 12 } },
+              React.createElement('label', { style: { fontWeight: 'bold', fontSize: 13, display: 'block', marginBottom: 4 } }, 'Notes / Special Instructions'),
+              React.createElement('textarea', { value: form.notes || '', onChange: function(e) { setForm(function(p) { return Object.assign({}, p, { notes: e.target.value }); }); }, rows: 3, placeholder: 'Anything the scheduler or driver needs to know...', style: { width: '100%', padding: '8px 10px', borderRadius: 4, border: '1px solid #d1d5db', boxSizing: 'border-box', fontFamily: 'inherit' } })
+            ),
+
+            // Buttons
+            React.createElement('div', { style: { marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' } },
+              React.createElement('button', { className: 'btn', style: { background: '#6b7280', color: '#fff', padding: '8px 20px', borderRadius: 6 }, onClick: function() { setShowForm(false); setEditing(null); } }, 'Cancel'),
+              React.createElement('button', { className: 'btn', style: { background: '#10b981', color: '#fff', padding: '8px 20px', borderRadius: 6, fontWeight: 'bold' }, onClick: handleSubmit }, editing ? 'Update Pickup' : 'Create Pickup')
+            )
+          )
+        ) : null
       );
     }
 
@@ -2373,7 +2972,7 @@
       function handleSave(){api.put('/api/alignment',{fields:alignData,colShift:colShift,rowShift:rowShift}).then(function(r){if(r&&r.ok){setHasPrevious(true);setStatus('Saved!');api.get('/api/alignment').then(function(d){if(typeof d.colShift==='number'&&d.colShift!==colShift){setStatus('WARNING: Save may not have persisted. Try again.');return}setStatus('Saved and verified!')})}else{setStatus('ERROR: Save failed!')}setTimeout(function(){setStatus('')},3000)}).catch(function(err){setStatus('ERROR: '+err.message);setTimeout(function(){setStatus('')},5000)})}
       function handleUndo(){api.post('/api/alignment/undo').then(function(d){if(d.fields)setAlignData(d.fields);if(typeof d.colShift==='number')setColShift(d.colShift);if(typeof d.rowShift==='number')setRowShift(d.rowShift);setStatus('Restored previous settings');setTimeout(function(){setStatus('')},2000)})}
       function handleReset(){api.post('/api/alignment/reset').then(function(){setAlignData({});setColShift(0);setRowShift(0);setStatus('Reset to defaults');setTimeout(function(){setStatus('')},2000)})}
-      function handleTestPrint(){window.open('/api/print/alignment-test','_blank')}
+      function handleTestPrint(){printOpen('/api/print/alignment-test')}
       function handleBakeDefaults(){if(!confirm('This will save your current alignment positions as the new defaults. Reset will go back to these positions instead of the original ones. Continue?'))return;api.post('/api/alignment/bake-defaults').then(function(r){if(r&&r.ok){setStatus('Current settings saved as new defaults!');setColShift(0);setRowShift(0);api.get('/api/alignment').then(function(d){if(d.fields)setAlignData(d.fields)})}else{setStatus('ERROR: Failed to save defaults')}setTimeout(function(){setStatus('')},3000)})}
       function updateField(fk,dim,val){var v=parseFloat(val);if(!isNaN(v)&&v>=0&&v<=100){var newData=Object.assign({},alignData);newData[fk]=Object.assign({},alignData[fk]||{row:1,col:1});newData[fk][dim]=v;setAlignData(newData)}}
       function nudge(fk,dim,amt){var current=alignData[fk]||{row:1,col:1};var nv=Math.round(((current[dim]||0)+amt)*10)/10;if(nv>=0&&nv<=100){updateField(fk,dim,nv)}}
@@ -2658,8 +3257,8 @@
       var labelCopiesState=useState({});var labelCopies=labelCopiesState[0];var setLabelCopies=labelCopiesState[1];
       function getLabelCopies(id){return labelCopies[id]||1}
       function setLabelCopy(id,val){var nc=Object.assign({},labelCopies);nc[id]=parseInt(val)||1;setLabelCopies(nc)}
-      function handlePrintSingle(id){var copies=getLabelCopies(id);window.open('/api/print/label/'+id+'?copies='+copies,'_blank')}
-      function handlePrintManifest(manifestId){window.open('/api/print/labels/manifest/'+manifestId,'_blank')}
+      function handlePrintSingle(id){var copies=getLabelCopies(id);printOpen('/api/print/label/'+id+'?copies='+copies)}
+      function handlePrintManifest(manifestId){printOpen('/api/print/labels/manifest/'+manifestId)}
 
       function openNew(){setEditLabel(null);setShowForm(true)}
       function openEdit(label){setEditLabel(label);setShowForm(true)}
@@ -3093,7 +3692,7 @@
         if(!confirm('Delete this BOL?'))return;
         api.del('/api/bols/'+id).then(function(){loadBols()});
       }
-      function handlePrint(id){window.open('/api/print/bol/'+id,'_blank')}
+      function handlePrint(id){printOpen('/api/print/bol/'+id)}
       function handleArchiveBol(b){if(confirm('Archive this BOL? It will move to the generator tab.')){api.put('/api/bols/'+b.id,Object.assign({},b,{status:'archived'})).then(function(){loadBols()})}}
       function handleGenerate(){
         if(!genManifestId)return;
@@ -3817,6 +4416,110 @@
       );
     }
 
+    function MyPrinterOffset(){
+      var s1=useState(parseFloat(localStorage.getItem('ies_printerColOffset')||'0')||0);var colOff=s1[0];var setColOff=s1[1];
+      var s2=useState(parseFloat(localStorage.getItem('ies_printerRowOffset')||'0')||0);var rowOff=s2[0];var setRowOff=s2[1];
+      var s3=useState(parseFloat(localStorage.getItem('ies_printerColOffsetLabel')||'0')||0);var colOffLbl=s3[0];var setColOffLbl=s3[1];
+      var s4=useState(parseFloat(localStorage.getItem('ies_printerRowOffsetLabel')||'0')||0);var rowOffLbl=s4[0];var setRowOffLbl=s4[1];
+      var s5=useState(localStorage.getItem('ies_printerName')||'');var printerName=s5[0];var setPrinterName=s5[1];
+      var s6=useState('');var status=s6[0];var setStatus=s6[1];
+      function handleSave(){
+        localStorage.setItem('ies_printerColOffset',String(colOff));
+        localStorage.setItem('ies_printerRowOffset',String(rowOff));
+        localStorage.setItem('ies_printerColOffsetLabel',String(colOffLbl));
+        localStorage.setItem('ies_printerRowOffsetLabel',String(rowOffLbl));
+        localStorage.setItem('ies_printerName',printerName);
+        setStatus('Saved to this browser!');setTimeout(function(){setStatus('')},3000);
+      }
+      function handleReset(){
+        setColOff(0);setRowOff(0);setColOffLbl(0);setRowOffLbl(0);
+        localStorage.setItem('ies_printerColOffset','0');
+        localStorage.setItem('ies_printerRowOffset','0');
+        localStorage.setItem('ies_printerColOffsetLabel','0');
+        localStorage.setItem('ies_printerRowOffsetLabel','0');
+        setStatus('Reset to zero');setTimeout(function(){setStatus('')},2000);
+      }
+      function handleTestPrint(){printOpen('/api/print/alignment-test')}
+      function nudgeCol(v){var n=Math.round((colOff+v)*10)/10;setColOff(n)}
+      function nudgeRow(v){var n=Math.round((rowOff+v)*10)/10;setRowOff(n)}
+      function nudgeColLbl(v){var n=Math.round((colOffLbl+v)*10)/10;setColOffLbl(n)}
+      function nudgeRowLbl(v){var n=Math.round((rowOffLbl+v)*10)/10;setRowOffLbl(n)}
+      return React.createElement('div',{className:'card',style:{maxWidth:700}},
+        React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:4}},'My Printer Offset'),
+        React.createElement('p',{style:{color:'#059669',fontSize:14,marginBottom:4,fontWeight:600}},'These settings are saved on THIS computer only and do NOT affect other users.'),
+        React.createElement('p',{style:{color:'#666',fontSize:13,marginBottom:16}},'If your printer prints text in a different position than expected, use these offsets to shift everything. Positive = right/down, negative = left/up. Each unit is approximately 1/10 inch.'),
+        React.createElement('div',{style:{marginBottom:16}},
+          React.createElement('label',{style:{fontWeight:600,fontSize:14}},'Printer Name (optional)'),
+          React.createElement('input',{type:'text',value:printerName,onChange:function(e){setPrinterName(e.target.value)},placeholder:'e.g. Epson FX-890IIN',style:{display:'block',width:'100%',maxWidth:300,padding:'8px 12px',fontSize:14,border:'1px solid #ccc',borderRadius:6,marginTop:4}})
+        ),
+        React.createElement('div',{style:{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:16,marginBottom:16}},
+          React.createElement('h3',{style:{fontSize:16,fontWeight:600,marginBottom:12}},'Manifest / BOL / Non-Haz Offset'),
+          React.createElement('div',{style:{display:'flex',gap:24,flexWrap:'wrap'}},
+            React.createElement('div',null,
+              React.createElement('label',{style:{fontWeight:600,fontSize:13}},'Column (left/right)'),
+              React.createElement('div',{style:{display:'flex',alignItems:'center',gap:4,marginTop:4}},
+                React.createElement('button',{onClick:function(){nudgeCol(-0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9664)),
+                React.createElement('input',{type:'number',step:'0.5',value:colOff,onChange:function(e){var v=parseFloat(e.target.value);if(!isNaN(v)&&v>=-20&&v<=20)setColOff(v)},style:{width:70,textAlign:'center',padding:'4px 8px',fontSize:16,border:'1px solid #ccc',borderRadius:4}}),
+                React.createElement('button',{onClick:function(){nudgeCol(0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9654)),
+                React.createElement('span',{style:{marginLeft:8,color:'#666',fontSize:13}},colOff>0?'+'+colOff+' right':colOff<0?colOff+' left':'0 (no shift)')
+              )
+            ),
+            React.createElement('div',null,
+              React.createElement('label',{style:{fontWeight:600,fontSize:13}},'Row (up/down)'),
+              React.createElement('div',{style:{display:'flex',alignItems:'center',gap:4,marginTop:4}},
+                React.createElement('button',{onClick:function(){nudgeRow(-0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9650)),
+                React.createElement('input',{type:'number',step:'0.5',value:rowOff,onChange:function(e){var v=parseFloat(e.target.value);if(!isNaN(v)&&v>=-10&&v<=10)setRowOff(v)},style:{width:70,textAlign:'center',padding:'4px 8px',fontSize:16,border:'1px solid #ccc',borderRadius:4}}),
+                React.createElement('button',{onClick:function(){nudgeRow(0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9660)),
+                React.createElement('span',{style:{marginLeft:8,color:'#666',fontSize:13}},rowOff>0?'+'+rowOff+' down':rowOff<0?rowOff+' up':'0 (no shift)')
+              )
+            )
+          )
+        ),
+        React.createElement('div',{style:{background:'#fef3c7',border:'1px solid #fde68a',borderRadius:8,padding:16,marginBottom:20}},
+          React.createElement('h3',{style:{fontSize:16,fontWeight:600,marginBottom:12}},'Label (6x6) Offset'),
+          React.createElement('div',{style:{display:'flex',gap:24,flexWrap:'wrap'}},
+            React.createElement('div',null,
+              React.createElement('label',{style:{fontWeight:600,fontSize:13}},'Column (left/right)'),
+              React.createElement('div',{style:{display:'flex',alignItems:'center',gap:4,marginTop:4}},
+                React.createElement('button',{onClick:function(){nudgeColLbl(-0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9664)),
+                React.createElement('input',{type:'number',step:'0.5',value:colOffLbl,onChange:function(e){var v=parseFloat(e.target.value);if(!isNaN(v)&&v>=-20&&v<=20)setColOffLbl(v)},style:{width:70,textAlign:'center',padding:'4px 8px',fontSize:16,border:'1px solid #ccc',borderRadius:4}}),
+                React.createElement('button',{onClick:function(){nudgeColLbl(0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9654)),
+                React.createElement('span',{style:{marginLeft:8,color:'#666',fontSize:13}},colOffLbl>0?'+'+colOffLbl+' right':colOffLbl<0?colOffLbl+' left':'0 (no shift)')
+              )
+            ),
+            React.createElement('div',null,
+              React.createElement('label',{style:{fontWeight:600,fontSize:13}},'Row (up/down)'),
+              React.createElement('div',{style:{display:'flex',alignItems:'center',gap:4,marginTop:4}},
+                React.createElement('button',{onClick:function(){nudgeRowLbl(-0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9650)),
+                React.createElement('input',{type:'number',step:'0.5',value:rowOffLbl,onChange:function(e){var v=parseFloat(e.target.value);if(!isNaN(v)&&v>=-10&&v<=10)setRowOffLbl(v)},style:{width:70,textAlign:'center',padding:'4px 8px',fontSize:16,border:'1px solid #ccc',borderRadius:4}}),
+                React.createElement('button',{onClick:function(){nudgeRowLbl(0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9660)),
+                React.createElement('span',{style:{marginLeft:8,color:'#666',fontSize:13}},rowOffLbl>0?'+'+rowOffLbl+' down':rowOffLbl<0?rowOffLbl+' up':'0 (no shift)')
+              )
+            )
+          )
+        ),
+        React.createElement('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
+          React.createElement('button',{className:'btn btn-primary',onClick:handleSave,style:{padding:'10px 24px',fontSize:16,background:'#059669'}},'Save My Printer Offsets'),
+          React.createElement('button',{className:'btn',onClick:handleTestPrint,style:{padding:'10px 24px',background:'#2563eb',color:'#fff'}},'Print Alignment Test'),
+          React.createElement('button',{className:'btn btn-secondary',onClick:handleReset,style:{padding:'10px 24px'}},'Reset to Zero')
+        ),
+        status?React.createElement('div',{style:{marginTop:12,padding:'10px 16px',background:'#ecfdf5',border:'1px solid #6ee7b7',borderRadius:8,color:'#065f46',fontWeight:600}},status):null,
+        React.createElement('div',{style:{marginTop:20,padding:16,background:'#f8fafc',borderRadius:8,border:'1px solid #e2e8f0'}},
+          React.createElement('h4',{style:{fontSize:14,fontWeight:600,marginBottom:8}},'How to calibrate your printer:'),
+          React.createElement('ol',{style:{paddingLeft:20,fontSize:13,color:'#555',lineHeight:1.8}},
+            React.createElement('li',null,'Click "Print Alignment Test" to print a test page on your printer'),
+            React.createElement('li',null,'Compare where the text lands vs. where it should be on the pre-printed form'),
+            React.createElement('li',null,'If text is too far LEFT, increase Column offset (move right)'),
+            React.createElement('li',null,'If text is too far RIGHT, decrease Column offset (move left)'),
+            React.createElement('li',null,'If text is too HIGH, increase Row offset (move down)'),
+            React.createElement('li',null,'If text is too LOW, decrease Row offset (move up)'),
+            React.createElement('li',null,'Click "Save My Printer Offsets" and test again until aligned'),
+            React.createElement('li',null,'Each unit is about 1/10 inch. Start with 0.5 increments.')
+          )
+        )
+      );
+    }
+
     function AlignmentTabs(){
       var s1=useState('main');var tab=s1[0];var setTab=s1[1];
       return React.createElement('div',null,
@@ -3835,13 +4538,17 @@
           ),
           React.createElement('button',{onClick:function(){setTab('nonhaz')},style:{padding:'12px 20px',border:'none',background:'transparent',cursor:'pointer',fontSize:15,fontWeight:tab==='nonhaz'?700:400,color:tab==='nonhaz'?'#e94560':'#999',borderBottom:tab==='nonhaz'?'3px solid #e94560':'none',marginBottom:-2}},
             'Non-Haz Manifest'
+          ),
+          React.createElement('button',{onClick:function(){setTab('myprinter')},style:{padding:'12px 20px',border:'none',background:'transparent',cursor:'pointer',fontSize:15,fontWeight:tab==='myprinter'?700:400,color:tab==='myprinter'?'#059669':'#999',borderBottom:tab==='myprinter'?'3px solid #059669':'none',marginBottom:-2}},
+            '⚙ My Printer'
           )
         ),
         tab==='main'?React.createElement(AlignmentEditor,null):null,
         tab==='22a'?React.createElement(Alignment22AEditor,null):null,
         tab==='label'?React.createElement(LabelAlignmentEditor,null):null,
         tab==='bol'?React.createElement(BolAlignmentEditor,null):null,
-        tab==='nonhaz'?React.createElement(NonHazAlignmentEditor,null):null
+        tab==='nonhaz'?React.createElement(NonHazAlignmentEditor,null):null,
+        tab==='myprinter'?React.createElement(MyPrinterOffset,null):null
       );
     }
 
