@@ -3724,8 +3724,8 @@ app.get('/api/print/manifest/:id', function(req, res) {
   placeText(page1, MAP.generatorEpaId.row, MAP.generatorEpaId.col, manifest.generatorEpaId);
   // Box 2 - Page ("Page 1 of" is preprinted on the form, only print total pages)
   if (manifest.pageTotal) placeText(page1, MAP.totalPages.row, MAP.totalPages.col, manifest.pageTotal);
-  // Box 4 - Manifest Tracking Number
-  if (manifest.manifestTrackingNum) placeText(page1, MAP.manifestTrackingNum.row, MAP.manifestTrackingNum.col, manifest.manifestTrackingNum);
+  // Box 4 - Manifest Tracking Number (PRE-PRINTED on form - do NOT print)
+  // if (manifest.manifestTrackingNum) placeText(page1, MAP.manifestTrackingNum.row, MAP.manifestTrackingNum.col, manifest.manifestTrackingNum);
   // Box 3 - Emergency Response Phone
   placeText(page1, MAP.emergencyPhone.row, MAP.emergencyPhone.col, manifest.emergencyPhone);
   // Box 5 - Generator
@@ -4165,8 +4165,8 @@ app.get('/api/print/escp2/:id', function(req, res) {
   printAt(M.generatorEpaId.row, M.generatorEpaId.col, manifest.generatorEpaId);
   // Box 2 - Page ("Page 1 of" is preprinted, only print total pages)
   if (manifest.pageTotal) printAt(M.totalPages.row, M.totalPages.col, manifest.pageTotal);
-  // Box 4 - Manifest Tracking Number
-  if (manifest.manifestTrackingNum) printAt(M.manifestTrackingNum.row, M.manifestTrackingNum.col, manifest.manifestTrackingNum);
+  // Box 4 - Manifest Tracking Number (PRE-PRINTED on form - do NOT print)
+  // if (manifest.manifestTrackingNum) printAt(M.manifestTrackingNum.row, M.manifestTrackingNum.col, manifest.manifestTrackingNum);
   // Box 3 - Emergency Response Phone
   printAt(M.emergencyPhone.row, M.emergencyPhone.col, manifest.emergencyPhone);
   // Box 5 - Generator
@@ -4494,8 +4494,8 @@ app.get('/api/print/direct/:id', function(req, res) {
   placeAt(M.generatorEpaId.row, M.generatorEpaId.col, manifest.generatorEpaId);
   // Box 2 - "Page 1 of" is preprinted, only print total pages
   if (manifest.pageTotal) placeAt(M.totalPages.row, M.totalPages.col, manifest.pageTotal);
-  // Box 4 - Manifest Tracking Number
-  if (manifest.manifestTrackingNum) placeAt(M.manifestTrackingNum.row, M.manifestTrackingNum.col, manifest.manifestTrackingNum);
+  // Box 4 - Manifest Tracking Number (PRE-PRINTED on form - do NOT print)
+  // if (manifest.manifestTrackingNum) placeAt(M.manifestTrackingNum.row, M.manifestTrackingNum.col, manifest.manifestTrackingNum);
   placeAt(M.emergencyPhone.row, M.emergencyPhone.col, manifest.emergencyPhone);
   placeAt(M.generatorName.row, M.generatorName.col, manifest.generatorName);
   placeAt(M.generatorPhone.row, M.generatorPhone.col, manifest.generatorPhone);
@@ -4961,7 +4961,7 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
   var page1 = createCanvas();
   placeText(page1, MAP.generatorEpaId.row, MAP.generatorEpaId.col, manifest.generatorEpaId);
   if (manifest.pageTotal) placeText(page1, MAP.totalPages.row, MAP.totalPages.col, manifest.pageTotal);
-  // Box 4 - Manifest Tracking Number
+  // Box 4 - Manifest Tracking Number (non-haz numbers are assigned by us, so print them)
   if (manifest.manifestTrackingNum) placeText(page1, MAP.manifestTrackingNum.row, MAP.manifestTrackingNum.col, manifest.manifestTrackingNum);
   placeText(page1, MAP.emergencyPhone.row, MAP.emergencyPhone.col, manifest.emergencyPhone);
   placeText(page1, MAP.generatorName.row, MAP.generatorName.col, manifest.generatorName);
@@ -5308,7 +5308,7 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
   // Page 1 fields
   placeAt(M.generatorEpaId.row, M.generatorEpaId.col, manifest.generatorEpaId);
   if (manifest.pageTotal) placeAt(M.totalPages.row, M.totalPages.col, manifest.pageTotal);
-  // Box 4 - Manifest Tracking Number
+  // Box 4 - Manifest Tracking Number (non-haz numbers are assigned by us, so print them)
   if (manifest.manifestTrackingNum) placeAt(M.manifestTrackingNum.row, M.manifestTrackingNum.col, manifest.manifestTrackingNum);
   placeAt(M.emergencyPhone.row, M.emergencyPhone.col, manifest.emergencyPhone);
   placeAt(M.generatorName.row, M.generatorName.col, manifest.generatorName);
