@@ -3679,42 +3679,48 @@ app.get('/api/print/manifest/:id', function(req, res) {
   var totalPages = wasteLineCount <= 4 ? 1 : Math.ceil((wasteLineCount - 4) / CONT_MAX_WASTE_LINES) + 1;
   console.log('Print manifest ' + manifest.id + ': totalPages=' + totalPages);
 
-  // Build Box 14 - always regenerate from current waste lines at print time
+  // Box 14 - Use user-entered text if present, otherwise auto-generate from waste lines
   var sh3 = manifest.specialHandling3 || '';
-  var parts14 = [];
-  for (var b14 = 1; b14 <= wasteLineCount; b14++) {
-    var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
-    var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
-    var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
-    var desc14 = manifest['waste' + b14 + 'Description'] || '';
-    if (!desc14 && !pid14) continue;
-    var entry = '';
-    // Strip waste stream name from profileId - keep only the numeric ID portion
-    var cleanPid14 = pid14 ? pid14.split(/\s+/)[0] : '';
-    if (cleanPid14) entry += cleanPid14;
-    if (csize14) entry += (entry ? ' ' : '') + csize14;
-    if (ctype14) entry += (entry ? ' ' : '') + ctype14;
-    if (entry) parts14.push('9b.' + b14 + '= ' + entry);
-  }
-  var autoText14 = parts14.join(', ');
   var sh1 = '';
   var sh2 = '';
-  if (autoText14.length > 75) {
-    var cut14b = autoText14.lastIndexOf(', ', 75);
-    if (cut14b <= 0) cut14b = 75;
-    sh1 = autoText14.substring(0, cut14b);
-    var autoRest14 = autoText14.substring(cut14b).replace(/^,?\s*/, '');
-    if (autoRest14.length > 75) {
-      var cut14c = autoRest14.lastIndexOf(', ', 75);
-      if (cut14c <= 0) cut14c = 75;
-      sh2 = autoRest14.substring(0, cut14c);
-      var overflow14 = autoRest14.substring(cut14c).replace(/^,?\s*/, '');
-      if (overflow14 && !sh3) sh3 = overflow14;
-    } else {
-      sh2 = autoRest14;
-    }
+  if (manifest.specialHandling && manifest.specialHandling.trim()) {
+    // User typed their own Box 14 content - use it
+    sh1 = manifest.specialHandling;
+    sh2 = manifest.specialHandling2 || '';
   } else {
-    sh1 = autoText14;
+    // Auto-generate from waste line profile IDs and container info
+    var parts14 = [];
+    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+      var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
+      var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
+      var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
+      var desc14 = manifest['waste' + b14 + 'Description'] || '';
+      if (!desc14 && !pid14) continue;
+      var entry = '';
+      var cleanPid14 = pid14 ? pid14.split(/\s+/)[0] : '';
+      if (cleanPid14) entry += cleanPid14;
+      if (csize14) entry += (entry ? ' ' : '') + csize14;
+      if (ctype14) entry += (entry ? ' ' : '') + ctype14;
+      if (entry) parts14.push('9b.' + b14 + '= ' + entry);
+    }
+    var autoText14 = parts14.join(', ');
+    if (autoText14.length > 75) {
+      var cut14b = autoText14.lastIndexOf(', ', 75);
+      if (cut14b <= 0) cut14b = 75;
+      sh1 = autoText14.substring(0, cut14b);
+      var autoRest14 = autoText14.substring(cut14b).replace(/^,?\s*/, '');
+      if (autoRest14.length > 75) {
+        var cut14c = autoRest14.lastIndexOf(', ', 75);
+        if (cut14c <= 0) cut14c = 75;
+        sh2 = autoRest14.substring(0, cut14c);
+        var overflow14 = autoRest14.substring(cut14c).replace(/^,?\s*/, '');
+        if (overflow14 && !sh3) sh3 = overflow14;
+      } else {
+        sh2 = autoRest14;
+      }
+    } else {
+      sh1 = autoText14;
+    }
   }
 
   // ===== PAGE 1: Main Form (8700-22) =====
@@ -4223,42 +4229,45 @@ app.get('/api/print/escp2/:id', function(req, res) {
     }
   }
 
-  // Box 14 - Special Handling (always regenerate from waste lines at print time)
+  // Box 14 - Use user-entered text if present, otherwise auto-generate from waste lines
   var sh3 = manifest.specialHandling3 || '';
-  var parts14 = [];
-  for (var b14 = 1; b14 <= wasteLineCount; b14++) {
-    var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
-    var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
-    var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
-    var desc14 = manifest['waste' + b14 + 'Description'] || '';
-    if (!desc14 && !pid14) continue;
-    var label14 = '9b.' + b14 + '= ';
-    // Strip waste stream name from profileId - keep only the numeric ID portion
-    var cleanPid = pid14 ? pid14.split(/\s+/)[0] : '';
-    if (cleanPid) label14 += cleanPid;
-    if (csize14) label14 += ' ' + csize14;
-    if (ctype14) label14 += ' ' + ctype14;
-    parts14.push(label14.trim());
-  }
-  var autoText = parts14.join(', ');
   var sh1 = '';
   var sh2 = '';
-  if (autoText.length > 75) {
-    var cut14 = autoText.lastIndexOf(', ', 75);
-    if (cut14 <= 0) cut14 = 75;
-    sh1 = autoText.substring(0, cut14);
-    var rest14 = autoText.substring(cut14).replace(/^,?\s*/, '');
-    if (rest14.length > 75) {
-      var cut14b = rest14.lastIndexOf(', ', 75);
-      if (cut14b <= 0) cut14b = 75;
-      sh2 = rest14.substring(0, cut14b);
-      var overflow14 = rest14.substring(cut14b).replace(/^,?\s*/, '');
-      if (overflow14 && !sh3) sh3 = overflow14;
-    } else {
-      sh2 = rest14;
-    }
+  if (manifest.specialHandling && manifest.specialHandling.trim()) {
+    sh1 = manifest.specialHandling;
+    sh2 = manifest.specialHandling2 || '';
   } else {
-    sh1 = autoText;
+    var parts14 = [];
+    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+      var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
+      var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
+      var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
+      var desc14 = manifest['waste' + b14 + 'Description'] || '';
+      if (!desc14 && !pid14) continue;
+      var label14 = '9b.' + b14 + '= ';
+      var cleanPid = pid14 ? pid14.split(/\s+/)[0] : '';
+      if (cleanPid) label14 += cleanPid;
+      if (csize14) label14 += ' ' + csize14;
+      if (ctype14) label14 += ' ' + ctype14;
+      parts14.push(label14.trim());
+    }
+    var autoText = parts14.join(', ');
+    if (autoText.length > 75) {
+      var cut14 = autoText.lastIndexOf(', ', 75);
+      if (cut14 <= 0) cut14 = 75;
+      sh1 = autoText.substring(0, cut14);
+      var rest14 = autoText.substring(cut14).replace(/^,?\s*/, '');
+      if (rest14.length > 75) {
+        var cut14b = rest14.lastIndexOf(', ', 75);
+        if (cut14b <= 0) cut14b = 75;
+        sh2 = rest14.substring(0, cut14b);
+        var overflow14 = rest14.substring(cut14b).replace(/^,?\s*/, '');
+        if (overflow14 && !sh3) sh3 = overflow14;
+      } else {
+        sh2 = rest14;
+      }
+    } else {
+      sh1 = autoText;
   }
   printAt(M.specialHandling.row, M.specialHandling.col, sh1);
   printAt(M.specialHandling2.row, M.specialHandling2.col, sh2);
@@ -4609,44 +4618,46 @@ app.get('/api/print/direct/:id', function(req, res) {
     }
   }
 
-  // Box 14 - Special Handling (always regenerate from waste lines at print time)
+  // Box 14 - Use user-entered text if present, otherwise auto-generate from waste lines
   var sh3 = manifest.specialHandling3 || '';
-  // Always build profile/container info from current waste lines
-  var parts14 = [];
-  for (var b14 = 1; b14 <= wasteLineCount; b14++) {
-    var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
-    var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
-    var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
-    var desc14 = manifest['waste' + b14 + 'Description'] || '';
-    if (!desc14 && !pid14) continue;
-    var label14 = '9b.' + b14 + '= ';
-    // Strip waste stream name from profileId - keep only the numeric ID portion
-    var cleanPid = pid14 ? pid14.split(/\s+/)[0] : '';
-    if (cleanPid) label14 += cleanPid;
-    if (csize14) label14 += ' ' + csize14;
-    if (ctype14) label14 += ' ' + ctype14;
-    parts14.push(label14.trim());
-  }
-  var autoText = parts14.join(', ');
-  console.log('Direct print Box14: parts14=' + JSON.stringify(parts14) + ', autoText="' + autoText + '" (' + autoText.length + ' chars)');
   var sh1 = '';
   var sh2 = '';
-  if (autoText.length > 75) {
-    var cut14 = autoText.lastIndexOf(', ', 75);
-    if (cut14 <= 0) cut14 = 75;
-    sh1 = autoText.substring(0, cut14);
-    var rest14 = autoText.substring(cut14).replace(/^,?\s*/, '');
-    if (rest14.length > 75) {
-      var cut14b = rest14.lastIndexOf(', ', 75);
-      if (cut14b <= 0) cut14b = 75;
-      sh2 = rest14.substring(0, cut14b);
-      var overflow14 = rest14.substring(cut14b).replace(/^,?\s*/, '');
-      if (overflow14 && !sh3) sh3 = overflow14;
-    } else {
-      sh2 = rest14;
-    }
+  if (manifest.specialHandling && manifest.specialHandling.trim()) {
+    sh1 = manifest.specialHandling;
+    sh2 = manifest.specialHandling2 || '';
   } else {
-    sh1 = autoText;
+    var parts14 = [];
+    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+      var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
+      var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
+      var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
+      var desc14 = manifest['waste' + b14 + 'Description'] || '';
+      if (!desc14 && !pid14) continue;
+      var label14 = '9b.' + b14 + '= ';
+      var cleanPid = pid14 ? pid14.split(/\s+/)[0] : '';
+      if (cleanPid) label14 += cleanPid;
+      if (csize14) label14 += ' ' + csize14;
+      if (ctype14) label14 += ' ' + ctype14;
+      parts14.push(label14.trim());
+    }
+    var autoText = parts14.join(', ');
+    if (autoText.length > 75) {
+      var cut14 = autoText.lastIndexOf(', ', 75);
+      if (cut14 <= 0) cut14 = 75;
+      sh1 = autoText.substring(0, cut14);
+      var rest14 = autoText.substring(cut14).replace(/^,?\s*/, '');
+      if (rest14.length > 75) {
+        var cut14b = rest14.lastIndexOf(', ', 75);
+        if (cut14b <= 0) cut14b = 75;
+        sh2 = rest14.substring(0, cut14b);
+        var overflow14 = rest14.substring(cut14b).replace(/^,?\s*/, '');
+        if (overflow14 && !sh3) sh3 = overflow14;
+      } else {
+        sh2 = rest14;
+      }
+    } else {
+      sh1 = autoText;
+    }
   }
   placeAt(M.specialHandling.row, M.specialHandling.col, sh1);
   placeAt(M.specialHandling2.row, M.specialHandling2.col, sh2);
@@ -5055,41 +5066,46 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
     }
   }
 
-  // Box 14 - Special Handling
+  // Box 14 - Use user-entered text if present, otherwise auto-generate from waste lines
   var sh3nh = manifest.specialHandling3 || '';
-  var parts14nh = [];
-  for (var b14 = 1; b14 <= wasteLineCount; b14++) {
-    var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
-    var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
-    var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
-    var desc14 = manifest['waste' + b14 + 'Description'] || '';
-    if (!desc14 && !pid14) continue;
-    var label14 = '9b.' + b14 + '= ';
-    var cleanPid = pid14 ? pid14.split(/\s+/)[0] : '';
-    if (cleanPid) label14 += cleanPid;
-    if (csize14) label14 += ' ' + csize14;
-    if (ctype14) label14 += ' ' + ctype14;
-    parts14nh.push(label14.trim());
-  }
-  var autoTextNh = parts14nh.join(', ');
   var sh1nh = '';
   var sh2nh = '';
-  if (autoTextNh.length > 75) {
-    var cut14 = autoTextNh.lastIndexOf(', ', 75);
-    if (cut14 <= 0) cut14 = 75;
-    sh1nh = autoTextNh.substring(0, cut14);
-    var rest14 = autoTextNh.substring(cut14).replace(/^,?\s*/, '');
-    if (rest14.length > 75) {
-      var cut14b = rest14.lastIndexOf(', ', 75);
-      if (cut14b <= 0) cut14b = 75;
-      sh2nh = rest14.substring(0, cut14b);
-      var overflow14 = rest14.substring(cut14b).replace(/^,?\s*/, '');
-      if (overflow14 && !sh3nh) sh3nh = overflow14;
-    } else {
-      sh2nh = rest14;
-    }
+  if (manifest.specialHandling && manifest.specialHandling.trim()) {
+    sh1nh = manifest.specialHandling;
+    sh2nh = manifest.specialHandling2 || '';
   } else {
-    sh1nh = autoTextNh;
+    var parts14nh = [];
+    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+      var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
+      var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
+      var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
+      var desc14 = manifest['waste' + b14 + 'Description'] || '';
+      if (!desc14 && !pid14) continue;
+      var label14 = '9b.' + b14 + '= ';
+      var cleanPid = pid14 ? pid14.split(/\s+/)[0] : '';
+      if (cleanPid) label14 += cleanPid;
+      if (csize14) label14 += ' ' + csize14;
+      if (ctype14) label14 += ' ' + ctype14;
+      parts14nh.push(label14.trim());
+    }
+    var autoTextNh = parts14nh.join(', ');
+    if (autoTextNh.length > 75) {
+      var cut14 = autoTextNh.lastIndexOf(', ', 75);
+      if (cut14 <= 0) cut14 = 75;
+      sh1nh = autoTextNh.substring(0, cut14);
+      var rest14 = autoTextNh.substring(cut14).replace(/^,?\s*/, '');
+      if (rest14.length > 75) {
+        var cut14b = rest14.lastIndexOf(', ', 75);
+        if (cut14b <= 0) cut14b = 75;
+        sh2nh = rest14.substring(0, cut14b);
+        var overflow14 = rest14.substring(cut14b).replace(/^,?\s*/, '');
+        if (overflow14 && !sh3nh) sh3nh = overflow14;
+      } else {
+        sh2nh = rest14;
+      }
+    } else {
+      sh1nh = autoTextNh;
+    }
   }
   placeText(page1, MAP.specialHandling.row, MAP.specialHandling.col, sh1nh);
   placeText(page1, MAP.specialHandling2.row, MAP.specialHandling2.col, sh2nh);
@@ -5403,41 +5419,46 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
     }
   }
 
-  // Box 14
+  // Box 14 - Use user-entered text if present, otherwise auto-generate from waste lines
   var sh3nh2 = manifest.specialHandling3 || '';
-  var parts14nh2 = [];
-  for (var b14 = 1; b14 <= wasteLineCount; b14++) {
-    var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
-    var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
-    var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
-    var desc14 = manifest['waste' + b14 + 'Description'] || '';
-    if (!desc14 && !pid14) continue;
-    var label14 = '9b.' + b14 + '= ';
-    var cleanPid = pid14 ? pid14.split(/\s+/)[0] : '';
-    if (cleanPid) label14 += cleanPid;
-    if (csize14) label14 += ' ' + csize14;
-    if (ctype14) label14 += ' ' + ctype14;
-    parts14nh2.push(label14.trim());
-  }
-  var autoTextNh2 = parts14nh2.join(', ');
   var sh1nh2 = '';
   var sh2nh2 = '';
-  if (autoTextNh2.length > 75) {
-    var cut14 = autoTextNh2.lastIndexOf(', ', 75);
-    if (cut14 <= 0) cut14 = 75;
-    sh1nh2 = autoTextNh2.substring(0, cut14);
-    var rest14 = autoTextNh2.substring(cut14).replace(/^,?\s*/, '');
-    if (rest14.length > 75) {
-      var cut14b = rest14.lastIndexOf(', ', 75);
-      if (cut14b <= 0) cut14b = 75;
-      sh2nh2 = rest14.substring(0, cut14b);
-      var overflow14 = rest14.substring(cut14b).replace(/^,?\s*/, '');
-      if (overflow14 && !sh3nh2) sh3nh2 = overflow14;
-    } else {
-      sh2nh2 = rest14;
-    }
+  if (manifest.specialHandling && manifest.specialHandling.trim()) {
+    sh1nh2 = manifest.specialHandling;
+    sh2nh2 = manifest.specialHandling2 || '';
   } else {
-    sh1nh2 = autoTextNh2;
+    var parts14nh2 = [];
+    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+      var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
+      var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
+      var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
+      var desc14 = manifest['waste' + b14 + 'Description'] || '';
+      if (!desc14 && !pid14) continue;
+      var label14 = '9b.' + b14 + '= ';
+      var cleanPid = pid14 ? pid14.split(/\s+/)[0] : '';
+      if (cleanPid) label14 += cleanPid;
+      if (csize14) label14 += ' ' + csize14;
+      if (ctype14) label14 += ' ' + ctype14;
+      parts14nh2.push(label14.trim());
+    }
+    var autoTextNh2 = parts14nh2.join(', ');
+    if (autoTextNh2.length > 75) {
+      var cut14 = autoTextNh2.lastIndexOf(', ', 75);
+      if (cut14 <= 0) cut14 = 75;
+      sh1nh2 = autoTextNh2.substring(0, cut14);
+      var rest14 = autoTextNh2.substring(cut14).replace(/^,?\s*/, '');
+      if (rest14.length > 75) {
+        var cut14b = rest14.lastIndexOf(', ', 75);
+        if (cut14b <= 0) cut14b = 75;
+        sh2nh2 = rest14.substring(0, cut14b);
+        var overflow14 = rest14.substring(cut14b).replace(/^,?\s*/, '');
+        if (overflow14 && !sh3nh2) sh3nh2 = overflow14;
+      } else {
+        sh2nh2 = rest14;
+      }
+    } else {
+      sh1nh2 = autoTextNh2;
+    }
   }
   placeAt(M.specialHandling.row, M.specialHandling.col, sh1nh2);
   placeAt(M.specialHandling2.row, M.specialHandling2.col, sh2nh2);
