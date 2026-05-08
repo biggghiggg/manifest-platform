@@ -4268,6 +4268,7 @@ app.get('/api/print/escp2/:id', function(req, res) {
       }
     } else {
       sh1 = autoText;
+    }
   }
   printAt(M.specialHandling.row, M.specialHandling.col, sh1);
   printAt(M.specialHandling2.row, M.specialHandling2.col, sh2);
