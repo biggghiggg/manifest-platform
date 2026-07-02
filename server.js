@@ -3046,8 +3046,8 @@ var BOL_MAP = {
   fromZip:            { row: 15, col: 70 },
   emergencyPhone:     { row: 16, col: 58 },
 
-  // BOL Number
-  bolNumber:          { row: 17, col: 6 },
+  // BOL Number — top-right Shipper No. box
+  bolNumber:          { row: 9, col: 58 },
 
   // Line items (14 rows, 2 rows each on form; desc uses CSS wrapping)
   // Columns: units(col 1), hm(col 12), desc(col 15, CSS-wrapped), qty(col 53), weight(col 63)
@@ -3339,8 +3339,8 @@ app.get('/api/print/bol/:id', function(req, res) {
   place('emergencyPhone', bol.emergencyPhone);
 
   // Route
-  // BOL Number - prints "BOL # " prefix
-  place('bolNumber', bol.bolNumber ? 'BOL # ' + bol.bolNumber : '');
+  // BOL Number - prints in Shipper No. box (top right)
+  place('bolNumber', bol.bolNumber || '');
 
   // Line items
   var lines = bol.lines || [];
