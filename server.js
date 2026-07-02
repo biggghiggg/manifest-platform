@@ -3355,6 +3355,8 @@ app.get('/api/print/bol/:id', function(req, res) {
   customAlignmentBol = data.customAlignmentBol || null;
   savedDefaultsBol = data.savedDefaultsBol || null;
   var M = getActiveBolMap();
+  // Force bolNumber to Shipper No. box (top-right) regardless of saved alignment
+  M.bolNumber = { row: 9, col: 58 };
   var _fo = parseFieldOffsets(req);
   applyFieldOffsets(M, _fo);
   var CPI = 10;
