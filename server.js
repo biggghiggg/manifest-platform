@@ -3107,6 +3107,25 @@ var savedDefaultsBol = data.savedDefaultsBol || null;
 var customAlignmentBol = data.customAlignmentBol || null;
 var previousAlignmentBol = data.previousAlignmentBol || null;
 
+// Migration: move bolNumber to Shipper No. box (top-right) if still at old position
+(function() {
+  var newPos = { row: 9, col: 58 };
+  var changed = false;
+  if (savedDefaultsBol && savedDefaultsBol.bolNumber && savedDefaultsBol.bolNumber.row === 17 && savedDefaultsBol.bolNumber.col === 6) {
+    savedDefaultsBol.bolNumber = newPos;
+    data.savedDefaultsBol = savedDefaultsBol;
+    changed = true;
+  }
+  if (customAlignmentBol && customAlignmentBol.bolNumber && customAlignmentBol.bolNumber.row === 17 && customAlignmentBol.bolNumber.col === 6) {
+    customAlignmentBol.bolNumber = newPos;
+    data.customAlignmentBol = customAlignmentBol;
+    changed = true;
+  }
+  if (changed) {
+    try { fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2)); console.log('Migrated bolNumber position to Shipper No. box'); } catch(e) {}
+  }
+})();
+
 function getBaseBolMap() {
   return savedDefaultsBol || BOL_MAP;
 }
