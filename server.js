@@ -3078,7 +3078,7 @@ var BOL_MAP = {
   emergencyPhone:     { row: 16, col: 58 },
 
   // BOL Number — top-right Shipper No. box
-  bolNumber:          { row: 9, col: 58 },
+  bolNumber:          { row: 4, col: 68 },
 
   // Line items (14 rows, 2 rows each on form; desc uses CSS wrapping)
   // Columns: units(col 1), hm(col 12), desc(col 15, CSS-wrapped), qty(col 53), weight(col 63)
@@ -3109,7 +3109,7 @@ var previousAlignmentBol = data.previousAlignmentBol || null;
 
 // Migration: move bolNumber to Shipper No. box (top-right) if still at old position
 (function() {
-  var newPos = { row: 9, col: 58 };
+  var newPos = { row: 4, col: 68 };
   var changed = false;
   if (savedDefaultsBol && savedDefaultsBol.bolNumber && savedDefaultsBol.bolNumber.row === 17 && savedDefaultsBol.bolNumber.col === 6) {
     savedDefaultsBol.bolNumber = newPos;
@@ -3356,7 +3356,7 @@ app.get('/api/print/bol/:id', function(req, res) {
   savedDefaultsBol = data.savedDefaultsBol || null;
   var M = getActiveBolMap();
   // Force bolNumber to Shipper No. box (top-right) regardless of saved alignment
-  M.bolNumber = { row: 9, col: 58 };
+  M.bolNumber = { row: 4, col: 68 };
   var _fo = parseFieldOffsets(req);
   applyFieldOffsets(M, _fo);
   var CPI = 10;
