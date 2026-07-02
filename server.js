@@ -216,6 +216,33 @@ function fileBolAsPrinted(bolId) {
   return null;
 }
 
+// Parse per-field offsets from base64-encoded fo query param
+function parseFieldOffsets(req) {
+  var fo = req.query.fo;
+  if (!fo) return {};
+  try {
+    var decoded = JSON.parse(Buffer.from(decodeURIComponent(fo), 'base64').toString('utf8'));
+    // Convert short keys {r,c} to {row,col}
+    var result = {};
+    var keys = Object.keys(decoded);
+    for (var i = 0; i < keys.length; i++) {
+      result[keys[i]] = { row: decoded[keys[i]].r || 0, col: decoded[keys[i]].c || 0 };
+    }
+    return result;
+  } catch(e) { return {}; }
+}
+
+// Apply per-field offsets to a MAP object (modifies in place, so pass a copy)
+function applyFieldOffsets(MAP, fieldOffsets) {
+  var keys = Object.keys(fieldOffsets);
+  for (var i = 0; i < keys.length; i++) {
+    var fk = keys[i];
+    if (MAP[fk]) {
+      MAP[fk] = { row: (MAP[fk].row || 0) + (fieldOffsets[fk].row || 0), col: (MAP[fk].col || 0) + (fieldOffsets[fk].col || 0) };
+    }
+  }
+}
+
 // Waste Streams routes (HTML uses /api/waste-streams with hyphen)
 app.get('/api/waste-streams', function(req, res) { res.json(data.wasteStreams || []); });
 app.post('/api/waste-streams', function(req, res) {
@@ -2683,6 +2710,8 @@ app.get('/api/print/label/:id', function(req, res) {
   // Re-sync alignment
   customAlignmentLabel = data.customAlignmentLabel || null;
   var M = getActiveLabelMap();
+  var _fo = parseFieldOffsets(req);
+  applyFieldOffsets(M, _fo);
 
   var CPI = 12;
   var LPI = 6;
@@ -2862,6 +2891,8 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
 
   customAlignmentLabel = data.customAlignmentLabel || null;
   var M = getActiveLabelMap();
+  var _fo = parseFieldOffsets(req);
+  applyFieldOffsets(M, _fo);
 
   var CPI = 12;
   var LPI = 6;
@@ -3305,6 +3336,8 @@ app.get('/api/print/bol/:id', function(req, res) {
   customAlignmentBol = data.customAlignmentBol || null;
   savedDefaultsBol = data.savedDefaultsBol || null;
   var M = getActiveBolMap();
+  var _fo = parseFieldOffsets(req);
+  applyFieldOffsets(M, _fo);
   var CPI = 10;
   var LPI = 6;
   var colOffsetIn = parseFloat(req.query.colOffset) || 0;
@@ -3466,6 +3499,8 @@ app.get('/api/print/alignment-test', function(req, res) {
 
   // Show where each field would print using current MAP
   var MAP = getActiveMap();
+  var _fo = parseFieldOffsets(req);
+  applyFieldOffsets(MAP, _fo);
   testPlace(5, 1, '--- FIELD POSITIONS (current MAP) ---');
   tp(MAP.generatorEpaId, '[BOX1:GenEPAID]');
   tp(MAP.page, '[B2:Pg]');
@@ -3553,6 +3588,8 @@ app.get('/api/print/manifest/:id', function(req, res) {
   fileManifestAsPrinted(manifest.id);
 
   var MAP = getActiveMap();
+  var _fo = parseFieldOffsets(req);
+  applyFieldOffsets(MAP, _fo);
 
   // Helper: create page canvas (66 lines = 11" at 6 LPI)
   var CANVAS_ROWS = 66;
@@ -4058,6 +4095,8 @@ app.get('/api/print/escp2/:id', function(req, res) {
   fileManifestAsPrinted(manifest.id);
 
   var M = getActiveRawMap();
+  var _fo = parseFieldOffsets(req);
+  applyFieldOffsets(M, _fo);
   var commands = [];
 
   function addBytes(arr) { commands.push(Buffer.from(arr)); }
@@ -4420,6 +4459,8 @@ app.get('/api/print/direct/:id', function(req, res) {
   console.log('Direct Print manifest id=' + manifest.id + ', manifestTrackingNum="' + (manifest.manifestTrackingNum || '') + '"');
 
   var M = getActiveRawMap();
+  var _fo = parseFieldOffsets(req);
+  applyFieldOffsets(M, _fo);
   console.log('Direct Print M.manifestTrackingNum=' + JSON.stringify(M.manifestTrackingNum));
 
   // Collect all text placements: [{row, col, text, page}]
@@ -4874,6 +4915,8 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
   fileManifestAsPrinted(manifest.id);
 
   var MAP = getActiveMap();
+  var _fo = parseFieldOffsets(req);
+  applyFieldOffsets(MAP, _fo);
 
   var CANVAS_ROWS = 66;
   function createCanvas() {
@@ -5249,6 +5292,8 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
   // Use non-haz raw map (same positions as haz, but separate alignment)
   var nhCustomAlignmentRaw = data.customAlignmentNonhaz || null;
   var M = getActiveNonhazRawMap();
+  var _fo = parseFieldOffsets(req);
+  applyFieldOffsets(M, _fo);
 
   var placements = [];
   function placeAt(row, col, text, pg) {

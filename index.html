@@ -80,17 +80,50 @@
     // Per-browser printer offset helper - reads from localStorage so each computer/printer
     // can have independent alignment without affecting other users
     function printOpen(url, target) {
-      var colOff = parseFloat(localStorage.getItem('ies_printerColOffset') || '0') || 0;
-      var rowOff = parseFloat(localStorage.getItem('ies_printerRowOffset') || '0') || 0;
-      var colOffLabel = parseFloat(localStorage.getItem('ies_printerColOffsetLabel') || '0') || 0;
-      var rowOffLabel = parseFloat(localStorage.getItem('ies_printerRowOffsetLabel') || '0') || 0;
-      // Determine if this is a label print
-      var isLabel = url.indexOf('/label/') !== -1 || url.indexOf('/labels/') !== -1;
-      var addCol = isLabel ? colOffLabel : colOff;
-      var addRow = isLabel ? rowOffLabel : rowOff;
+      var formType = 'main';
+      if (url.indexOf('/label/') !== -1 || url.indexOf('/labels/') !== -1) formType = 'label';
+      else if (url.indexOf('/bol/') !== -1) formType = 'bol';
+      else if (url.indexOf('/nonhaz/') !== -1 || url.indexOf('/non-haz/') !== -1) formType = 'nonhaz';
+      else if (url.indexOf('/continuation/') !== -1) formType = 'cont';
+      var storageKey = 'ies_myPrinter_' + formType;
+      var stored = {};
+      try { stored = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e) {}
+      var addCol = stored.colShift || 0;
+      var addRow = stored.rowShift || 0;
+      if (addCol === 0 && addRow === 0 && !stored.fields) {
+        if (formType === 'label') {
+          addCol = parseFloat(localStorage.getItem('ies_printerColOffsetLabel') || '0') || 0;
+          addRow = parseFloat(localStorage.getItem('ies_printerRowOffsetLabel') || '0') || 0;
+        } else {
+          addCol = parseFloat(localStorage.getItem('ies_printerColOffset') || '0') || 0;
+          addRow = parseFloat(localStorage.getItem('ies_printerRowOffset') || '0') || 0;
+        }
+      }
+      var params = [];
       if (addCol !== 0 || addRow !== 0) {
+        params.push('colOffset=' + addCol);
+        params.push('rowOffset=' + addRow);
+      }
+      var fields = stored.fields || {};
+      var nonZero = {};
+      var hasFieldOffsets = false;
+      var fkeys = Object.keys(fields);
+      for (var i = 0; i < fkeys.length; i++) {
+        var fk = fkeys[i];
+        var f = fields[fk];
+        if ((f.row && f.row !== 0) || (f.col && f.col !== 0)) {
+          nonZero[fk] = {};
+          if (f.row && f.row !== 0) nonZero[fk].r = f.row;
+          if (f.col && f.col !== 0) nonZero[fk].c = f.col;
+          hasFieldOffsets = true;
+        }
+      }
+      if (hasFieldOffsets) {
+        params.push('fo=' + encodeURIComponent(btoa(JSON.stringify(nonZero))));
+      }
+      if (params.length > 0) {
         var sep = url.indexOf('?') === -1 ? '?' : '&';
-        url = url + sep + 'colOffset=' + addCol + '&rowOffset=' + addRow;
+        url = url + sep + params.join('&');
       }
       window.open(url, target || '_blank');
     }
@@ -4424,106 +4457,291 @@
       );
     }
 
-    function MyPrinterOffset(){
-      var s1=useState(parseFloat(localStorage.getItem('ies_printerColOffset')||'0')||0);var colOff=s1[0];var setColOff=s1[1];
-      var s2=useState(parseFloat(localStorage.getItem('ies_printerRowOffset')||'0')||0);var rowOff=s2[0];var setRowOff=s2[1];
-      var s3=useState(parseFloat(localStorage.getItem('ies_printerColOffsetLabel')||'0')||0);var colOffLbl=s3[0];var setColOffLbl=s3[1];
-      var s4=useState(parseFloat(localStorage.getItem('ies_printerRowOffsetLabel')||'0')||0);var rowOffLbl=s4[0];var setRowOffLbl=s4[1];
-      var s5=useState(localStorage.getItem('ies_printerName')||'');var printerName=s5[0];var setPrinterName=s5[1];
-      var s6=useState('');var status=s6[0];var setStatus=s6[1];
+    function MyPrinterFormEditor(props) {
+      var storageKey = props.storageKey;
+      var fieldLabels = props.fieldLabels;
+      var groups = props.groups;
+      var stored = {};
+      try { stored = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e) {}
+      var s1=useState(stored.colShift || 0);var colShift=s1[0];var setColShift=s1[1];
+      var s2=useState(stored.rowShift || 0);var rowShift=s2[0];var setRowShift=s2[1];
+      var s3=useState(stored.fields || {});var fields=s3[0];var setFields=s3[1];
+      var s4=useState('');var status=s4[0];var setStatus=s4[1];
+      var s5=useState(null);var expandedGroup=s5[0];var setExpandedGroup=s5[1];
       function handleSave(){
-        localStorage.setItem('ies_printerColOffset',String(colOff));
-        localStorage.setItem('ies_printerRowOffset',String(rowOff));
-        localStorage.setItem('ies_printerColOffsetLabel',String(colOffLbl));
-        localStorage.setItem('ies_printerRowOffsetLabel',String(rowOffLbl));
-        localStorage.setItem('ies_printerName',printerName);
+        var saveData={colShift:colShift,rowShift:rowShift,fields:fields};
+        localStorage.setItem(storageKey,JSON.stringify(saveData));
         setStatus('Saved to this browser!');setTimeout(function(){setStatus('')},3000);
       }
       function handleReset(){
-        setColOff(0);setRowOff(0);setColOffLbl(0);setRowOffLbl(0);
-        localStorage.setItem('ies_printerColOffset','0');
-        localStorage.setItem('ies_printerRowOffset','0');
-        localStorage.setItem('ies_printerColOffsetLabel','0');
-        localStorage.setItem('ies_printerRowOffsetLabel','0');
+        setColShift(0);setRowShift(0);setFields({});
+        localStorage.removeItem(storageKey);
         setStatus('Reset to zero');setTimeout(function(){setStatus('')},2000);
       }
-      function handleTestPrint(){printOpen('/api/print/alignment-test')}
-      function nudgeCol(v){var n=Math.round((colOff+v)*10)/10;setColOff(n)}
-      function nudgeRow(v){var n=Math.round((rowOff+v)*10)/10;setRowOff(n)}
-      function nudgeColLbl(v){var n=Math.round((colOffLbl+v)*10)/10;setColOffLbl(n)}
-      function nudgeRowLbl(v){var n=Math.round((rowOffLbl+v)*10)/10;setRowOffLbl(n)}
-      return React.createElement('div',{className:'card',style:{maxWidth:700}},
-        React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:4}},'My Printer Offset'),
-        React.createElement('p',{style:{color:'#059669',fontSize:14,marginBottom:4,fontWeight:600}},'These settings are saved on THIS computer only and do NOT affect other users.'),
-        React.createElement('p',{style:{color:'#666',fontSize:13,marginBottom:16}},'If your printer prints text in a different position than expected, use these offsets to shift everything. Positive = right/down, negative = left/up. Each unit is approximately 1/10 inch.'),
-        React.createElement('div',{style:{marginBottom:16}},
-          React.createElement('label',{style:{fontWeight:600,fontSize:14}},'Printer Name (optional)'),
-          React.createElement('input',{type:'text',value:printerName,onChange:function(e){setPrinterName(e.target.value)},placeholder:'e.g. Epson FX-890IIN',style:{display:'block',width:'100%',maxWidth:300,padding:'8px 12px',fontSize:14,border:'1px solid #ccc',borderRadius:6,marginTop:4}})
-        ),
+      function updateField(fk,dim,val){
+        var v=parseFloat(val);if(isNaN(v)||v<-20||v>20)return;
+        var nf=Object.assign({},fields);
+        nf[fk]=Object.assign({},fields[fk]||{row:0,col:0});
+        nf[fk][dim]=v;setFields(nf);
+      }
+      function nudge(fk,dim,amt){
+        var current=fields[fk]||{row:0,col:0};
+        var nv=Math.round(((current[dim]||0)+amt)*10)/10;
+        if(nv>=-20&&nv<=20)updateField(fk,dim,nv);
+      }
+      function countNonZero(){
+        var count=0;var ks=Object.keys(fields);
+        for(var i=0;i<ks.length;i++){var f=fields[ks[i]];if((f.row&&f.row!==0)||(f.col&&f.col!==0))count++;}
+        return count;
+      }
+      var nonZeroCount=countNonZero();
+      return React.createElement('div',null,
         React.createElement('div',{style:{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:16,marginBottom:16}},
-          React.createElement('h3',{style:{fontSize:16,fontWeight:600,marginBottom:12}},'Manifest / BOL / Non-Haz Offset'),
+          React.createElement('h3',{style:{fontSize:15,fontWeight:600,marginBottom:12}},'Global Shift (moves ALL fields for this form type)'),
           React.createElement('div',{style:{display:'flex',gap:24,flexWrap:'wrap'}},
             React.createElement('div',null,
               React.createElement('label',{style:{fontWeight:600,fontSize:13}},'Column (left/right)'),
               React.createElement('div',{style:{display:'flex',alignItems:'center',gap:4,marginTop:4}},
-                React.createElement('button',{onClick:function(){nudgeCol(-0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9664)),
-                React.createElement('input',{type:'number',step:'0.5',value:colOff,onChange:function(e){var v=parseFloat(e.target.value);if(!isNaN(v)&&v>=-20&&v<=20)setColOff(v)},style:{width:70,textAlign:'center',padding:'4px 8px',fontSize:16,border:'1px solid #ccc',borderRadius:4}}),
-                React.createElement('button',{onClick:function(){nudgeCol(0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9654)),
-                React.createElement('span',{style:{marginLeft:8,color:'#666',fontSize:13}},colOff>0?'+'+colOff+' right':colOff<0?colOff+' left':'0 (no shift)')
+                React.createElement('button',{onClick:function(){setColShift(Math.round((colShift-0.5)*10)/10)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9664)),
+                React.createElement('input',{type:'number',step:'0.5',value:colShift,onChange:function(e){var v=parseFloat(e.target.value);if(!isNaN(v)&&v>=-20&&v<=20)setColShift(v)},style:{width:70,textAlign:'center',padding:'4px 8px',fontSize:16,border:'1px solid #ccc',borderRadius:4}}),
+                React.createElement('button',{onClick:function(){setColShift(Math.round((colShift+0.5)*10)/10)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9654)),
+                React.createElement('span',{style:{marginLeft:8,color:'#666',fontSize:13}},colShift>0?'+'+colShift+' right':colShift<0?colShift+' left':'0 (no shift)')
               )
             ),
             React.createElement('div',null,
               React.createElement('label',{style:{fontWeight:600,fontSize:13}},'Row (up/down)'),
               React.createElement('div',{style:{display:'flex',alignItems:'center',gap:4,marginTop:4}},
-                React.createElement('button',{onClick:function(){nudgeRow(-0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9650)),
-                React.createElement('input',{type:'number',step:'0.5',value:rowOff,onChange:function(e){var v=parseFloat(e.target.value);if(!isNaN(v)&&v>=-10&&v<=10)setRowOff(v)},style:{width:70,textAlign:'center',padding:'4px 8px',fontSize:16,border:'1px solid #ccc',borderRadius:4}}),
-                React.createElement('button',{onClick:function(){nudgeRow(0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9660)),
-                React.createElement('span',{style:{marginLeft:8,color:'#666',fontSize:13}},rowOff>0?'+'+rowOff+' down':rowOff<0?rowOff+' up':'0 (no shift)')
+                React.createElement('button',{onClick:function(){setRowShift(Math.round((rowShift-0.5)*10)/10)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9650)),
+                React.createElement('input',{type:'number',step:'0.5',value:rowShift,onChange:function(e){var v=parseFloat(e.target.value);if(!isNaN(v)&&v>=-20&&v<=20)setRowShift(v)},style:{width:70,textAlign:'center',padding:'4px 8px',fontSize:16,border:'1px solid #ccc',borderRadius:4}}),
+                React.createElement('button',{onClick:function(){setRowShift(Math.round((rowShift+0.5)*10)/10)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9660)),
+                React.createElement('span',{style:{marginLeft:8,color:'#666',fontSize:13}},rowShift>0?'+'+rowShift+' down':rowShift<0?rowShift+' up':'0 (no shift)')
               )
             )
           )
         ),
-        React.createElement('div',{style:{background:'#fef3c7',border:'1px solid #fde68a',borderRadius:8,padding:16,marginBottom:20}},
-          React.createElement('h3',{style:{fontSize:16,fontWeight:600,marginBottom:12}},'Label (6x6) Offset'),
-          React.createElement('div',{style:{display:'flex',gap:24,flexWrap:'wrap'}},
-            React.createElement('div',null,
-              React.createElement('label',{style:{fontWeight:600,fontSize:13}},'Column (left/right)'),
-              React.createElement('div',{style:{display:'flex',alignItems:'center',gap:4,marginTop:4}},
-                React.createElement('button',{onClick:function(){nudgeColLbl(-0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9664)),
-                React.createElement('input',{type:'number',step:'0.5',value:colOffLbl,onChange:function(e){var v=parseFloat(e.target.value);if(!isNaN(v)&&v>=-20&&v<=20)setColOffLbl(v)},style:{width:70,textAlign:'center',padding:'4px 8px',fontSize:16,border:'1px solid #ccc',borderRadius:4}}),
-                React.createElement('button',{onClick:function(){nudgeColLbl(0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9654)),
-                React.createElement('span',{style:{marginLeft:8,color:'#666',fontSize:13}},colOffLbl>0?'+'+colOffLbl+' right':colOffLbl<0?colOffLbl+' left':'0 (no shift)')
-              )
+        React.createElement('div',{style:{marginBottom:12}},
+          React.createElement('h3',{style:{fontSize:15,fontWeight:600,marginBottom:4}},'Per-Field Adjustments'),
+          React.createElement('p',{style:{color:'#666',fontSize:13,marginBottom:8}},'Click a section to expand it and adjust individual fields. Values are offsets from the server settings. ' + (nonZeroCount > 0 ? nonZeroCount + ' field(s) adjusted.' : 'No individual fields adjusted.'))
+        ),
+        groups.map(function(group){
+          var isExpanded = expandedGroup === group.title;
+          var groupHasChanges = false;
+          for(var gi=0;gi<group.fields.length;gi++){
+            var gf=fields[group.fields[gi]]||{row:0,col:0};
+            if((gf.row&&gf.row!==0)||(gf.col&&gf.col!==0)){groupHasChanges=true;break;}
+          }
+          return React.createElement('div',{key:group.title,style:{marginBottom:4,border:'1px solid #e2e8f0',borderRadius:6,overflow:'hidden'}},
+            React.createElement('div',{onClick:function(){setExpandedGroup(isExpanded?null:group.title)},style:{padding:'10px 14px',background:groupHasChanges?'#ecfdf5':'#f8fafc',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:isExpanded?'1px solid #e2e8f0':'none'}},
+              React.createElement('span',{style:{fontWeight:600,fontSize:13}},group.title),
+              React.createElement('span',{style:{color:'#999',fontSize:12}},isExpanded?String.fromCharCode(9650):String.fromCharCode(9660))
             ),
-            React.createElement('div',null,
-              React.createElement('label',{style:{fontWeight:600,fontSize:13}},'Row (up/down)'),
-              React.createElement('div',{style:{display:'flex',alignItems:'center',gap:4,marginTop:4}},
-                React.createElement('button',{onClick:function(){nudgeRowLbl(-0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9650)),
-                React.createElement('input',{type:'number',step:'0.5',value:rowOffLbl,onChange:function(e){var v=parseFloat(e.target.value);if(!isNaN(v)&&v>=-10&&v<=10)setRowOffLbl(v)},style:{width:70,textAlign:'center',padding:'4px 8px',fontSize:16,border:'1px solid #ccc',borderRadius:4}}),
-                React.createElement('button',{onClick:function(){nudgeRowLbl(0.5)},style:{width:32,height:32,cursor:'pointer',fontSize:18,border:'1px solid #ccc',borderRadius:4}},String.fromCharCode(9660)),
-                React.createElement('span',{style:{marginLeft:8,color:'#666',fontSize:13}},rowOffLbl>0?'+'+rowOffLbl+' down':rowOffLbl<0?rowOffLbl+' up':'0 (no shift)')
+            isExpanded?React.createElement('div',{style:{padding:12}},
+              React.createElement('table',{style:{width:'100%',borderCollapse:'collapse'}},
+                React.createElement('thead',null,
+                  React.createElement('tr',null,
+                    React.createElement('th',{style:{textAlign:'left',padding:'4px 8px',width:'40%',fontSize:12}},'Field'),
+                    React.createElement('th',{style:{textAlign:'center',padding:'4px 8px',width:'30%',fontSize:12}},'Up / Down'),
+                    React.createElement('th',{style:{textAlign:'center',padding:'4px 8px',width:'30%',fontSize:12}},'Left / Right')
+                  )
+                ),
+                React.createElement('tbody',null,
+                  (function(){
+                    var rows=[];
+                    for(var fi=0;fi<group.fields.length;fi++){
+                      (function(fk){
+                        var pos=fields[fk]||{row:0,col:0};
+                        var hasChange=(pos.row&&pos.row!==0)||(pos.col&&pos.col!==0);
+                        rows.push(React.createElement('tr',{key:fk,style:{background:hasChange?'rgba(5,150,105,0.08)':'transparent',borderBottom:'1px solid #f0f0f0'}},
+                          React.createElement('td',{style:{padding:'6px 8px',fontSize:12,fontWeight:hasChange?700:400}},fieldLabels[fk]||fk),
+                          React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
+                            React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
+                              React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',-0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9650)),
+                              React.createElement('input',{type:'number',step:'0.5',value:pos.row||0,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'row',e.target.value)},style:{width:50,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                              React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'row',0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9660))
+                            )
+                          ),
+                          React.createElement('td',{style:{textAlign:'center',padding:'6px 4px'}},
+                            React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
+                              React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',-0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9664)),
+                              React.createElement('input',{type:'number',step:'0.5',value:pos.col||0,onClick:function(e){e.stopPropagation()},onChange:function(e){updateField(fk,'col',e.target.value)},style:{width:50,textAlign:'center',padding:'2px 4px',border:'1px solid #ccc',borderRadius:4}}),
+                              React.createElement('button',{onClick:function(e){e.stopPropagation();nudge(fk,'col',0.5)},style:{width:26,height:26,cursor:'pointer',border:'1px solid #ccc',borderRadius:4,background:'#f8f8f8'}},String.fromCharCode(9654))
+                            )
+                          )
+                        ));
+                      })(group.fields[fi]);
+                    }
+                    return rows;
+                  })()
+                )
               )
-            )
-          )
-        ),
-        React.createElement('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
+            ):null
+          );
+        }),
+        React.createElement('div',{style:{display:'flex',gap:8,flexWrap:'wrap',marginTop:16}},
           React.createElement('button',{className:'btn btn-primary',onClick:handleSave,style:{padding:'10px 24px',fontSize:16,background:'#059669'}},'Save My Printer Offsets'),
-          React.createElement('button',{className:'btn',onClick:handleTestPrint,style:{padding:'10px 24px',background:'#2563eb',color:'#fff'}},'Print Alignment Test'),
           React.createElement('button',{className:'btn btn-secondary',onClick:handleReset,style:{padding:'10px 24px'}},'Reset to Zero')
         ),
-        status?React.createElement('div',{style:{marginTop:12,padding:'10px 16px',background:'#ecfdf5',border:'1px solid #6ee7b7',borderRadius:8,color:'#065f46',fontWeight:600}},status):null,
-        React.createElement('div',{style:{marginTop:20,padding:16,background:'#f8fafc',borderRadius:8,border:'1px solid #e2e8f0'}},
-          React.createElement('h4',{style:{fontSize:14,fontWeight:600,marginBottom:8}},'How to calibrate your printer:'),
-          React.createElement('ol',{style:{paddingLeft:20,fontSize:13,color:'#555',lineHeight:1.8}},
-            React.createElement('li',null,'Click "Print Alignment Test" to print a test page on your printer'),
-            React.createElement('li',null,'Compare where the text lands vs. where it should be on the pre-printed form'),
-            React.createElement('li',null,'If text is too far LEFT, increase Column offset (move right)'),
-            React.createElement('li',null,'If text is too far RIGHT, decrease Column offset (move left)'),
-            React.createElement('li',null,'If text is too HIGH, increase Row offset (move down)'),
-            React.createElement('li',null,'If text is too LOW, decrease Row offset (move up)'),
-            React.createElement('li',null,'Click "Save My Printer Offsets" and test again until aligned'),
-            React.createElement('li',null,'Each unit is about 1/10 inch. Start with 0.5 increments.')
-          )
+        status?React.createElement('div',{style:{marginTop:12,padding:'10px 16px',background:'#ecfdf5',border:'1px solid #6ee7b7',borderRadius:8,color:'#065f46',fontWeight:600}},status):null
+      );
+    }
+
+    function MyPrinterOffset(){
+      var s1=useState('main');var subTab=s1[0];var setSubTab=s1[1];
+      var s2=useState(localStorage.getItem('ies_printerName')||'');var printerName=s2[0];var setPrinterName=s2[1];
+      var s3=useState('');var topStatus=s3[0];var setTopStatus=s3[1];
+      function savePrinterName(){localStorage.setItem('ies_printerName',printerName);setTopStatus('Printer name saved!');setTimeout(function(){setTopStatus('')},2000)}
+      var FORM_CONFIGS={
+        main:{
+          storageKey:'ies_myPrinter_main',
+          fieldLabels:{
+            generatorEpaId:'Box 1 - EPA ID',page:'Box 2 - Page',totalPages:'Box 2 - Total Pages',
+            emergencyPhone:'Box 3 - Emergency Phone',manifestTrackingNum:'Box 4 - Manifest Tracking #',
+            generatorName:'Box 5 - Generator Name',generatorMailAddr:'Box 5 - Mail Address',
+            generatorMailCity:'Box 5 - Mail City/St/Zip',generatorPhone:'Box 5 - Phone',
+            generatorSiteAddr:'Box 5 - Site Address',generatorSiteCity:'Box 5 - Site City/St/Zip',
+            transporter1Name:'Box 6 - Transporter 1',transporter1EpaId:'Box 6 - Trans 1 EPA ID',
+            transporter2Name:'Box 7 - Transporter 2',transporter2EpaId:'Box 7 - Trans 2 EPA ID',
+            facilityName:'Box 8 - Facility',facilityEpaId:'Box 8 - EPA ID',facilityAddress:'Box 8 - Address',facilityPhone:'Box 8 - Phone',facilityCity:'Box 8 - City',facilityState:'Box 8 - State',facilityZip:'Box 8 - Zip',
+            waste1hm:'Waste 1 - HM',waste1desc:'Waste 1 - Description',waste1containerNum:'Waste 1 - Container #',waste1container:'Waste 1 - Type',waste1qty:'Waste 1 - Qty',waste1uom:'Waste 1 - UOM',
+            waste1wc1:'Waste 1 - Code 1',waste1wc2:'Waste 1 - Code 2',waste1wc3:'Waste 1 - Code 3',waste1wc4:'Waste 1 - Code 4',waste1wc5:'Waste 1 - Code 5',waste1wc6:'Waste 1 - Code 6',
+            waste2hm:'Waste 2 - HM',waste2desc:'Waste 2 - Description',waste2containerNum:'Waste 2 - Container #',waste2container:'Waste 2 - Type',waste2qty:'Waste 2 - Qty',waste2uom:'Waste 2 - UOM',
+            waste2wc1:'Waste 2 - Code 1',waste2wc2:'Waste 2 - Code 2',waste2wc3:'Waste 2 - Code 3',waste2wc4:'Waste 2 - Code 4',waste2wc5:'Waste 2 - Code 5',waste2wc6:'Waste 2 - Code 6',
+            waste3hm:'Waste 3 - HM',waste3desc:'Waste 3 - Description',waste3containerNum:'Waste 3 - Container #',waste3container:'Waste 3 - Type',waste3qty:'Waste 3 - Qty',waste3uom:'Waste 3 - UOM',
+            waste3wc1:'Waste 3 - Code 1',waste3wc2:'Waste 3 - Code 2',waste3wc3:'Waste 3 - Code 3',waste3wc4:'Waste 3 - Code 4',waste3wc5:'Waste 3 - Code 5',waste3wc6:'Waste 3 - Code 6',
+            waste4hm:'Waste 4 - HM',waste4desc:'Waste 4 - Description',waste4containerNum:'Waste 4 - Container #',waste4container:'Waste 4 - Type',waste4qty:'Waste 4 - Qty',waste4uom:'Waste 4 - UOM',
+            waste4wc1:'Waste 4 - Code 1',waste4wc2:'Waste 4 - Code 2',waste4wc3:'Waste 4 - Code 3',waste4wc4:'Waste 4 - Code 4',waste4wc5:'Waste 4 - Code 5',waste4wc6:'Waste 4 - Code 6',
+            specialHandling:'Box 14 - Line 1',specialHandling2:'Box 14 - Line 2',specialHandling3:'Box 14 - Line 3',
+            generatorCertName:'Box 15 - Generator Name'
+          },
+          groups:[
+            {title:'Box 1-4 (Header)',fields:['generatorEpaId','page','totalPages','manifestTrackingNum']},
+            {title:'Box 3 (Emergency Phone)',fields:['emergencyPhone']},
+            {title:'Box 5 (Generator)',fields:['generatorName','generatorMailAddr','generatorMailCity','generatorPhone','generatorSiteAddr','generatorSiteCity']},
+            {title:'Box 6-7 (Transporters)',fields:['transporter1Name','transporter1EpaId','transporter2Name','transporter2EpaId']},
+            {title:'Box 8 (Facility)',fields:['facilityName','facilityEpaId','facilityAddress','facilityPhone','facilityCity','facilityState','facilityZip']},
+            {title:'Waste Line 1',fields:['waste1hm','waste1desc','waste1containerNum','waste1container','waste1qty','waste1uom','waste1wc1','waste1wc2','waste1wc3','waste1wc4','waste1wc5','waste1wc6']},
+            {title:'Waste Line 2',fields:['waste2hm','waste2desc','waste2containerNum','waste2container','waste2qty','waste2uom','waste2wc1','waste2wc2','waste2wc3','waste2wc4','waste2wc5','waste2wc6']},
+            {title:'Waste Line 3',fields:['waste3hm','waste3desc','waste3containerNum','waste3container','waste3qty','waste3uom','waste3wc1','waste3wc2','waste3wc3','waste3wc4','waste3wc5','waste3wc6']},
+            {title:'Waste Line 4',fields:['waste4hm','waste4desc','waste4containerNum','waste4container','waste4qty','waste4uom','waste4wc1','waste4wc2','waste4wc3','waste4wc4','waste4wc5','waste4wc6']},
+            {title:'Box 14 (Special Handling)',fields:['specialHandling','specialHandling2','specialHandling3']},
+            {title:'Box 15 (Certification)',fields:['generatorCertName']}
+          ]
+        },
+        label:{
+          storageKey:'ies_myPrinter_label',
+          fieldLabels:{
+            dotShippingName1:'DOT Shipping Name Line 1',dotShippingName2:'DOT Shipping Name Line 2',
+            profileNumber:'Waste Profile #',
+            genPhone:'Telephone',genName:'Generator Name',genAddress:'Generator Address',genCityStateZip:'City/State/Zip',
+            epaId:'EPA ID #',epaWasteNum:'EPA Waste # (line 1)',epaWasteNum2:'EPA Waste # (overflow)',stateWasteCode:'State Waste Code',
+            accumStartDate:'Accumulation Start Date',manifestTrackNo:'Manifest Tracking No.',
+            contentsUN:'Contents - UN/NA (large)',contents1:'Contents Line 1',contents2:'Contents Line 2',
+            physStateSolid:'Solid Checkbox',physStateLiquid:'Liquid Checkbox',physStateGas:'Gas Checkbox',
+            hazPropFlammable:'Flammable',hazPropCorrosive:'Corrosive',hazPropReactivity:'Reactivity',
+            hazPropToxic:'Toxic',hazPropOther:'Other'
+          },
+          groups:[
+            {title:'DOT Shipping Name',fields:['dotShippingName1','dotShippingName2','profileNumber']},
+            {title:'Generator Info',fields:['genPhone','genName','genAddress','genCityStateZip']},
+            {title:'EPA / Waste Codes',fields:['epaId','epaWasteNum','epaWasteNum2','stateWasteCode']},
+            {title:'Dates / Tracking',fields:['accumStartDate','manifestTrackNo']},
+            {title:'Contents',fields:['contentsUN','contents1','contents2']},
+            {title:'Physical State',fields:['physStateSolid','physStateLiquid','physStateGas']},
+            {title:'Hazardous Properties',fields:['hazPropFlammable','hazPropCorrosive','hazPropReactivity','hazPropToxic','hazPropOther']}
+          ]
+        },
+        bol:{
+          storageKey:'ies_myPrinter_bol',
+          fieldLabels:(function(){
+            var l={date:'Date',pageNum:'Page #',pageOf:'Page Of',carrierName:'Carrier Name',scac:'SCAC',
+              toConsignee:'TO: Consignee',toStreet:'TO: Street',toCity:'TO: City',toState:'TO: State',toZip:'TO: Zip',
+              fromShipper:'FROM: Shipper',fromStreet:'FROM: Street',fromCity:'FROM: City',fromState:'FROM: State',fromZip:'FROM: Zip',
+              emergencyPhone:'Emergency Phone',bolNumber:'BOL #',
+              bottomShipper:'Bottom: Shipper',bottomCarrier:'Bottom: Carrier'};
+            for(var li=1;li<=4;li++){
+              l['line'+li+'units']='Line '+li+' Units';
+              l['line'+li+'hm']='Line '+li+' HM';
+              l['line'+li+'desc']='Line '+li+' Desc';
+              l['line'+li+'qty']='Line '+li+' Qty';
+              l['line'+li+'weight']='Line '+li+' Weight';
+            }
+            return l;
+          })(),
+          groups:(function(){
+            var g=[
+              {title:'Header',fields:['date','pageNum','pageOf','carrierName','scac']},
+              {title:'TO (Consignee)',fields:['toConsignee','toStreet','toCity','toState','toZip']},
+              {title:'FROM (Shipper)',fields:['fromShipper','fromStreet','fromCity','fromState','fromZip','emergencyPhone']},
+              {title:'BOL #',fields:['bolNumber']}
+            ];
+            for(var li=1;li<=4;li++){
+              g.push({title:'Line '+li,fields:['line'+li+'units','line'+li+'hm','line'+li+'desc','line'+li+'qty','line'+li+'weight']});
+            }
+            g.push({title:'Bottom Signatures',fields:['bottomShipper','bottomCarrier']});
+            return g;
+          })()
+        },
+        nonhaz:{
+          storageKey:'ies_myPrinter_nonhaz',
+          fieldLabels:{
+            generatorEpaId:'Box 1 - EPA ID',page:'Box 2 - Page',totalPages:'Box 2 - Total Pages',
+            emergencyPhone:'Box 3 - Emergency Phone',manifestTrackingNum:'Box 4 - Manifest Tracking #',
+            generatorName:'Box 5 - Generator Name',generatorMailAddr:'Box 5 - Mail Address',
+            generatorMailCity:'Box 5 - City/St/Zip',generatorPhone:'Box 5 - Phone',
+            generatorSiteAddr:'Box 5 - Site Address',generatorSiteCity:'Box 5 - Site City/St/Zip',
+            transporter1Name:'Box 6 - Transporter 1',transporter1EpaId:'Box 6 - EPA ID',
+            transporter2Name:'Box 7 - Transporter 2',transporter2EpaId:'Box 7 - EPA ID',
+            facilityName:'Box 8 - Facility',facilityEpaId:'Box 8 - EPA ID',
+            facilityAddress:'Box 8 - Address',facilityPhone:'Box 8 - Phone',
+            facilityCity:'Box 8 - City',facilityState:'Box 8 - State',facilityZip:'Box 8 - Zip',
+            waste1hm:'Waste 1 - HM',waste1desc:'Waste 1 - Description',waste1containerNum:'Waste 1 - Container #',waste1container:'Waste 1 - Type',waste1qty:'Waste 1 - Qty',waste1uom:'Waste 1 - UOM',
+            waste1wc1:'Waste 1 - Code 1',waste1wc2:'Waste 1 - Code 2',waste1wc3:'Waste 1 - Code 3',waste1wc4:'Waste 1 - Code 4',waste1wc5:'Waste 1 - Code 5',waste1wc6:'Waste 1 - Code 6',
+            waste2hm:'Waste 2 - HM',waste2desc:'Waste 2 - Description',waste2containerNum:'Waste 2 - Container #',waste2container:'Waste 2 - Type',waste2qty:'Waste 2 - Qty',waste2uom:'Waste 2 - UOM',
+            waste2wc1:'Waste 2 - Code 1',waste2wc2:'Waste 2 - Code 2',waste2wc3:'Waste 2 - Code 3',waste2wc4:'Waste 2 - Code 4',waste2wc5:'Waste 2 - Code 5',waste2wc6:'Waste 2 - Code 6',
+            waste3hm:'Waste 3 - HM',waste3desc:'Waste 3 - Description',waste3containerNum:'Waste 3 - Container #',waste3container:'Waste 3 - Type',waste3qty:'Waste 3 - Qty',waste3uom:'Waste 3 - UOM',
+            waste3wc1:'Waste 3 - Code 1',waste3wc2:'Waste 3 - Code 2',waste3wc3:'Waste 3 - Code 3',waste3wc4:'Waste 3 - Code 4',waste3wc5:'Waste 3 - Code 5',waste3wc6:'Waste 3 - Code 6',
+            waste4hm:'Waste 4 - HM',waste4desc:'Waste 4 - Description',waste4containerNum:'Waste 4 - Container #',waste4container:'Waste 4 - Type',waste4qty:'Waste 4 - Qty',waste4uom:'Waste 4 - UOM',
+            waste4wc1:'Waste 4 - Code 1',waste4wc2:'Waste 4 - Code 2',waste4wc3:'Waste 4 - Code 3',waste4wc4:'Waste 4 - Code 4',waste4wc5:'Waste 4 - Code 5',waste4wc6:'Waste 4 - Code 6',
+            specialHandling:'Box 14 - Line 1',specialHandling2:'Box 14 - Line 2',specialHandling3:'Box 14 - Line 3',
+            generatorCertName:'Box 15 - Generator Name'
+          },
+          groups:[
+            {title:'Box 1-4 (Header)',fields:['generatorEpaId','page','totalPages','manifestTrackingNum']},
+            {title:'Box 3 (Emergency Phone)',fields:['emergencyPhone']},
+            {title:'Box 5 (Generator)',fields:['generatorName','generatorMailAddr','generatorMailCity','generatorPhone','generatorSiteAddr','generatorSiteCity']},
+            {title:'Box 6-7 (Transporters)',fields:['transporter1Name','transporter1EpaId','transporter2Name','transporter2EpaId']},
+            {title:'Box 8 (Facility)',fields:['facilityName','facilityEpaId','facilityAddress','facilityPhone','facilityCity','facilityState','facilityZip']},
+            {title:'Waste Line 1',fields:['waste1hm','waste1desc','waste1containerNum','waste1container','waste1qty','waste1uom','waste1wc1','waste1wc2','waste1wc3','waste1wc4','waste1wc5','waste1wc6']},
+            {title:'Waste Line 2',fields:['waste2hm','waste2desc','waste2containerNum','waste2container','waste2qty','waste2uom','waste2wc1','waste2wc2','waste2wc3','waste2wc4','waste2wc5','waste2wc6']},
+            {title:'Waste Line 3',fields:['waste3hm','waste3desc','waste3containerNum','waste3container','waste3qty','waste3uom','waste3wc1','waste3wc2','waste3wc3','waste3wc4','waste3wc5','waste3wc6']},
+            {title:'Waste Line 4',fields:['waste4hm','waste4desc','waste4containerNum','waste4container','waste4qty','waste4uom','waste4wc1','waste4wc2','waste4wc3','waste4wc4','waste4wc5','waste4wc6']},
+            {title:'Box 14 (Special Handling)',fields:['specialHandling','specialHandling2','specialHandling3']},
+            {title:'Box 15 (Certification)',fields:['generatorCertName']}
+          ]
+        }
+      };
+      var cfg=FORM_CONFIGS[subTab]||FORM_CONFIGS.main;
+      return React.createElement('div',{className:'card',style:{maxWidth:800}},
+        React.createElement('h2',{style:{fontSize:22,fontWeight:700,marginBottom:4}},'My Printer Offset'),
+        React.createElement('p',{style:{color:'#059669',fontSize:14,marginBottom:4,fontWeight:600}},'These settings are saved on THIS computer only and do NOT affect other users.'),
+        React.createElement('p',{style:{color:'#666',fontSize:13,marginBottom:16}},'Adjust the global shift to move all fields at once, or expand individual field groups to fine-tune specific fields. Each unit is about 1/10 inch. Positive = right/down, negative = left/up.'),
+        React.createElement('div',{style:{marginBottom:16}},
+          React.createElement('label',{style:{fontWeight:600,fontSize:14}},'Printer Name (optional)'),
+          React.createElement('div',{style:{display:'flex',gap:8,marginTop:4}},
+            React.createElement('input',{type:'text',value:printerName,onChange:function(e){setPrinterName(e.target.value)},placeholder:'e.g. Epson FX-890IIN',style:{width:'100%',maxWidth:300,padding:'8px 12px',fontSize:14,border:'1px solid #ccc',borderRadius:6}}),
+            React.createElement('button',{onClick:savePrinterName,className:'btn',style:{padding:'8px 16px',background:'#059669',color:'#fff',fontSize:13}},'Save Name')
+          ),
+          topStatus?React.createElement('span',{style:{color:'#059669',fontSize:13,marginLeft:8}},topStatus):null
+        ),
+        React.createElement('div',{style:{display:'flex',gap:0,marginBottom:16,borderBottom:'2px solid #eee',flexWrap:'wrap'}},
+          ['main','label','bol','nonhaz'].map(function(key){
+            var labels={main:'Main Form',label:'Labels',bol:'BOL',nonhaz:'Non-Haz'};
+            return React.createElement('button',{key:key,onClick:function(){setSubTab(key)},style:{padding:'10px 16px',border:'none',background:'transparent',cursor:'pointer',fontSize:14,fontWeight:subTab===key?700:400,color:subTab===key?'#059669':'#999',borderBottom:subTab===key?'3px solid #059669':'none',marginBottom:-2}},labels[key]);
+          })
+        ),
+        React.createElement(MyPrinterFormEditor,{key:cfg.storageKey,storageKey:cfg.storageKey,fieldLabels:cfg.fieldLabels,groups:cfg.groups}),
+        React.createElement('div',{style:{marginTop:16,display:'flex',gap:8}},
+          React.createElement('button',{className:'btn',onClick:function(){printOpen('/api/print/alignment-test')},style:{padding:'10px 24px',background:'#2563eb',color:'#fff'}},'Print Alignment Test')
         )
       );
     }
