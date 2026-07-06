@@ -3702,8 +3702,8 @@ app.get('/api/print/manifest/:id', function(req, res) {
     var w = manifestLineNum;
     var wasteDesc = manifest['waste' + w + 'Description'] || '';
     var descRow1Width = containerNumCol - descCol - 1;
-    var descLines = wrapDescLines(wasteDesc, descRow1Width, 55);
-    for (var dl = 0; dl < descLines.length && dl < 2; dl++) {
+    var descLines = wrapDescLines(wasteDesc, descRow1Width, descRow1Width);
+    for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
       placeText(pageLines, baseRow + dl, descCol, descLines[dl]);
     }
     placeText(pageLines, baseRow, hmCol, manifest['waste' + w + 'HM']);
@@ -3816,7 +3816,7 @@ app.get('/api/print/manifest/:id', function(req, res) {
   for (var w = 1; w <= 4; w++) {
     var wasteDesc = manifest['waste' + w + 'Description'] || '';
     var descRow1Width = MAP.waste1containerNum.col - MAP.waste1desc.col - 1;
-    var descLines = wrapDescLines(wasteDesc, descRow1Width, 55);
+    var descLines = wrapDescLines(wasteDesc, descRow1Width, descRow1Width);
     var descRow = MAP['waste' + w + 'desc'].row;
     for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
       placeText(page1, descRow + dl, MAP['waste' + w + 'desc'].col, descLines[dl]);
@@ -3899,8 +3899,8 @@ app.get('/api/print/manifest/:id', function(req, res) {
         var cwW = mLineNum;
         var cwWasteDesc = manifest['waste' + cwW + 'Description'] || '';
         var cwDescRow1Width = contMap.wasteContainerNum.col - contMap.wasteDesc.col - 1;
-        var cwDescLns = wrapDescLines(cwWasteDesc, cwDescRow1Width, 55);
-        for (var cwDl = 0; cwDl < cwDescLns.length && cwDl < 2; cwDl++) {
+        var cwDescLns = wrapDescLines(cwWasteDesc, cwDescRow1Width, cwDescRow1Width);
+        for (var cwDl = 0; cwDl < cwDescLns.length && cwDl < 3; cwDl++) {
           placeText(contPage, contRow + cwDl + (contMap.wasteDesc.rowOffset || 0), contMap.wasteDesc.col, cwDescLns[cwDl]);
         }
         placeText(contPage, contRow + (contMap.wasteHm.rowOffset || 0), contMap.wasteHm.col, manifest['waste' + cwW + 'HM']);
@@ -4267,8 +4267,8 @@ app.get('/api/print/escp2/:id', function(req, res) {
     // Box 9b - Description (with word wrap)
     var descText = manifest['waste' + w + 'Description'] || '';
     var descMaxFirst = M['waste' + w + 'containerNum'].col - M[descKey].col - 1;
-    var descLines = wrapDesc(descText, descMaxFirst, 55);
-    for (var dl = 0; dl < descLines.length && dl < 2; dl++) {
+    var descLines = wrapDesc(descText, descMaxFirst, descMaxFirst);
+    for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
       printAt(baseRow + dl, M[descKey].col, descLines[dl]);
     }
     // Box 10 - Containers
@@ -4377,7 +4377,7 @@ app.get('/api/print/escp2/:id', function(req, res) {
         var contRow = CONT_WASTE_START_ROW + (cw * CONT_WASTE_ROW_SPACING);
         var cwDesc = manifest['waste' + mLineNum + 'Description'] || '';
         var cwDescLines = wrapDesc(cwDesc, 40, 40);
-        for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
+        for (var cdl = 0; cdl < cwDescLines.length && cdl < 3; cdl++) {
           printAt(contRow + cdl + (contMap.wasteDesc.rowOffset || 0), contMap.wasteDesc.col, cwDescLines[cdl]);
         }
         printAt(contRow + (contMap.wasteHm.rowOffset || 0), contMap.wasteHm.col, manifest['waste' + mLineNum + 'HM']);
@@ -4664,7 +4664,7 @@ app.get('/api/print/direct/:id', function(req, res) {
     if (ergNum && descText.indexOf('ERG') === -1) descText += ', ERG # ' + ergNum;
     var descMaxWidth = M['waste' + w + 'containerNum'].col - M[descKey].col - 1;
     var descLines = wrapDesc(descText, descMaxWidth, descMaxWidth);
-    for (var dl = 0; dl < descLines.length && dl < 2; dl++) {
+    for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
       placeAt(baseRow + dl, M[descKey].col, descLines[dl]);
     }
     placeAt(baseRow, M['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
@@ -4754,7 +4754,7 @@ app.get('/api/print/direct/:id', function(req, res) {
         var cwDesc = formatShipDesc(cwRawDesc);
         if (cwErgNum && cwDesc.indexOf('ERG') === -1) cwDesc += ', ERG # ' + cwErgNum;
         var cwDescLines = wrapDesc(cwDesc, 40, 40);
-        for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
+        for (var cdl = 0; cdl < cwDescLines.length && cdl < 3; cdl++) {
           placeAt(contRow + cdl + (contMap.wasteDesc.rowOffset || 0), contMap.wasteDesc.col, cwDescLines[cdl], pg);
         }
         placeAt(contRow + (contMap.wasteHm.rowOffset || 0), contMap.wasteHm.col, manifest['waste' + mLineNum + 'HM'], pg);
@@ -5116,7 +5116,7 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
     if (ergNum && descText.indexOf('ERG') === -1) descText += ', ERG # ' + ergNum;
     var descMaxWidth = MAP['waste' + w + 'containerNum'].col - MAP[descKey].col - 1;
     var descLines = wrapDesc(descText, descMaxWidth, descMaxWidth);
-    for (var dl = 0; dl < descLines.length && dl < 2; dl++) {
+    for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
       placeText(page1, MAP[hmKey].row + dl, MAP[descKey].col, descLines[dl]);
     }
     placeText(page1, MAP[hmKey].row, MAP['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
@@ -5207,7 +5207,7 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
         var cwDesc = formatShipDescNH(cwRawDesc);
         if (cwErgNum && cwDesc.indexOf('ERG') === -1) cwDesc += ', ERG # ' + cwErgNum;
         var cwDescLines = wrapDesc(cwDesc, 40, 40);
-        for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
+        for (var cdl = 0; cdl < cwDescLines.length && cdl < 3; cdl++) {
           placeText(contPage, contRow + cdl, contMap22a.wasteDesc.col, cwDescLines[cdl]);
         }
         placeText(contPage, contRow, contMap22a.wasteHm.col, manifest['waste' + mLineNum + 'HM']);
@@ -5471,7 +5471,7 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
     if (ergNum && descText.indexOf('ERG') === -1) descText += ', ERG # ' + ergNum;
     var descMaxWidth = M['waste' + w + 'containerNum'].col - M[descKey].col - 1;
     var descLines = wrapDesc(descText, descMaxWidth, descMaxWidth);
-    for (var dl = 0; dl < descLines.length && dl < 2; dl++) {
+    for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
       placeAt(baseRow + dl, M[descKey].col, descLines[dl]);
     }
     placeAt(baseRow, M['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
@@ -5558,7 +5558,7 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
         var cwDesc = formatShipDescNH2(cwRawDesc);
         if (cwErgNum && cwDesc.indexOf('ERG') === -1) cwDesc += ', ERG # ' + cwErgNum;
         var cwDescLines = wrapDesc(cwDesc, 40, 40);
-        for (var cdl = 0; cdl < cwDescLines.length && cdl < 2; cdl++) {
+        for (var cdl = 0; cdl < cwDescLines.length && cdl < 3; cdl++) {
           placeAt(contRow + cdl + (contMap.wasteDesc.rowOffset || 0), contMap.wasteDesc.col, cwDescLines[cdl], pg);
         }
         placeAt(contRow + (contMap.wasteHm.rowOffset || 0), contMap.wasteHm.col, manifest['waste' + mLineNum + 'HM'], pg);
