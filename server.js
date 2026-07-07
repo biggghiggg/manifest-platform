@@ -243,6 +243,44 @@ function applyFieldOffsets(MAP, fieldOffsets) {
   }
 }
 
+// Parse per-field offsets for continuation (22A) pages from fo22a query param
+function parseFieldOffsets22a(req) {
+  var fo = req.query.fo22a;
+  if (!fo) return {};
+  try {
+    var decoded = JSON.parse(Buffer.from(decodeURIComponent(fo), 'base64').toString('utf8'));
+    var result = {};
+    var keys = Object.keys(decoded);
+    for (var i = 0; i < keys.length; i++) {
+      result[keys[i]] = { row: decoded[keys[i]].r || 0, col: decoded[keys[i]].c || 0 };
+    }
+    return result;
+  } catch(e) { return {}; }
+}
+
+// Apply per-field offsets to a 22A continuation MAP (handles both .row and .rowOffset fields)
+function applyFieldOffsets22a(contMap, fieldOffsets) {
+  var keys = Object.keys(fieldOffsets);
+  for (var i = 0; i < keys.length; i++) {
+    var fk = keys[i];
+    if (contMap[fk]) {
+      var orig = contMap[fk];
+      var newEntry = {};
+      var okeys = Object.keys(orig);
+      for (var j = 0; j < okeys.length; j++) { newEntry[okeys[j]] = orig[okeys[j]]; }
+      if (typeof newEntry.row === 'number') {
+        newEntry.row += (fieldOffsets[fk].row || 0);
+      } else if (typeof newEntry.rowOffset === 'number') {
+        newEntry.rowOffset += (fieldOffsets[fk].row || 0);
+      }
+      if (typeof newEntry.col === 'number') {
+        newEntry.col += (fieldOffsets[fk].col || 0);
+      }
+      contMap[fk] = newEntry;
+    }
+  }
+}
+
 // Waste Streams routes (HTML uses /api/waste-streams with hyphen)
 app.get('/api/waste-streams', function(req, res) { res.json(data.wasteStreams || []); });
 app.post('/api/waste-streams', function(req, res) {
@@ -3595,6 +3633,9 @@ app.get('/api/print/manifest/:id', function(req, res) {
   } catch(e) { console.error('ESC/P2 print: failed to re-read data:', e.message); }
   colShift = (typeof data.colShift === 'number') ? data.colShift : 0;
   rowShift = (typeof data.rowShift === 'number') ? data.rowShift : 0;
+  // Add My Printer per-browser global shift from query params
+  colShift += (parseFloat(req.query.colOffset) || 0);
+  rowShift += (parseFloat(req.query.rowOffset) || 0);
   customAlignment = data.customAlignment || null;
   customAlignment22a = data.customAlignment22a || null;
   console.log('ESC/P2 Print: using colShift=' + colShift + ', rowShift=' + rowShift);
@@ -3862,6 +3903,8 @@ app.get('/api/print/manifest/:id', function(req, res) {
   // Only generate continuation pages when there are more than 4 waste lines
   if (wasteLineCount > 4) {
     var contMap = getActiveForm22aMap();
+    var _fo22a = parseFieldOffsets22a(req);
+    applyFieldOffsets22a(contMap, _fo22a);
     var remainingLines = wasteLineCount - 4;
     var contPageNum = 2;
     var manifestLineStart = 5;
@@ -3871,6 +3914,9 @@ app.get('/api/print/manifest/:id', function(req, res) {
     var savedMainRowShift = rowShift;
     colShift = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
     rowShift = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
+    // Add My Printer per-browser global shift for 22A
+    colShift += (parseFloat(req.query.colOffset22a) || 0);
+    rowShift += (parseFloat(req.query.rowOffset22a) || 0);
 
     for (var cpIdx = 0; cpIdx < contPageCount; cpIdx++) {
       var linesOnThisPage = Math.min(remainingLines, CONT_MAX_WASTE_LINES);
@@ -4347,6 +4393,8 @@ app.get('/api/print/escp2/:id', function(req, res) {
   // === Continuation Pages (8700-22A) - if needed ===
   if (wasteLineCount > 4) {
     var contMap = getActiveForm22aMap();
+    var _fo22a = parseFieldOffsets22a(req);
+    applyFieldOffsets22a(contMap, _fo22a);
     var remainingLines = wasteLineCount - 4;
     var contPageNum = 2;
     var manifestLineStart = 5;
@@ -4354,6 +4402,9 @@ app.get('/api/print/escp2/:id', function(req, res) {
     // Swap to 22A shifts for continuation pages
     prnColShift = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
     prnRowShift = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
+    // Add My Printer per-browser global shift for 22A
+    prnColShift += (parseFloat(req.query.colOffset22a) || 0);
+    prnRowShift += (parseFloat(req.query.rowOffset22a) || 0);
 
     for (var cpIdx = 0; cpIdx < contPageCount; cpIdx++) {
       var linesOnThisPage = Math.min(remainingLines, CONT_MAX_WASTE_LINES);
@@ -4734,6 +4785,8 @@ app.get('/api/print/direct/:id', function(req, res) {
   // === Continuation Pages ===
   if (wasteLineCount > 4) {
     var contMap = getActiveRaw22aMap();
+    var _fo22a = parseFieldOffsets22a(req);
+    applyFieldOffsets22a(contMap, _fo22a);
     var remainingLines = wasteLineCount - 4;
     var contPageNum = 2;
     var manifestLineStart = 5;
@@ -4841,8 +4894,10 @@ app.get('/api/print/direct/:id', function(req, res) {
   // Continuation page (22A) shifts - applied to page 2+
   var colShift22aVal = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
   var rowShift22aVal = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
-  var contColOffsetIn = BASE_LEFT_OFFSET + (colShift22aVal / CPI) + (parseFloat(req.query.colOffset) || 0);
-  var contRowOffsetIn = BASE_TOP_OFFSET + (rowShift22aVal / LPI) + (parseFloat(req.query.rowOffset) || 0);
+  var contColExtra = (parseFloat(req.query.colOffset22a) || 0) || (parseFloat(req.query.colOffset) || 0);
+  var contRowExtra = (parseFloat(req.query.rowOffset22a) || 0) || (parseFloat(req.query.rowOffset) || 0);
+  var contColOffsetIn = BASE_LEFT_OFFSET + (colShift22aVal / CPI) + contColExtra;
+  var contRowOffsetIn = BASE_TOP_OFFSET + (rowShift22aVal / LPI) + contRowExtra;
 
   var html = '<!DOCTYPE html><html><head><title>Print Manifest</title><style>';
   html += '@page { margin: 0; size: 8.5in 11in; }';
@@ -4915,6 +4970,9 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
   // Use non-haz alignment shifts
   var nhColShift = (typeof data.colShiftNonhaz === 'number') ? data.colShiftNonhaz : 0;
   var nhRowShift = (typeof data.rowShiftNonhaz === 'number') ? data.rowShiftNonhaz : 0;
+  // Add My Printer per-browser global shift from query params
+  nhColShift += (parseFloat(req.query.colOffset) || 0);
+  nhRowShift += (parseFloat(req.query.rowOffset) || 0);
   // Temporarily set global colShift/rowShift to non-haz values
   var origColShift = colShift;
   var origRowShift = rowShift;
@@ -5189,7 +5247,12 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
     var savedMainRowShiftNh = rowShift;
     colShift = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
     rowShift = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
-    var contMap22a = getActive22aMap();
+    // Add My Printer per-browser global shift for 22A
+    colShift += (parseFloat(req.query.colOffset22a) || 0);
+    rowShift += (parseFloat(req.query.rowOffset22a) || 0);
+    var contMap22a = getActiveForm22aMap();
+    var _fo22a = parseFieldOffsets22a(req);
+    applyFieldOffsets22a(contMap22a, _fo22a);
     var remainingLines = wasteLineCount - 4;
     var manifestLineStart = 5;
     while (remainingLines > 0) {
@@ -5543,6 +5606,8 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
   // Continuation Pages
   if (wasteLineCount > 4) {
     var contMap = getActiveNonhazRaw22aMap();
+    var _fo22a = parseFieldOffsets22a(req);
+    applyFieldOffsets22a(contMap, _fo22a);
     var remainingLines = wasteLineCount - 4;
     var contPageNum = 2;
     var manifestLineStart = 5;
@@ -5643,8 +5708,10 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
   // Non-haz continuation uses same 22A shifts (shared with haz for now)
   var nhColShift22a = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
   var nhRowShift22a = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
-  var contColOffsetIn = BASE_LEFT_OFFSET + (nhColShift22a / CPI) + (parseFloat(req.query.colOffset) || 0);
-  var contRowOffsetIn = BASE_TOP_OFFSET + (nhRowShift22a / LPI) + (parseFloat(req.query.rowOffset) || 0);
+  var nhContColExtra = (parseFloat(req.query.colOffset22a) || 0) || (parseFloat(req.query.colOffset) || 0);
+  var nhContRowExtra = (parseFloat(req.query.rowOffset22a) || 0) || (parseFloat(req.query.rowOffset) || 0);
+  var contColOffsetIn = BASE_LEFT_OFFSET + (nhColShift22a / CPI) + nhContColExtra;
+  var contRowOffsetIn = BASE_TOP_OFFSET + (nhRowShift22a / LPI) + nhContRowExtra;
 
   var html = '<!DOCTYPE html><html><head><title>Print Non-Haz Manifest</title><style>';
   html += '@page { margin: 0; size: 8.5in 11in; }';

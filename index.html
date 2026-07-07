@@ -121,6 +121,34 @@
       if (hasFieldOffsets) {
         params.push('fo=' + encodeURIComponent(btoa(JSON.stringify(nonZero))));
       }
+      // For main/nonhaz manifests, also send continuation (22A) per-field offsets
+      if (formType === 'main' || formType === 'nonhaz') {
+        var contStored = {};
+        try { contStored = JSON.parse(localStorage.getItem('ies_myPrinter_cont') || '{}'); } catch(e2) {}
+        var contAddCol = contStored.colShift || 0;
+        var contAddRow = contStored.rowShift || 0;
+        if (contAddCol !== 0 || contAddRow !== 0) {
+          params.push('colOffset22a=' + contAddCol);
+          params.push('rowOffset22a=' + contAddRow);
+        }
+        var contFields = contStored.fields || {};
+        var contNonZero = {};
+        var hasContOffsets = false;
+        var cfkeys = Object.keys(contFields);
+        for (var ci = 0; ci < cfkeys.length; ci++) {
+          var cfk = cfkeys[ci];
+          var cf = contFields[cfk];
+          if ((cf.row && cf.row !== 0) || (cf.col && cf.col !== 0)) {
+            contNonZero[cfk] = {};
+            if (cf.row && cf.row !== 0) contNonZero[cfk].r = cf.row;
+            if (cf.col && cf.col !== 0) contNonZero[cfk].c = cf.col;
+            hasContOffsets = true;
+          }
+        }
+        if (hasContOffsets) {
+          params.push('fo22a=' + encodeURIComponent(btoa(JSON.stringify(contNonZero))));
+        }
+      }
       if (params.length > 0) {
         var sep = url.indexOf('?') === -1 ? '?' : '&';
         url = url + sep + params.join('&');
@@ -4718,6 +4746,31 @@
             {title:'Box 14 (Special Handling)',fields:['specialHandling','specialHandling2','specialHandling3']},
             {title:'Box 15 (Certification)',fields:['generatorCertName']}
           ]
+        },
+        cont:{
+          storageKey:'ies_myPrinter_cont',
+          fieldLabels:{
+            generatorEpaId:'Box 21 - EPA ID',totalPages:'Box 22 - Total Pages',
+            manifestTrackingNum:'Box 23 - Tracking #',generatorName:'Box 24 - Generator Name',
+            contTransporterName:'Box 25 - Transporter 1',contTransporterEpaId:'Box 25 - EPA ID',
+            contTransporter2Name:'Box 26 - Transporter 2',contTransporter2EpaId:'Box 26 - EPA ID',
+            wasteHm:'Waste - HM',wasteDesc:'Waste - Description',
+            wasteContainerNum:'Waste - Container #',wasteContainerType:'Waste - Type',
+            wasteQty:'Waste - Qty',wasteUom:'Waste - UOM',
+            wasteWc1:'Waste - Code 1',wasteWc2:'Waste - Code 2',wasteWc3:'Waste - Code 3',
+            specialHandling:'Box 32 - Line 1',specialHandling2:'Box 32 - Line 2',specialHandling3:'Box 32 - Line 3',
+            contTransporterPrintName:'Box 33 - Trans 1 Name',contTransporterDate:'Box 33 - Trans 1 Date',
+            contTransporter2PrintName:'Box 34 - Trans 2 Name',contTransporter2Date:'Box 34 - Trans 2 Date',
+            contDiscrepancyInfo:'Box 35 - Discrepancy'
+          },
+          groups:[
+            {title:'Box 21-24 (Header)',fields:['generatorEpaId','totalPages','manifestTrackingNum','generatorName']},
+            {title:'Box 25-26 (Transporters)',fields:['contTransporterName','contTransporterEpaId','contTransporter2Name','contTransporter2EpaId']},
+            {title:'Box 27-31 (Waste Lines)',fields:['wasteHm','wasteDesc','wasteContainerNum','wasteContainerType','wasteQty','wasteUom','wasteWc1','wasteWc2','wasteWc3']},
+            {title:'Box 32 (Special Handling)',fields:['specialHandling','specialHandling2','specialHandling3']},
+            {title:'Box 33-34 (Signatures)',fields:['contTransporterPrintName','contTransporterDate','contTransporter2PrintName','contTransporter2Date']},
+            {title:'Box 35 (Discrepancy)',fields:['contDiscrepancyInfo']}
+          ]
         }
       };
       var cfg=FORM_CONFIGS[subTab]||FORM_CONFIGS.main;
@@ -4734,8 +4787,8 @@
           topStatus?React.createElement('span',{style:{color:'#059669',fontSize:13,marginLeft:8}},topStatus):null
         ),
         React.createElement('div',{style:{display:'flex',gap:0,marginBottom:16,borderBottom:'2px solid #eee',flexWrap:'wrap'}},
-          ['main','label','bol','nonhaz'].map(function(key){
-            var labels={main:'Main Form',label:'Labels',bol:'BOL',nonhaz:'Non-Haz'};
+          ['main','cont','label','bol','nonhaz'].map(function(key){
+            var labels={main:'Main Form',cont:'Continuation (22A)',label:'Labels',bol:'BOL',nonhaz:'Non-Haz'};
             return React.createElement('button',{key:key,onClick:function(){setSubTab(key)},style:{padding:'10px 16px',border:'none',background:'transparent',cursor:'pointer',fontSize:14,fontWeight:subTab===key?700:400,color:subTab===key?'#059669':'#999',borderBottom:subTab===key?'3px solid #059669':'none',marginBottom:-2}},labels[key]);
           })
         ),
