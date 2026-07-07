@@ -2944,7 +2944,7 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
   html += '@page { margin: 0; size: 6in ' + totalHeight + 'in; }';
   html += '@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } }';
   html += 'body { margin: 0; padding: 0; }';
-  html += '.sheet { position: relative; width: 6in; height: ' + totalHeight + 'in; }';
+  html += '.label-box { position: relative; width: 6in; height: 6in; overflow: visible; }';
   html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: bold; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
@@ -2958,11 +2958,9 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
   html += '<span style="margin-left:20px;font-size:12px;color:#666">Batch labels - Epson LQ-590II (' + manifestLabels.length + ' labels). Set paper size to 6x' + totalHeight + ' and margins to None.</span>';
   html += '</div>';
 
-  html += '<div class="sheet">';
   for (var li = 0; li < manifestLabels.length; li++) {
     var label = manifestLabels[li];
     var placements = [];
-    var labelOffsetIn = li * 6;
 
     function placeB(fieldKey, text) {
       if (!text || !M[fieldKey]) return;
@@ -3058,10 +3056,11 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
     if (hp.toxic) placeB('hazPropToxic', 'X');
     if (hp.other) placeB('hazPropOther', 'X');
 
+    html += '<div class="label-box">';
     for (var pi = 0; pi < placements.length; pi++) {
       var p = placements[pi];
       var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
-      var topIn = ((p.row - 1) / LPI) + rowOffsetIn + labelOffsetIn;
+      var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
       var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       if (p.large) {
         html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:36pt;font-weight:bold;letter-spacing:2px;">' + safeText + '</span>';
@@ -3071,8 +3070,8 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
         html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
       }
     }
+    html += '</div>'; // close label-box
   }
-  html += '</div>'; // close sheet
   html += '</body></html>';
   res.type('html').send(html);
 
