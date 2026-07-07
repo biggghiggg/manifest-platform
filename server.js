@@ -3988,11 +3988,15 @@ app.get('/api/print/manifest/:id', function(req, res) {
 
   // Wrap in HTML with bold pre for darker printing
   var htmlOutput = '<!DOCTYPE html><html><head><title>Print Manifest</title><style>';
-  htmlOutput += '@media print { @page { margin: 0; } body { margin: 0; } }';
+  htmlOutput += '@media print { @page { margin: 0; } body { margin: 0; } .print-btn { display: none; } }';
   htmlOutput += 'body { margin: 0; padding: 0; }';
   htmlOutput += 'pre { font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: bold; margin: 0; padding: 0; line-height: 1; }';
-  htmlOutput += '</style></head><body><pre>' + output.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>';
-  htmlOutput += '<script>window.print();</script></body></html>';
+  htmlOutput += '.print-btn { position: fixed; top: 10px; right: 10px; padding: 10px 24px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }';
+  htmlOutput += '.print-btn:hover { background: #1d4ed8; }';
+  htmlOutput += '</style></head><body>';
+  htmlOutput += '<button class="print-btn" onclick="window.print()">Print Manifest</button>';
+  htmlOutput += '<pre>' + output.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>';
+  htmlOutput += '<script>setTimeout(function(){ window.print(); }, 500);</script></body></html>';
   res.set('Content-Type', 'text/html');
   res.send(htmlOutput);
 });
@@ -5278,11 +5282,15 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
 
   // Wrap in HTML with bold pre for darker printing
   var htmlOutput = '<!DOCTYPE html><html><head><title>Print Non-Haz Manifest</title><style>';
-  htmlOutput += '@media print { @page { margin: 0; } body { margin: 0; } }';
+  htmlOutput += '@media print { @page { margin: 0; } body { margin: 0; } .print-btn { display: none; } }';
   htmlOutput += 'body { margin: 0; padding: 0; }';
   htmlOutput += 'pre { font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: bold; margin: 0; padding: 0; line-height: 1; }';
-  htmlOutput += '</style></head><body><pre>' + output.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>';
-  htmlOutput += '<script>window.print();</script></body></html>';
+  htmlOutput += '.print-btn { position: fixed; top: 10px; right: 10px; padding: 10px 24px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }';
+  htmlOutput += '.print-btn:hover { background: #1d4ed8; }';
+  htmlOutput += '</style></head><body>';
+  htmlOutput += '<button class="print-btn" onclick="window.print()">Print Manifest</button>';
+  htmlOutput += '<pre>' + output.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>';
+  htmlOutput += '<script>setTimeout(function(){ window.print(); }, 500);</script></body></html>';
   res.type('text/html').send(htmlOutput);
 });
 
