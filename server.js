@@ -4273,15 +4273,15 @@ app.get('/api/print/escp2/:id', function(req, res) {
     var descMaxFirst = M['waste' + w + 'containerNum'].col - M[descKey].col - 1;
     var descLines = wrapDesc(descText, descMaxFirst, descMaxFirst);
     for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
-      printAt(baseRow + dl, M[descKey].col, descLines[dl]);
+      printAt(M[descKey].row + dl, M[descKey].col, descLines[dl]);
     }
     // Box 10 - Containers
-    printAt(baseRow, M['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
-    printAt(baseRow, M['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
+    printAt(M['waste' + w + 'containerNum'].row, M['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
+    printAt(M['waste' + w + 'containerNum'].row, M['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
     // Box 11 - Qty
-    printAt(baseRow, M['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
+    printAt(M['waste' + w + 'qty'].row, M['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
     // Box 12 - Unit
-    printAt(baseRow, M['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
+    printAt(M['waste' + w + 'uom'].row, M['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
     // Box 13 - Waste Codes
     var wcKey = 'waste' + w + 'wc';
     var codes = parseWC((manifest['waste' + w + 'WasteCodes'] || '').trim());
@@ -4669,12 +4669,12 @@ app.get('/api/print/direct/:id', function(req, res) {
     var descMaxWidth = M['waste' + w + 'containerNum'].col - M[descKey].col - 1;
     var descLines = wrapDesc(descText, descMaxWidth, descMaxWidth);
     for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
-      placeAt(baseRow + dl, M[descKey].col, descLines[dl]);
+      placeAt(M[descKey].row + dl, M[descKey].col, descLines[dl]);
     }
-    placeAt(baseRow, M['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
-    placeAt(baseRow, M['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
-    placeAt(baseRow, M['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
-    placeAt(baseRow, M['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
+    placeAt(M['waste' + w + 'containerNum'].row, M['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
+    placeAt(M['waste' + w + 'containerNum'].row, M['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
+    placeAt(M['waste' + w + 'qty'].row, M['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
+    placeAt(M['waste' + w + 'uom'].row, M['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
     var wcKey = 'waste' + w + 'wc';
     var codes = parseWC((manifest['waste' + w + 'WasteCodes'] || '').trim());
     for (var ci = 0; ci < 6 && ci < codes.length; ci++) {
@@ -5121,12 +5121,12 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
     var descMaxWidth = MAP['waste' + w + 'containerNum'].col - MAP[descKey].col - 1;
     var descLines = wrapDesc(descText, descMaxWidth, descMaxWidth);
     for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
-      placeText(page1, MAP[hmKey].row + dl, MAP[descKey].col, descLines[dl]);
+      placeText(page1, MAP[descKey].row + dl, MAP[descKey].col, descLines[dl]);
     }
-    placeText(page1, MAP[hmKey].row, MAP['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
-    placeText(page1, MAP[hmKey].row, MAP['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
-    placeText(page1, MAP[hmKey].row, MAP['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
-    placeText(page1, MAP[hmKey].row, MAP['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
+    placeText(page1, MAP['waste' + w + 'containerNum'].row, MAP['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
+    placeText(page1, MAP['waste' + w + 'containerNum'].row, MAP['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
+    placeText(page1, MAP['waste' + w + 'qty'].row, MAP['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
+    placeText(page1, MAP['waste' + w + 'uom'].row, MAP['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
     var wcKey = 'waste' + w + 'wc';
     var codes = parseWC((manifest['waste' + w + 'WasteCodes'] || '').trim());
     for (var ci = 0; ci < 6 && ci < codes.length; ci++) {
@@ -5480,12 +5480,12 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
     var descMaxWidth = M['waste' + w + 'containerNum'].col - M[descKey].col - 1;
     var descLines = wrapDesc(descText, descMaxWidth, descMaxWidth);
     for (var dl = 0; dl < descLines.length && dl < 3; dl++) {
-      placeAt(baseRow + dl, M[descKey].col, descLines[dl]);
+      placeAt(M[descKey].row + dl, M[descKey].col, descLines[dl]);
     }
-    placeAt(baseRow, M['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
-    placeAt(baseRow, M['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
-    placeAt(baseRow, M['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
-    placeAt(baseRow, M['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
+    placeAt(M['waste' + w + 'containerNum'].row, M['waste' + w + 'containerNum'].col, manifest['waste' + w + 'ContainerNum']);
+    placeAt(M['waste' + w + 'containerNum'].row, M['waste' + w + 'container'].col, manifest['waste' + w + 'ContainerType']);
+    placeAt(M['waste' + w + 'qty'].row, M['waste' + w + 'qty'].col, manifest['waste' + w + 'Qty']);
+    placeAt(M['waste' + w + 'uom'].row, M['waste' + w + 'uom'].col, manifest['waste' + w + 'Unit']);
     var wcKey = 'waste' + w + 'wc';
     var codes = parseWC((manifest['waste' + w + 'WasteCodes'] || '').trim());
     for (var ci = 0; ci < 6 && ci < codes.length; ci++) {
