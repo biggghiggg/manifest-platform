@@ -400,9 +400,10 @@ app.use(function(req, res, next) {
     return next();
   }
 
-  // Driver-accessible routes: scan pages, scan API, manifest picker + stub creation
+  // Driver-accessible routes: scan pages, scan API, manifest picker + stub creation, facilities list
   var isManifestPicker = (p === '/api/manifests' && (req.method === 'GET' || req.method === 'POST'));
-  if (p.indexOf('/scan') === 0 || p.indexOf('/api/scans') === 0 || p.indexOf('/api/unassigned-scans') === 0 || isManifestPicker) {
+  var isFacilitiesList = (p === '/api/yard-facilities' && req.method === 'GET');
+  if (p.indexOf('/scan') === 0 || p.indexOf('/api/scans') === 0 || p.indexOf('/api/unassigned-scans') === 0 || isManifestPicker || isFacilitiesList) {
     if (!hasRole(req.userRole, 'driver')) {
       if (p.indexOf('/api/') === 0) {
         return res.status(403).json({ error: 'Access denied' });
@@ -3288,17 +3289,17 @@ app.get('/api/print/label/:id', function(req, res) {
   if (hp.toxic) place('hazPropToxic', 'X');
   if (hp.other) place('hazPropOther', 'X');
 
-  // Build HTML output - one page per label copy
+  // Build HTML output - continuous feed for pinfeed dot matrix (one sheet, no page breaks)
   var copies = parseInt(req.query.copies) || 1;
   if (copies < 1) copies = 1;
   if (copies > 100) copies = 100;
+  var totalHeight = 6 * copies;
 
   var html = '<!DOCTYPE html><html><head><title>Print Label</title><style>';
-  html += '@page { margin: 0; size: 6in 6in; }';
+  html += '@page { margin: 0; size: 6in ' + totalHeight + 'in; }';
   html += '@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } }';
   html += 'body { margin: 0; padding: 0; }';
-  html += '.label-box { position: relative; width: 6in; height: 6in; overflow: visible; page-break-after: always; page-break-inside: avoid; }';
-  html += '.label-box:last-child { page-break-after: auto; }';
+  html += '.sheet { position: relative; width: 6in; height: ' + totalHeight + 'in; }';
   html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: bold; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
@@ -3309,15 +3310,16 @@ app.get('/api/print/label/:id', function(req, res) {
   html += '<div class="no-print toolbar">';
   html += '<button class="print-btn" onclick="window.print()">Print ' + copies + ' Label' + (copies > 1 ? 's' : '') + '</button>';
   html += '<button class="close-btn" onclick="window.close()">Close</button>';
-  html += '<span style="margin-left:20px;font-size:12px;color:#666">6x6 Hazardous Waste Label (' + copies + ' cop' + (copies === 1 ? 'y' : 'ies') + '). Set paper size to 6x6 and margins to None.</span>';
+  html += '<span style="margin-left:20px;font-size:12px;color:#666">6x6 Hazardous Waste Label (' + copies + ' copies). Set paper size to 6x' + totalHeight + ' and margins to None.</span>';
   html += '</div>';
 
+  html += '<div class="sheet">';
   for (var ci = 0; ci < copies; ci++) {
-    html += '<div class="label-box">';
+    var pageOffsetIn = ci * 6;
     for (var pi = 0; pi < placements.length; pi++) {
       var p = placements[pi];
       var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
-      var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
+      var topIn = ((p.row - 1) / LPI) + rowOffsetIn + pageOffsetIn;
       var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       if (p.large) {
         html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:36pt;font-weight:bold;letter-spacing:2px;">' + safeText + '</span>';
@@ -3327,8 +3329,8 @@ app.get('/api/print/label/:id', function(req, res) {
         html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
       }
     }
-    html += '</div>';
   }
+  html += '</div>';
   html += '</body></html>';
   res.type('html').send(html);
 });
@@ -3355,12 +3357,12 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
   var colOffsetIn = (labelColShiftB / CPI) + (parseFloat(req.query.colOffset) || 0);
   var rowOffsetIn = (labelRowShiftB / LPI) + (parseFloat(req.query.rowOffset) || 0);
 
+  var totalHeight = 6 * manifestLabels.length;
   var html = '<!DOCTYPE html><html><head><title>Print Labels</title><style>';
-  html += '@page { margin: 0; size: 6in 6in; }';
+  html += '@page { margin: 0; size: 6in ' + totalHeight + 'in; }';
   html += '@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } }';
   html += 'body { margin: 0; padding: 0; }';
-  html += '.label-box { position: relative; width: 6in; height: 6in; overflow: visible; page-break-after: always; page-break-inside: avoid; }';
-  html += '.label-box:last-child { page-break-after: auto; }';
+  html += '.label-box { position: relative; width: 6in; height: 6in; overflow: visible; }';
   html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: bold; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
@@ -3371,7 +3373,7 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
   html += '<div class="no-print toolbar">';
   html += '<button class="print-btn" onclick="window.print()">Print All Labels (' + manifestLabels.length + ')</button>';
   html += '<button class="close-btn" onclick="window.close()">Close</button>';
-  html += '<span style="margin-left:20px;font-size:12px;color:#666">Batch labels - Epson LQ-590II (' + manifestLabels.length + ' labels). Set paper size to 6x6 and margins to None.</span>';
+  html += '<span style="margin-left:20px;font-size:12px;color:#666">Batch labels - Epson LQ-590II (' + manifestLabels.length + ' labels). Set paper size to 6x' + totalHeight + ' and margins to None.</span>';
   html += '</div>';
 
   for (var li = 0; li < manifestLabels.length; li++) {
@@ -6420,6 +6422,131 @@ var scanAssociations = loadScanAssociations();
 var scanEvents = loadScanEvents();
 var unassignedScans = loadUnassignedScans();
 
+// --- Facilities config ---
+var FACILITIES_FILE = path.join(DATA_DIR, 'facilities.json');
+function loadFacilities() {
+  try {
+    if (fs.existsSync(FACILITIES_FILE)) {
+      return JSON.parse(fs.readFileSync(FACILITIES_FILE, 'utf8'));
+    }
+  } catch (e) { console.error('Error loading facilities:', e); }
+  // Seed with IES 10-day facilities
+  var seed = { facilities: [
+    { id: 'fac-01', name: 'IES Yard - Fresno', type: '10-day', active: true },
+    { id: 'fac-02', name: 'IES Yard - Bakersfield', type: '10-day', active: true }
+  ]};
+  fs.writeFileSync(FACILITIES_FILE, JSON.stringify(seed, null, 2));
+  console.log('Seeded facilities: Fresno + Bakersfield');
+  return seed;
+}
+function saveFacilities(f) { fs.writeFileSync(FACILITIES_FILE, JSON.stringify(f, null, 2)); }
+var facilitiesData = loadFacilities();
+
+// --- Holidays config ---
+var HOLIDAYS_FILE = path.join(DATA_DIR, 'holidays.json');
+function loadHolidays() {
+  try {
+    if (fs.existsSync(HOLIDAYS_FILE)) {
+      return JSON.parse(fs.readFileSync(HOLIDAYS_FILE, 'utf8'));
+    }
+  } catch (e) { console.error('Error loading holidays:', e); }
+  // Seed with US federal holidays for 2026-2027
+  var seed = { holidays: [
+    '2026-01-01','2026-01-19','2026-02-16','2026-05-25','2026-07-03','2026-07-04',
+    '2026-09-07','2026-10-12','2026-11-11','2026-11-26','2026-12-25',
+    '2027-01-01','2027-01-18','2027-02-15','2027-05-31','2027-07-04','2027-07-05',
+    '2027-09-06','2027-10-11','2027-11-11','2027-11-25','2027-12-24','2027-12-25'
+  ]};
+  fs.writeFileSync(HOLIDAYS_FILE, JSON.stringify(seed, null, 2));
+  console.log('Seeded US federal holidays 2026-2027');
+  return seed;
+}
+var holidaysData = loadHolidays();
+
+// --- 10-Day period tracking ---
+var TEN_DAY_FILE = path.join(DATA_DIR, 'ten-day-periods.json');
+function loadTenDayPeriods() {
+  try {
+    if (fs.existsSync(TEN_DAY_FILE)) {
+      return JSON.parse(fs.readFileSync(TEN_DAY_FILE, 'utf8'));
+    }
+  } catch (e) { console.error('Error loading 10-day periods:', e); }
+  return { periods: [] };
+}
+function saveTenDayPeriods(d) { fs.writeFileSync(TEN_DAY_FILE, JSON.stringify(d, null, 2)); }
+var tenDayPeriods = loadTenDayPeriods();
+
+function computeDeadline(pickupDateStr) {
+  // Deadline = pickup date + 10 calendar days, rolled forward past weekends/holidays
+  var d = new Date(pickupDateStr);
+  d.setDate(d.getDate() + 10);
+  var holidays = holidaysData.holidays || [];
+  // Roll forward past weekends and holidays
+  var maxRolls = 10; // safety
+  while (maxRolls-- > 0) {
+    var day = d.getDay();
+    var dateStr = d.toISOString().substring(0, 10);
+    if (day === 0) { d.setDate(d.getDate() + 1); continue; }
+    if (day === 6) { d.setDate(d.getDate() + 2); continue; }
+    if (holidays.indexOf(dateStr) !== -1) { d.setDate(d.getDate() + 1); continue; }
+    break;
+  }
+  return d.toISOString().substring(0, 10);
+}
+
+function createTenDayPeriod(serial, facilityId, pickupDate, triggerEvent) {
+  // Close any existing open period for this serial at a different facility
+  for (var i = 0; i < tenDayPeriods.periods.length; i++) {
+    var p = tenDayPeriods.periods[i];
+    if (p.serial === serial && p.status === 'open') {
+      p.status = 'transferred';
+      p.closedAt = new Date().toISOString();
+      p.closedReason = 'transfer-to-' + facilityId;
+    }
+  }
+  // Check for existing open period at same facility
+  var existing = null;
+  for (var j = 0; j < tenDayPeriods.periods.length; j++) {
+    if (tenDayPeriods.periods[j].serial === serial &&
+        tenDayPeriods.periods[j].facilityId === facilityId &&
+        tenDayPeriods.periods[j].status === 'open') {
+      existing = tenDayPeriods.periods[j];
+      break;
+    }
+  }
+  if (existing) return existing; // Already tracking at this facility
+
+  var startDate = pickupDate || new Date().toISOString().substring(0, 10);
+  var period = {
+    id: 'tdp-' + Date.now().toString() + '-' + Math.random().toString(36).substring(2, 6),
+    serial: serial,
+    facilityId: facilityId,
+    startDate: startDate,
+    deadline: computeDeadline(startDate),
+    status: 'open', // open, loaded, transferred, departed
+    createdAt: new Date().toISOString(),
+    createdBy: triggerEvent || 'system',
+    closedAt: null,
+    closedReason: null
+  };
+  tenDayPeriods.periods.push(period);
+  saveTenDayPeriods(tenDayPeriods);
+  return period;
+}
+
+// --- Loads data model ---
+var LOADS_FILE = path.join(DATA_DIR, 'loads.json');
+function loadLoads() {
+  try {
+    if (fs.existsSync(LOADS_FILE)) {
+      return JSON.parse(fs.readFileSync(LOADS_FILE, 'utf8'));
+    }
+  } catch (e) { console.error('Error loading loads:', e); }
+  return { loads: [] };
+}
+function saveLoads(d) { fs.writeFileSync(LOADS_FILE, JSON.stringify(d, null, 2)); }
+var loadsData = loadLoads();
+
 // --- Associate a serial number with a manifest line (driver+) ---
 app.post('/api/scans/associate', function(req, res) {
   var serial = (req.body.serial || '').trim();
@@ -6486,7 +6613,7 @@ app.post('/api/scans', function(req, res) {
   var facilityId = (req.body.facilityId || '').trim() || null;
   var location = req.body.location || null;
   var notes = (req.body.notes || '').trim();
-  var validTypes = ['associate', 'staged', 'loaded', '10day-in'];
+  var validTypes = ['associate', 'checkin', 'staged', 'loaded', '10day-in'];
   if (validTypes.indexOf(scanType) === -1) {
     return res.status(400).json({ error: 'Invalid scanType. Must be: ' + validTypes.join(', ') });
   }
@@ -6531,12 +6658,34 @@ app.post('/api/scans', function(req, res) {
     saveUnassignedScans(unassignedScans);
   }
 
+  // 10-day auto-creation: checkin at a 10-day facility or explicit 10day-in
+  var tenDayPeriod = null;
+  if ((scanType === 'checkin' || scanType === '10day-in') && facilityId) {
+    // Check if facility is a 10-day type
+    var fac = null;
+    for (var fi = 0; fi < facilitiesData.facilities.length; fi++) {
+      if (facilitiesData.facilities[fi].id === facilityId) {
+        fac = facilitiesData.facilities[fi];
+        break;
+      }
+    }
+    if (fac && fac.type === '10-day') {
+      // Get pickup date from the associate event
+      var pickupDate = null;
+      if (association) {
+        pickupDate = association.associatedAt ? association.associatedAt.substring(0, 10) : null;
+      }
+      tenDayPeriod = createTenDayPeriod(serial, facilityId, pickupDate, event.id);
+    }
+  }
+
   broadcast('scan', { action: scanType, event: event });
   res.json({
     success: true,
     event: event,
     association: association,
-    unassigned: !association
+    unassigned: !association,
+    tenDayPeriod: tenDayPeriod
   });
 });
 
@@ -6564,14 +6713,23 @@ app.get('/api/manifests/:id/scans', function(req, res) {
   // Group by line number
   var grouped = {};
   for (var i = 0; i < events.length; i++) {
-    var lineKey = events[i].lineNumber !== null && events[i].lineNumber !== undefined ? String(events[i].lineNumber) : 'unassigned';
+    var lineKey = events[i].lineNum !== null && events[i].lineNum !== undefined ? String(events[i].lineNum) : 'unassigned';
     if (!grouped[lineKey]) {
       grouped[lineKey] = [];
     }
     grouped[lineKey].push(events[i]);
   }
 
-  res.json({ manifestId: manifestId, scansByLine: grouped, totalEvents: events.length });
+  // Also get associations for this manifest
+  var assocList = [];
+  var skeys = Object.keys(scanAssociations);
+  for (var ai = 0; ai < skeys.length; ai++) {
+    if (scanAssociations[skeys[ai]].manifestId === manifestId) {
+      assocList.push(scanAssociations[skeys[ai]]);
+    }
+  }
+
+  res.json({ manifestId: manifestId, scansByLine: grouped, associations: assocList, totalEvents: events.length });
 });
 
 // --- Get loading status for a manifest (office+) ---
@@ -6592,44 +6750,375 @@ app.get('/api/manifests/:id/loading-status', function(req, res) {
     return e.manifestId === manifestId;
   });
 
-  // Count loaded/unloaded per line
+  // Determine drum status per line using scanType field
   var lineStatus = {};
   for (var j = 0; j < associations.length; j++) {
     var assoc = associations[j];
-    var lineKey = String(assoc.lineNumber);
+    var lineKey = String(assoc.lineNum);
     if (!lineStatus[lineKey]) {
-      lineStatus[lineKey] = { drums: [], loaded: 0, unloaded: 0 };
+      lineStatus[lineKey] = { drums: [], associated: 0, checkedIn: 0, staged: 0, loaded: 0 };
     }
     var drumEvents = events.filter(function(e) {
       return e.serial === assoc.serial;
     });
-    var lastLoadEvent = null;
-    var lastUnloadEvent = null;
-    for (var k = 0; k < drumEvents.length; k++) {
-      if (drumEvents[k].type === 'load') lastLoadEvent = drumEvents[k];
-      if (drumEvents[k].type === 'unload') lastUnloadEvent = drumEvents[k];
-    }
+    // Determine current status from most recent scan type
     var drumStatus = 'associated';
-    if (lastUnloadEvent) {
-      drumStatus = 'unloaded';
-      lineStatus[lineKey].unloaded++;
-    } else if (lastLoadEvent) {
-      drumStatus = 'loaded';
-      lineStatus[lineKey].loaded++;
+    var statusOrder = { associate: 0, checkin: 1, staged: 2, loaded: 3 };
+    var highestStatus = 0;
+    for (var k = 0; k < drumEvents.length; k++) {
+      var st = drumEvents[k].scanType;
+      if (statusOrder[st] !== undefined && statusOrder[st] > highestStatus) {
+        highestStatus = statusOrder[st];
+        drumStatus = st === 'associate' ? 'associated' : st;
+      }
     }
+    lineStatus[lineKey][drumStatus === 'associated' ? 'associated' : drumStatus === 'checkin' ? 'checkedIn' : drumStatus]++;
     lineStatus[lineKey].drums.push({
       serial: assoc.serial,
       status: drumStatus,
-      lastEvent: drumEvents.length > 0 ? drumEvents[drumEvents.length - 1] : null
+      lastEvent: drumEvents.length > 0 ? drumEvents[drumEvents.length - 1] : null,
+      wasteDescription: assoc.wasteDescription || ''
+    });
+  }
+
+  // Get manifest to compare against container counts
+  var manifest = null;
+  for (var mi = 0; mi < (data.manifests || []).length; mi++) {
+    if (data.manifests[mi].id === manifestId) {
+      manifest = data.manifests[mi];
+      break;
+    }
+  }
+
+  // Build line-by-line summary with expected counts from manifest
+  var lines = [];
+  var wasteLines = manifest ? (manifest.wasteLines || manifest.lines || []) : [];
+  for (var li = 0; li < wasteLines.length; li++) {
+    var wl = wasteLines[li];
+    var ln = String(wl.lineNum || wl.lineNumber || (li + 1));
+    var status = lineStatus[ln] || { drums: [], associated: 0, checkedIn: 0, staged: 0, loaded: 0 };
+    var expectedCount = parseInt(wl.containerCount || wl.numContainers || wl.qty || 0) || 0;
+    lines.push({
+      lineNum: parseInt(ln),
+      wasteDescription: wl.wasteDescription || wl.description || '',
+      containerType: wl.containerType || '',
+      expectedCount: expectedCount,
+      scannedCount: status.drums.length,
+      checkedIn: status.checkedIn,
+      staged: status.staged,
+      loaded: status.loaded,
+      drums: status.drums,
+      complete: expectedCount > 0 && status.loaded >= expectedCount,
+      warning: expectedCount > 0 && status.drums.length > expectedCount ? 'More drums scanned than expected' : null
     });
   }
 
   res.json({
     manifestId: manifestId,
+    manifestTrackingNum: manifest ? (manifest.manifestTrackingNum || manifest.manifestTrackingNumber || '') : '',
+    tsdFacility: manifest ? (manifest.designatedFacility || manifest.tsdfName || '') : '',
     totalDrums: associations.length,
-    lineStatus: lineStatus,
+    lines: lines,
     totalEvents: events.length
   });
+});
+
+// --- Check-in expected: drums with associate but no checkin (office+) ---
+app.get('/api/checkin/expected', function(req, res) {
+  // Find all serials that have been associated but not yet checked in
+  var allSerials = Object.keys(scanAssociations);
+  var byManifest = {};
+
+  for (var i = 0; i < allSerials.length; i++) {
+    var serial = allSerials[i];
+    var assoc = scanAssociations[serial];
+    var events = scanEvents.events.filter(function(e) {
+      return e.serial === serial;
+    });
+
+    // Check if there's a checkin event already
+    var hasCheckin = false;
+    for (var j = 0; j < events.length; j++) {
+      if (events[j].scanType === 'checkin') {
+        hasCheckin = true;
+        break;
+      }
+    }
+
+    var mid = assoc.manifestId;
+    if (!byManifest[mid]) {
+      // Look up manifest info
+      var manifest = null;
+      for (var mi = 0; mi < (data.manifests || []).length; mi++) {
+        if (data.manifests[mi].id === mid) { manifest = data.manifests[mi]; break; }
+      }
+      byManifest[mid] = {
+        manifestId: mid,
+        trackingNum: manifest ? (manifest.manifestTrackingNum || manifest.manifestTrackingNumber || mid) : mid,
+        generator: manifest ? (manifest.generatorName || '') : '',
+        expected: [],
+        checkedIn: [],
+        missing: [],
+        unexpected: []
+      };
+    }
+
+    var drumInfo = {
+      serial: serial,
+      lineNum: assoc.lineNum,
+      wasteDescription: assoc.wasteDescription || '',
+      associatedAt: assoc.associatedAt,
+      associatedBy: assoc.associatedByName || assoc.associatedBy
+    };
+
+    if (hasCheckin) {
+      byManifest[mid].checkedIn.push(drumInfo);
+    } else {
+      byManifest[mid].expected.push(drumInfo);
+      byManifest[mid].missing.push(drumInfo);
+    }
+  }
+
+  // Convert to array, compute progress
+  var manifests = [];
+  var mids = Object.keys(byManifest);
+  for (var k = 0; k < mids.length; k++) {
+    var m = byManifest[mids[k]];
+    var total = m.expected.length + m.checkedIn.length;
+    m.totalDrums = total;
+    m.checkedInCount = m.checkedIn.length;
+    m.progress = total > 0 ? Math.round((m.checkedIn.length / total) * 100) : 0;
+    // Only include manifests that have drums pending check-in
+    if (m.expected.length > 0) {
+      manifests.push(m);
+    }
+  }
+
+  // Also check for unexpected check-ins (serials checked in but not associated)
+  var unexpectedCheckins = [];
+  for (var ei = 0; ei < scanEvents.events.length; ei++) {
+    var evt = scanEvents.events[ei];
+    if (evt.scanType === 'checkin' && !scanAssociations[evt.serial]) {
+      unexpectedCheckins.push({
+        serial: evt.serial,
+        checkedInAt: evt.timestamp,
+        checkedInBy: evt.userName || evt.user
+      });
+    }
+  }
+
+  res.json({
+    manifests: manifests,
+    unexpectedCheckins: unexpectedCheckins
+  });
+});
+
+// --- Yard Facilities API (driver+ for scan page facility picker) ---
+app.get('/api/yard-facilities', function(req, res) {
+  res.json(facilitiesData);
+});
+
+// --- 10-Day periods API (office+) ---
+app.get('/api/10-day/periods', function(req, res) {
+  var status = req.query.status || null;
+  var facilityId = req.query.facilityId || null;
+  var periods = tenDayPeriods.periods;
+  if (status) {
+    periods = periods.filter(function(p) { return p.status === status; });
+  }
+  if (facilityId) {
+    periods = periods.filter(function(p) { return p.facilityId === facilityId; });
+  }
+  // Enrich with facility name and days remaining
+  var today = new Date().toISOString().substring(0, 10);
+  var enriched = periods.map(function(p) {
+    var facName = '';
+    for (var i = 0; i < facilitiesData.facilities.length; i++) {
+      if (facilitiesData.facilities[i].id === p.facilityId) {
+        facName = facilitiesData.facilities[i].name;
+        break;
+      }
+    }
+    var deadlineDate = new Date(p.deadline + 'T23:59:59');
+    var todayDate = new Date(today + 'T00:00:00');
+    var daysRemaining = Math.ceil((deadlineDate - todayDate) / (1000 * 60 * 60 * 24));
+    var urgency = daysRemaining < 0 ? 'overdue' : daysRemaining <= 2 ? 'urgent' : daysRemaining <= 5 ? 'warning' : 'ok';
+    return {
+      id: p.id, serial: p.serial, facilityId: p.facilityId, facilityName: facName,
+      startDate: p.startDate, deadline: p.deadline, status: p.status,
+      daysRemaining: daysRemaining, urgency: urgency,
+      createdAt: p.createdAt, closedAt: p.closedAt, closedReason: p.closedReason
+    };
+  });
+  res.json({ periods: enriched });
+});
+
+// --- Loads CRUD API (office+) ---
+app.get('/api/loads', function(req, res) {
+  var status = req.query.status || null;
+  var result = loadsData.loads;
+  if (status) {
+    result = result.filter(function(l) { return l.status === status; });
+  }
+  res.json({ loads: result });
+});
+
+app.get('/api/loads/:id', function(req, res) {
+  var load = null;
+  for (var i = 0; i < loadsData.loads.length; i++) {
+    if (loadsData.loads[i].id === req.params.id) { load = loadsData.loads[i]; break; }
+  }
+  if (!load) return res.status(404).json({ error: 'Load not found' });
+
+  // Enrich with loading status for each manifest
+  var manifestStatuses = [];
+  for (var mi = 0; mi < load.manifestIds.length; mi++) {
+    var mid = load.manifestIds[mi];
+    // Get associations for this manifest
+    var assocs = [];
+    var skeys = Object.keys(scanAssociations);
+    for (var si = 0; si < skeys.length; si++) {
+      if (scanAssociations[skeys[si]].manifestId === mid) {
+        assocs.push(scanAssociations[skeys[si]]);
+      }
+    }
+    var evts = scanEvents.events.filter(function(e) { return e.manifestId === mid; });
+    var loadedCount = 0;
+    var totalDrums = assocs.length;
+    var wrongTsdf = [];
+    for (var ai = 0; ai < assocs.length; ai++) {
+      var drumEvts = evts.filter(function(e) { return e.serial === assocs[ai].serial; });
+      var isLoaded = false;
+      for (var di = 0; di < drumEvts.length; di++) {
+        if (drumEvts[di].scanType === 'loaded') isLoaded = true;
+      }
+      if (isLoaded) loadedCount++;
+    }
+    // Look up manifest info
+    var manifest = null;
+    for (var mii = 0; mii < (data.manifests || []).length; mii++) {
+      if (data.manifests[mii].id === mid) { manifest = data.manifests[mii]; break; }
+    }
+    manifestStatuses.push({
+      manifestId: mid,
+      trackingNum: manifest ? (manifest.manifestTrackingNum || manifest.manifestTrackingNumber || mid) : mid,
+      tsdFacility: manifest ? (manifest.designatedFacility || manifest.tsdfName || '') : '',
+      generator: manifest ? (manifest.generatorName || '') : '',
+      totalDrums: totalDrums,
+      loadedCount: loadedCount,
+      complete: totalDrums > 0 && loadedCount >= totalDrums
+    });
+  }
+
+  res.json({ load: load, manifests: manifestStatuses });
+});
+
+app.post('/api/loads', function(req, res) {
+  var manifestIds = req.body.manifestIds || [];
+  var truck = (req.body.truck || '').trim();
+  var driver = (req.body.driver || '').trim();
+  var notes = (req.body.notes || '').trim();
+  var tsdFacility = (req.body.tsdFacility || '').trim();
+
+  if (!manifestIds.length) {
+    return res.status(400).json({ error: 'At least one manifest required' });
+  }
+
+  var load = {
+    id: 'load-' + Date.now().toString() + '-' + Math.random().toString(36).substring(2, 6),
+    manifestIds: manifestIds,
+    tsdFacility: tsdFacility,
+    truck: truck,
+    driver: driver,
+    notes: notes,
+    status: 'loading', // loading, departed, delivered
+    createdAt: new Date().toISOString(),
+    createdBy: req.userId,
+    createdByName: req.userName,
+    departedAt: null,
+    deliveredAt: null
+  };
+
+  loadsData.loads.push(load);
+  saveLoads(loadsData);
+
+  broadcast('loads', { action: 'created', load: load });
+  res.status(201).json({ success: true, load: load });
+});
+
+app.put('/api/loads/:id', function(req, res) {
+  var load = null;
+  var loadIdx = -1;
+  for (var i = 0; i < loadsData.loads.length; i++) {
+    if (loadsData.loads[i].id === req.params.id) { load = loadsData.loads[i]; loadIdx = i; break; }
+  }
+  if (!load) return res.status(404).json({ error: 'Load not found' });
+
+  // Update fields
+  if (req.body.truck !== undefined) load.truck = req.body.truck;
+  if (req.body.driver !== undefined) load.driver = req.body.driver;
+  if (req.body.notes !== undefined) load.notes = req.body.notes;
+  if (req.body.manifestIds !== undefined) load.manifestIds = req.body.manifestIds;
+
+  // Status transitions
+  if (req.body.status) {
+    var newStatus = req.body.status;
+    if (newStatus === 'departed' && load.status === 'loading') {
+      load.status = 'departed';
+      load.departedAt = new Date().toISOString();
+      // Close 10-day periods for loaded drums on this load's manifests
+      for (var mi = 0; mi < load.manifestIds.length; mi++) {
+        var mid = load.manifestIds[mi];
+        var skeys = Object.keys(scanAssociations);
+        for (var si = 0; si < skeys.length; si++) {
+          if (scanAssociations[skeys[si]].manifestId === mid) {
+            var serial = skeys[si];
+            // Close any open 10-day period for this serial
+            for (var pi = 0; pi < tenDayPeriods.periods.length; pi++) {
+              if (tenDayPeriods.periods[pi].serial === serial && tenDayPeriods.periods[pi].status === 'open') {
+                tenDayPeriods.periods[pi].status = 'departed';
+                tenDayPeriods.periods[pi].closedAt = load.departedAt;
+                tenDayPeriods.periods[pi].closedReason = 'departed-load-' + load.id;
+              }
+            }
+          }
+        }
+      }
+      saveTenDayPeriods(tenDayPeriods);
+    } else if (newStatus === 'delivered' && (load.status === 'departed' || load.status === 'loading')) {
+      load.status = 'delivered';
+      load.deliveredAt = new Date().toISOString();
+      // Update manifest statuses
+      for (var mj = 0; mj < load.manifestIds.length; mj++) {
+        for (var mk = 0; mk < (data.manifests || []).length; mk++) {
+          if (data.manifests[mk].id === load.manifestIds[mj]) {
+            data.manifests[mk].deliveredAt = load.deliveredAt;
+            data.manifests[mk].deliveredViaLoad = load.id;
+          }
+        }
+      }
+      saveData(data);
+    }
+  }
+
+  loadsData.loads[loadIdx] = load;
+  saveLoads(loadsData);
+  broadcast('loads', { action: 'updated', load: load });
+  res.json({ success: true, load: load });
+});
+
+app.delete('/api/loads/:id', function(req, res) {
+  var idx = -1;
+  for (var i = 0; i < loadsData.loads.length; i++) {
+    if (loadsData.loads[i].id === req.params.id) { idx = i; break; }
+  }
+  if (idx === -1) return res.status(404).json({ error: 'Load not found' });
+  if (loadsData.loads[idx].status !== 'loading') {
+    return res.status(400).json({ error: 'Cannot delete a load that has departed or been delivered' });
+  }
+  loadsData.loads.splice(idx, 1);
+  saveLoads(loadsData);
+  res.json({ success: true });
 });
 
 // --- Unassigned scans (office+) ---
@@ -6731,6 +7220,26 @@ app.get('/login', function(req, res) {
 
 app.get('/scan', function(req, res) {
   res.sendFile(path.join(__dirname, 'scan.html'));
+});
+
+app.get('/checkin', function(req, res) {
+  res.sendFile(path.join(__dirname, 'checkin.html'));
+});
+
+app.get('/loading', function(req, res) {
+  res.sendFile(path.join(__dirname, 'loading.html'));
+});
+
+app.get('/loads', function(req, res) {
+  res.sendFile(path.join(__dirname, 'loads.html'));
+});
+
+app.get('/loads/new', function(req, res) {
+  res.sendFile(path.join(__dirname, 'loads.html'));
+});
+
+app.get('/loads/:id', function(req, res) {
+  res.sendFile(path.join(__dirname, 'loads.html'));
 });
 
 app.get('/admin', function(req, res) {
