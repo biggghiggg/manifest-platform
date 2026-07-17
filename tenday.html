@@ -138,6 +138,53 @@
     .border-left-warning { border-left: 4px solid #F1C40F; }
     .border-left-ok { border-left: 4px solid #27AE60; }
     .border-left-closed { border-left: 4px solid #BDC3C7; }
+
+    /* Facility management panel */
+    .settings-panel {
+      display: none; margin-bottom: 14px;
+    }
+    .settings-panel.show { display: block; }
+    .fac-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; background: #fff; border-radius: 8px;
+      margin-bottom: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .fac-item .fac-name {
+      flex: 1; font-weight: 600; font-size: 15px; color: #2C3E50;
+    }
+    .fac-item .fac-type {
+      font-size: 11px; color: #7F8C8D; background: #ECF0F1;
+      padding: 2px 8px; border-radius: 4px;
+    }
+    .fac-btn {
+      font-family: inherit; font-size: 12px; font-weight: 600;
+      padding: 5px 10px; border-radius: 5px; border: none;
+      cursor: pointer;
+    }
+    .fac-btn:active { opacity: 0.7; }
+    .fac-btn-edit { background: #EBF5FB; color: #1B4F72; }
+    .fac-btn-del { background: #FADBD8; color: #E74C3C; }
+    .fac-add-row {
+      display: flex; gap: 8px; margin-top: 8px;
+    }
+    .fac-add-row input {
+      flex: 1; font-family: inherit; font-size: 14px;
+      padding: 8px 10px; border-radius: 6px;
+      border: 1px solid #DEE2E6; background: #fff;
+    }
+    .fac-add-row button {
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      padding: 8px 14px; border-radius: 6px; border: none;
+      background: #27AE60; color: #fff; cursor: pointer; white-space: nowrap;
+    }
+    .fac-add-row button:active { opacity: 0.7; }
+    .toast {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: #2C3E50; color: #fff; padding: 12px 24px; border-radius: 8px;
+      font-size: 14px; z-index: 2000; display: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .toast.show { display: block; }
   </style>
 </head>
 <body>
@@ -145,9 +192,24 @@
     <a href="/">&#8592;</a>
     <div class="header-title">10-Day Tracking</div>
     <button class="header-btn" onclick="loadData()">Refresh</button>
+    <button class="header-btn" onclick="toggleSettings()">Facilities</button>
   </div>
 
   <div class="content">
+    <div class="settings-panel" id="settingsPanel">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:16px;font-weight:700;color:#1B4F72;">Manage Facilities</div>
+          <button class="fac-btn fac-btn-edit" onclick="toggleSettings()">Close</button>
+        </div>
+        <div id="facList"></div>
+        <div class="fac-add-row">
+          <input type="text" id="newFacName" placeholder="New facility name" />
+          <button onclick="addFacility()">+ Add</button>
+        </div>
+      </div>
+    </div>
+
     <div class="tabs" id="statusTabs">
       <button class="tab active" data-status="open">Open</button>
       <button class="tab" data-status="">All</button>
@@ -356,11 +418,130 @@
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    // ---- Facility Management ----
+    function toggleSettings() {
+      var panel = document.getElementById('settingsPanel');
+      if (panel.classList.contains('show')) {
+        panel.classList.remove('show');
+      } else {
+        panel.classList.add('show');
+        renderFacList();
+      }
+    }
+
+    function renderFacList() {
+      var el = document.getElementById('facList');
+      if (facilities.length === 0) {
+        el.innerHTML = '<div style="color:#95A5A6;font-size:14px;padding:8px;">No facilities configured.</div>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < facilities.length; i++) {
+        var f = facilities[i];
+        html += '<div class="fac-item" id="fac-' + f.id + '">';
+        html += '<span class="fac-name">' + escapeHtml(f.name) + '</span>';
+        html += '<span class="fac-type">' + escapeHtml(f.type) + '</span>';
+        html += '<button class="fac-btn fac-btn-edit" onclick="renameFacility(\'' + f.id + '\', \'' + escapeAttr(f.name) + '\')">Rename</button>';
+        html += '<button class="fac-btn fac-btn-del" onclick="deleteFacility(\'' + f.id + '\')">Delete</button>';
+        html += '</div>';
+      }
+      el.innerHTML = html;
+    }
+
+    function escapeAttr(str) {
+      return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    function addFacility() {
+      var input = document.getElementById('newFacName');
+      var name = input.value.trim();
+      if (!name) { showToast('Enter a facility name'); return; }
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/yard-facilities', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function() {
+        if (xhr.status === 201) {
+          input.value = '';
+          showToast('Facility added');
+          reloadFacilities();
+        } else {
+          try { showToast(JSON.parse(xhr.responseText).error); } catch(e) { showToast('Error'); }
+        }
+      };
+      xhr.send(JSON.stringify({ name: name, type: '10-day' }));
+    }
+
+    function renameFacility(id, currentName) {
+      var newName = prompt('Rename facility:', currentName);
+      if (!newName || newName.trim() === currentName) return;
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('PUT', '/api/yard-facilities/' + encodeURIComponent(id), true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          showToast('Facility renamed');
+          reloadFacilities();
+        } else {
+          try { showToast(JSON.parse(xhr.responseText).error); } catch(e) { showToast('Error'); }
+        }
+      };
+      xhr.send(JSON.stringify({ name: newName.trim() }));
+    }
+
+    function deleteFacility(id) {
+      if (!confirm('Delete this facility?')) return;
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('DELETE', '/api/yard-facilities/' + encodeURIComponent(id), true);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          showToast('Facility deleted');
+          reloadFacilities();
+        } else {
+          try { showToast(JSON.parse(xhr.responseText).error); } catch(e) { showToast('Error'); }
+        }
+      };
+      xhr.send();
+    }
+
+    function reloadFacilities() {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/yard-facilities', true);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          var result = JSON.parse(xhr.responseText);
+          facilities = result.facilities || [];
+          // Rebuild filter dropdown
+          var sel = document.getElementById('facilityFilter');
+          sel.innerHTML = '<option value="">All Facilities</option>';
+          for (var i = 0; i < facilities.length; i++) {
+            var opt = document.createElement('option');
+            opt.value = facilities[i].id;
+            opt.textContent = facilities[i].name;
+            sel.appendChild(opt);
+          }
+          renderFacList();
+          loadData();
+        }
+      };
+      xhr.send();
+    }
+
+    function showToast(msg) {
+      var el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(function() { el.classList.remove('show'); }, 2500);
+    }
+
     // Init
     loadFacilities();
     loadData();
     // Auto-refresh every 60 seconds
     setInterval(loadData, 60000);
   </script>
+  <div class="toast" id="toast"></div>
 </body>
 </html>

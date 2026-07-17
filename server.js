@@ -6918,6 +6918,55 @@ app.get('/api/yard-facilities', function(req, res) {
   res.json(facilitiesData);
 });
 
+app.post('/api/yard-facilities', function(req, res) {
+  var name = (req.body.name || '').trim();
+  var type = (req.body.type || '10-day').trim();
+  if (!name) return res.status(400).json({ error: 'Facility name required' });
+  var fac = {
+    id: 'fac-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 5),
+    name: name,
+    type: type,
+    active: true
+  };
+  facilitiesData.facilities.push(fac);
+  saveFacilities(facilitiesData);
+  res.status(201).json({ success: true, facility: fac });
+});
+
+app.put('/api/yard-facilities/:id', function(req, res) {
+  var fac = null;
+  for (var i = 0; i < facilitiesData.facilities.length; i++) {
+    if (facilitiesData.facilities[i].id === req.params.id) { fac = facilitiesData.facilities[i]; break; }
+  }
+  if (!fac) return res.status(404).json({ error: 'Facility not found' });
+  if (req.body.name !== undefined) fac.name = req.body.name.trim();
+  if (req.body.type !== undefined) fac.type = req.body.type.trim();
+  if (req.body.active !== undefined) fac.active = req.body.active;
+  saveFacilities(facilitiesData);
+  res.json({ success: true, facility: fac });
+});
+
+app.delete('/api/yard-facilities/:id', function(req, res) {
+  var idx = -1;
+  for (var i = 0; i < facilitiesData.facilities.length; i++) {
+    if (facilitiesData.facilities[i].id === req.params.id) { idx = i; break; }
+  }
+  if (idx === -1) return res.status(404).json({ error: 'Facility not found' });
+  // Check if any open periods reference this facility
+  var openCount = 0;
+  for (var p = 0; p < tenDayPeriods.periods.length; p++) {
+    if (tenDayPeriods.periods[p].facilityId === req.params.id && tenDayPeriods.periods[p].status === 'open') {
+      openCount++;
+    }
+  }
+  if (openCount > 0) {
+    return res.status(400).json({ error: 'Cannot delete: ' + openCount + ' open 10-day period(s) reference this facility' });
+  }
+  facilitiesData.facilities.splice(idx, 1);
+  saveFacilities(facilitiesData);
+  res.json({ success: true });
+});
+
 // --- 10-Day periods API (office+) ---
 app.get('/api/10-day/periods', function(req, res) {
   var status = req.query.status || null;
