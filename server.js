@@ -1,7 +1,10 @@
 var express = require('express');
 var multer = require('multer');
-var XLSX = require('xlsx');
-var pdfParse = require('pdf-parse');
+var XLSX;
+try { XLSX = require('xlsx'); } catch(e) { console.warn('xlsx not available - import features disabled'); XLSX = null; }
+var pdfParse;
+try { pdfParse = require('pdf-parse'); } catch(e) { console.warn('pdf-parse not available - PDF import disabled'); pdfParse = null; }
+var crypto = require('crypto');
 var fs = require('fs');
 var path = require('path');
 
@@ -109,9 +112,423 @@ if (!data._labelCleanupDone) {
 }
 if (data.labels.length < labelsBefore) { console.log('Cleaned up ' + (labelsBefore - data.labels.length) + ' leftover manifest-generated labels'); saveData(data); }
 
+// ============================================================
+// QR DRUM TRACKING - PHASE 1: AUTH + SCANNING
+// ============================================================
+
+// --- Users data model ---
+var USERS_FILE = path.join(DATA_DIR, 'users.json');
+
+function loadUsers() {
+  try {
+    if (fs.existsSync(USERS_FILE)) {
+      var raw = fs.readFileSync(USERS_FILE, 'utf8');
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.error('Error loading users:', e);
+  }
+  return { users: [] };
+}
+
+function saveUsers(usersData) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(usersData, null, 2));
+}
+
+var usersData = loadUsers();
+
+// --- PIN hashing helpers ---
+function hashPin(pin, salt) {
+  if (!salt) {
+    salt = crypto.randomBytes(32).toString('hex');
+  }
+  var hash = crypto.pbkdf2Sync(pin, salt, 100000, 64, 'sha512').toString('hex');
+  return { hash: hash, salt: salt };
+}
+
+function verifyPin(pin, storedHash, storedSalt) {
+  var result = hashPin(pin, storedSalt);
+  return result.hash === storedHash;
+}
+
+// --- Seed admin user on startup ---
+if (usersData.users.length === 0) {
+  var adminPin = hashPin('1234');
+  usersData.users.push({
+    id: Date.now().toString(),
+    name: 'Keith',
+    role: 'admin',
+    pinHash: adminPin.hash,
+    pinSalt: adminPin.salt,
+    active: true,
+    createdAt: new Date().toISOString()
+  });
+  saveUsers(usersData);
+  console.log('Seeded admin user: Keith (PIN: 1234)');
+}
+
+// --- Session management ---
+var SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+var sessions = {};
+var SESSION_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function generateSessionId() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function signValue(value) {
+  var signature = crypto.createHmac('sha256', SESSION_SECRET).update(value).digest('hex');
+  return value + '.' + signature;
+}
+
+function unsignValue(signedValue) {
+  if (!signedValue || typeof signedValue !== 'string') return null;
+  var parts = signedValue.split('.');
+  if (parts.length !== 2) return null;
+  var value = parts[0];
+  var signature = parts[1];
+  var expected = crypto.createHmac('sha256', SESSION_SECRET).update(value).digest('hex');
+  if (expected !== signature) return null;
+  return value;
+}
+
+function createSession(userId, role, userName) {
+  var sessionId = generateSessionId();
+  sessions[sessionId] = {
+    userId: userId,
+    role: role,
+    userName: userName,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + SESSION_MAX_AGE
+  };
+  return signValue(sessionId);
+}
+
+function validateSession(cookieValue) {
+  var sessionId = unsignValue(cookieValue);
+  if (!sessionId) return null;
+  var session = sessions[sessionId];
+  if (!session) return null;
+  if (Date.now() > session.expiresAt) {
+    delete sessions[sessionId];
+    return null;
+  }
+  return session;
+}
+
+function destroySession(cookieValue) {
+  var sessionId = unsignValue(cookieValue);
+  if (sessionId && sessions[sessionId]) {
+    delete sessions[sessionId];
+  }
+}
+
+// Clean expired sessions every 15 minutes
+setInterval(function() {
+  var now = Date.now();
+  var keys = Object.keys(sessions);
+  for (var i = 0; i < keys.length; i++) {
+    if (sessions[keys[i]].expiresAt < now) {
+      delete sessions[keys[i]];
+    }
+  }
+}, 15 * 60 * 1000);
+
+// --- Cookie parsing helper ---
+function parseCookies(req) {
+  var cookies = {};
+  var header = req.headers.cookie;
+  if (!header) return cookies;
+  var pairs = header.split(';');
+  for (var i = 0; i < pairs.length; i++) {
+    var pair = pairs[i].trim();
+    var idx = pair.indexOf('=');
+    if (idx > 0) {
+      var key = pair.substring(0, idx).trim();
+      var val = decodeURIComponent(pair.substring(idx + 1).trim());
+      cookies[key] = val;
+    }
+  }
+  return cookies;
+}
+
+// --- Rate limiting for login ---
+var loginAttempts = {};
+
+function checkRateLimit(userId) {
+  var now = Date.now();
+  var windowMs = 15 * 60 * 1000; // 15 minutes
+  var maxAttempts = 5;
+  if (!loginAttempts[userId]) {
+    loginAttempts[userId] = [];
+  }
+  // Filter to only recent attempts
+  loginAttempts[userId] = loginAttempts[userId].filter(function(ts) {
+    return (now - ts) < windowMs;
+  });
+  return loginAttempts[userId].length < maxAttempts;
+}
+
+function recordLoginAttempt(userId) {
+  if (!loginAttempts[userId]) {
+    loginAttempts[userId] = [];
+  }
+  loginAttempts[userId].push(Date.now());
+}
+
+// --- Role hierarchy helper ---
+var ROLE_LEVELS = { driver: 1, office: 2, admin: 3 };
+
+function hasRole(userRole, requiredRole) {
+  return (ROLE_LEVELS[userRole] || 0) >= (ROLE_LEVELS[requiredRole] || 0);
+}
+
 // Middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// --- Auth endpoints (no auth required) ---
+
+// Get active users (for login screen)
+app.get('/api/auth/users', function(req, res) {
+  var safeUsers = usersData.users.filter(function(u) {
+    return u.active !== false;
+  }).map(function(u) {
+    return { id: u.id, name: u.name, role: u.role };
+  });
+  res.json(safeUsers);
+});
+
+// Login
+app.post('/api/auth/login', function(req, res) {
+  var userId = req.body.userId;
+  var pin = req.body.pin;
+  if (!userId || !pin) {
+    return res.status(400).json({ error: 'User ID and PIN required' });
+  }
+  // Rate limit check
+  if (!checkRateLimit(userId)) {
+    return res.status(429).json({ error: 'Too many login attempts. Try again in 15 minutes.' });
+  }
+  // Find user
+  var user = null;
+  for (var i = 0; i < usersData.users.length; i++) {
+    if (usersData.users[i].id === userId && usersData.users[i].active !== false) {
+      user = usersData.users[i];
+      break;
+    }
+  }
+  if (!user) {
+    recordLoginAttempt(userId);
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  // Verify PIN
+  if (!verifyPin(pin, user.pinHash, user.pinSalt)) {
+    recordLoginAttempt(userId);
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  // Create session
+  var cookieValue = createSession(user.id, user.role, user.name);
+  res.setHeader('Set-Cookie', 'ies_session=' + encodeURIComponent(cookieValue) + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=' + Math.floor(SESSION_MAX_AGE / 1000));
+  res.json({ success: true, user: { id: user.id, name: user.name, role: user.role } });
+});
+
+// Logout
+app.post('/api/auth/logout', function(req, res) {
+  var cookies = parseCookies(req);
+  var cookieValue = cookies.ies_session;
+  if (cookieValue) {
+    destroySession(cookieValue);
+  }
+  res.setHeader('Set-Cookie', 'ies_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+  res.json({ success: true });
+});
+
+// Get current session info
+app.get('/api/auth/me', function(req, res) {
+  var cookies = parseCookies(req);
+  var cookieValue = cookies.ies_session;
+  var session = cookieValue ? validateSession(cookieValue) : null;
+  if (!session) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  res.json({ userId: session.userId, userName: session.userName, role: session.role });
+});
+
+// --- Auth + Role middleware ---
+app.use(function(req, res, next) {
+  // Skip auth for login-related paths
+  if (req.path === '/login' || req.path === '/login.html') return next();
+  if (req.path === '/api/auth/users' || req.path === '/api/auth/login' || req.path === '/api/auth/logout' || req.path === '/api/auth/me') return next();
+  if (req.path === '/api/events') return next(); // SSE endpoint - allow through for real-time updates
+
+  // Skip auth for static assets
+  var ext = path.extname(req.path).toLowerCase();
+  if (ext === '.js' || ext === '.css' || ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.gif' || ext === '.ico' || ext === '.woff' || ext === '.woff2' || ext === '.ttf' || ext === '.svg' || ext === '.map') {
+    return next();
+  }
+
+  // Check session
+  var cookies = parseCookies(req);
+  var cookieValue = cookies.ies_session;
+  var session = cookieValue ? validateSession(cookieValue) : null;
+
+  if (!session) {
+    // API requests get 401, page requests get redirect
+    if (req.path.indexOf('/api/') === 0) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    return res.redirect('/login');
+  }
+
+  // Attach session info to request
+  req.userId = session.userId;
+  req.userRole = session.role;
+  req.userName = session.userName;
+
+  // Role-based access control
+  var p = req.path;
+
+  // Admin routes
+  if (p.indexOf('/admin') === 0 || p.indexOf('/api/admin/') === 0) {
+    if (!hasRole(req.userRole, 'admin')) {
+      if (p.indexOf('/api/') === 0) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+      return res.redirect('/scan');
+    }
+    return next();
+  }
+
+  // Driver-accessible routes: scan pages, scan API, manifest picker + stub creation
+  var isManifestPicker = (p === '/api/manifests' && (req.method === 'GET' || req.method === 'POST'));
+  if (p.indexOf('/scan') === 0 || p.indexOf('/api/scans') === 0 || p.indexOf('/api/unassigned-scans') === 0 || isManifestPicker) {
+    if (!hasRole(req.userRole, 'driver')) {
+      if (p.indexOf('/api/') === 0) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      return res.redirect('/login');
+    }
+    return next();
+  }
+
+  // Everything else requires office or above
+  if (!hasRole(req.userRole, 'office')) {
+    if (p.indexOf('/api/') === 0) {
+      return res.status(403).json({ error: 'Office access required' });
+    }
+    // Drivers get redirected to scan page
+    if (req.userRole === 'driver') {
+      return res.redirect('/scan');
+    }
+    return res.redirect('/login');
+  }
+
+  next();
+});
+
+// --- Admin user management endpoints ---
+
+// List all users (admin only - enforced by middleware above)
+app.get('/api/admin/users', function(req, res) {
+  var safeUsers = usersData.users.map(function(u) {
+    return { id: u.id, name: u.name, role: u.role, active: u.active, createdAt: u.createdAt };
+  });
+  res.json(safeUsers);
+});
+
+// Create user (admin only)
+app.post('/api/admin/users', function(req, res) {
+  var name = (req.body.name || req.body.displayName || '').trim();
+  var pin = (req.body.pin || '').trim();
+  var role = req.body.role || 'driver';
+  if (!name || !pin) {
+    return res.status(400).json({ error: 'Name and PIN required' });
+  }
+  if (pin.length < 4) {
+    return res.status(400).json({ error: 'PIN must be at least 4 characters' });
+  }
+  if (['driver', 'office', 'admin'].indexOf(role) === -1) {
+    return res.status(400).json({ error: 'Invalid role. Must be driver, office, or admin.' });
+  }
+  // Check duplicate name
+  var duplicate = false;
+  for (var i = 0; i < usersData.users.length; i++) {
+    if (usersData.users[i].name.toLowerCase() === name.toLowerCase() && usersData.users[i].active !== false) {
+      duplicate = true;
+      break;
+    }
+  }
+  if (duplicate) {
+    return res.status(400).json({ error: 'A user with that name already exists' });
+  }
+  var pinData = hashPin(pin);
+  var newUser = {
+    id: Date.now().toString(),
+    name: name,
+    role: role,
+    pinHash: pinData.hash,
+    pinSalt: pinData.salt,
+    active: true,
+    createdAt: new Date().toISOString()
+  };
+  usersData.users.push(newUser);
+  saveUsers(usersData);
+  res.json({ id: newUser.id, name: newUser.name, role: newUser.role, active: newUser.active, createdAt: newUser.createdAt });
+});
+
+// Update user (admin only)
+app.put('/api/admin/users/:id', function(req, res) {
+  var userId = req.params.id;
+  var user = null;
+  var userIdx = -1;
+  for (var i = 0; i < usersData.users.length; i++) {
+    if (usersData.users[i].id === userId) {
+      user = usersData.users[i];
+      userIdx = i;
+      break;
+    }
+  }
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  if (req.body.name !== undefined) {
+    user.name = req.body.name.trim();
+  }
+  if (req.body.role !== undefined) {
+    if (['driver', 'office', 'admin'].indexOf(req.body.role) === -1) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+    user.role = req.body.role;
+  }
+  if (req.body.pin !== undefined && req.body.pin.trim() !== '') {
+    if (req.body.pin.trim().length < 4) {
+      return res.status(400).json({ error: 'PIN must be at least 4 characters' });
+    }
+    var pinData = hashPin(req.body.pin.trim());
+    user.pinHash = pinData.hash;
+    user.pinSalt = pinData.salt;
+  }
+  if (req.body.active !== undefined) {
+    user.active = req.body.active;
+  }
+  usersData.users[userIdx] = user;
+  saveUsers(usersData);
+  res.json({ id: user.id, name: user.name, role: user.role, active: user.active, createdAt: user.createdAt });
+});
+
+// Delete/deactivate user (admin only)
+app.delete('/api/admin/users/:id', function(req, res) {
+  var userId = req.params.id;
+  for (var i = 0; i < usersData.users.length; i++) {
+    if (usersData.users[i].id === userId) {
+      usersData.users[i].active = false;
+      saveUsers(usersData);
+      return res.json({ success: true });
+    }
+  }
+  res.status(404).json({ error: 'User not found' });
+});
 
 // SSE connections
 var sseClients = [];
@@ -3785,9 +4202,10 @@ app.get('/api/print/manifest/:id', function(req, res) {
     sh1 = manifest.specialHandling;
     sh2 = manifest.specialHandling2 || '';
   } else {
-    // Auto-generate from waste line profile IDs and container info
+    // Auto-generate from waste line profile IDs and container info (lines 1-4 only; 5+ go to Box 32 on continuation)
     var parts14 = [];
-    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+    var box14max = Math.min(wasteLineCount, 4);
+    for (var b14 = 1; b14 <= box14max; b14++) {
       var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
       var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
       var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
@@ -4346,7 +4764,8 @@ app.get('/api/print/escp2/:id', function(req, res) {
     sh2 = manifest.specialHandling2 || '';
   } else {
     var parts14 = [];
-    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+    var box14max = Math.min(wasteLineCount, 4);
+    for (var b14 = 1; b14 <= box14max; b14++) {
       var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
       var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
       var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
@@ -4743,7 +5162,8 @@ app.get('/api/print/direct/:id', function(req, res) {
     sh2 = manifest.specialHandling2 || '';
   } else {
     var parts14 = [];
-    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+    var box14max = Math.min(wasteLineCount, 4);
+    for (var b14 = 1; b14 <= box14max; b14++) {
       var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
       var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
       var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
@@ -5200,7 +5620,8 @@ app.get('/api/print/nonhaz/:id', function(req, res) {
     sh2nh = manifest.specialHandling2 || '';
   } else {
     var parts14nh = [];
-    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+    var box14maxNh = Math.min(wasteLineCount, 4);
+    for (var b14 = 1; b14 <= box14maxNh; b14++) {
       var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
       var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
       var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
@@ -5564,7 +5985,8 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
     sh2nh2 = manifest.specialHandling2 || '';
   } else {
     var parts14nh2 = [];
-    for (var b14 = 1; b14 <= wasteLineCount; b14++) {
+    var box14maxNh2 = Math.min(wasteLineCount, 4);
+    for (var b14 = 1; b14 <= box14maxNh2; b14++) {
       var pid14 = manifest['waste' + b14 + 'ProfileId'] || '';
       var csize14 = manifest['waste' + b14 + 'ContainerSize'] || '';
       var ctype14 = manifest['waste' + b14 + 'ContainerType'] || '';
@@ -5936,6 +6358,369 @@ app.post('/api/drivers', function(req, res) {
   data.drivers.push(name);
   saveData(data);
   res.json({ success: true, drivers: data.drivers });
+});
+
+// ============================================================
+// QR DRUM TRACKING - SCAN DATA MODELS & ENDPOINTS
+// ============================================================
+
+// --- Scan data files ---
+var SCAN_ASSOCIATIONS_FILE = path.join(DATA_DIR, 'scan-associations.json');
+var SCAN_EVENTS_FILE = path.join(DATA_DIR, 'scan-events.json');
+var UNASSIGNED_SCANS_FILE = path.join(DATA_DIR, 'unassigned-scans.json');
+
+function loadScanAssociations() {
+  try {
+    if (fs.existsSync(SCAN_ASSOCIATIONS_FILE)) {
+      var raw = fs.readFileSync(SCAN_ASSOCIATIONS_FILE, 'utf8');
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.error('Error loading scan associations:', e);
+  }
+  return {};
+}
+
+function saveScanAssociations(assocData) {
+  fs.writeFileSync(SCAN_ASSOCIATIONS_FILE, JSON.stringify(assocData, null, 2));
+}
+
+function loadScanEvents() {
+  try {
+    if (fs.existsSync(SCAN_EVENTS_FILE)) {
+      var raw = fs.readFileSync(SCAN_EVENTS_FILE, 'utf8');
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.error('Error loading scan events:', e);
+  }
+  return { events: [] };
+}
+
+function saveScanEvents(eventsData) {
+  fs.writeFileSync(SCAN_EVENTS_FILE, JSON.stringify(eventsData, null, 2));
+}
+
+function loadUnassignedScans() {
+  try {
+    if (fs.existsSync(UNASSIGNED_SCANS_FILE)) {
+      var raw = fs.readFileSync(UNASSIGNED_SCANS_FILE, 'utf8');
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.error('Error loading unassigned scans:', e);
+  }
+  return { scans: [] };
+}
+
+function saveUnassignedScans(unassignedData) {
+  fs.writeFileSync(UNASSIGNED_SCANS_FILE, JSON.stringify(unassignedData, null, 2));
+}
+
+var scanAssociations = loadScanAssociations();
+var scanEvents = loadScanEvents();
+var unassignedScans = loadUnassignedScans();
+
+// --- Associate a serial number with a manifest line (driver+) ---
+app.post('/api/scans/associate', function(req, res) {
+  var serial = (req.body.serial || '').trim();
+  var manifestId = (req.body.manifestId || '').trim();
+  var lineNumber = req.body.lineNum !== undefined ? req.body.lineNum : req.body.lineNumber;
+  var wasteDescription = (req.body.wasteDescription || '').trim();
+
+  if (!serial) {
+    return res.status(400).json({ error: 'Serial number required' });
+  }
+  if (!manifestId) {
+    return res.status(400).json({ error: 'Manifest ID required' });
+  }
+  if (lineNumber === undefined || lineNumber === null || lineNumber === '') {
+    return res.status(400).json({ error: 'Line number required' });
+  }
+
+  // Check if serial is already associated
+  if (scanAssociations[serial]) {
+    return res.status(409).json({
+      error: 'Serial already associated',
+      existing: scanAssociations[serial]
+    });
+  }
+
+  var association = {
+    serial: serial,
+    manifestId: manifestId,
+    lineNum: Number(lineNumber),
+    wasteDescription: wasteDescription,
+    associatedBy: req.userId,
+    associatedByName: req.userName,
+    associatedAt: new Date().toISOString()
+  };
+
+  scanAssociations[serial] = association;
+  saveScanAssociations(scanAssociations);
+
+  // Also log an association event
+  var event = {
+    id: 'evt-' + Date.now().toString() + '-' + Math.random().toString(36).substring(2, 6),
+    serial: serial,
+    manifestId: manifestId,
+    lineNum: Number(lineNumber),
+    scanType: 'associate',
+    facilityId: null,
+    user: req.userId,
+    userName: req.userName,
+    timestamp: new Date().toISOString(),
+    lat: req.body.lat || null,
+    lng: req.body.lng || null
+  };
+  scanEvents.events.push(event);
+  saveScanEvents(scanEvents);
+
+  broadcast('scan', { action: 'associate', association: association });
+  res.json({ success: true, association: association });
+});
+
+// --- Log a scan event (driver+) ---
+app.post('/api/scans', function(req, res) {
+  var serial = (req.body.serial || '').trim();
+  var scanType = (req.body.scanType || req.body.type || 'staged').trim();
+  var facilityId = (req.body.facilityId || '').trim() || null;
+  var location = req.body.location || null;
+  var notes = (req.body.notes || '').trim();
+  var validTypes = ['associate', 'staged', 'loaded', '10day-in'];
+  if (validTypes.indexOf(scanType) === -1) {
+    return res.status(400).json({ error: 'Invalid scanType. Must be: ' + validTypes.join(', ') });
+  }
+
+  if (!serial) {
+    return res.status(400).json({ error: 'Serial number required' });
+  }
+
+  // Look up association
+  var association = scanAssociations[serial] || null;
+
+  var event = {
+    id: 'evt-' + Date.now().toString() + '-' + Math.random().toString(36).substring(2, 6),
+    serial: serial,
+    manifestId: association ? association.manifestId : null,
+    lineNum: association ? association.lineNum : null,
+    scanType: scanType,
+    facilityId: facilityId,
+    user: req.userId,
+    userName: req.userName,
+    timestamp: new Date().toISOString(),
+    lat: req.body.lat || null,
+    lng: req.body.lng || null
+  };
+
+  scanEvents.events.push(event);
+  saveScanEvents(scanEvents);
+
+  // If no association, park as unassigned
+  if (!association) {
+    var unassigned = {
+      id: event.id,
+      serial: serial,
+      scannedBy: req.userId,
+      scannedByName: req.userName,
+      scannedAt: event.timestamp,
+      location: location,
+      notes: notes,
+      resolved: false
+    };
+    unassignedScans.scans.push(unassigned);
+    saveUnassignedScans(unassignedScans);
+  }
+
+  broadcast('scan', { action: scanType, event: event });
+  res.json({
+    success: true,
+    event: event,
+    association: association,
+    unassigned: !association
+  });
+});
+
+// --- Get scan lookup for a serial (driver+) ---
+app.get('/api/scans/lookup/:serial', function(req, res) {
+  var serial = req.params.serial;
+  var association = scanAssociations[serial] || null;
+  var history = scanEvents.events.filter(function(e) {
+    return e.serial === serial;
+  });
+  res.json({
+    serial: serial,
+    association: association,
+    history: history
+  });
+});
+
+// --- Get scan history for a manifest, grouped by line (office+) ---
+app.get('/api/manifests/:id/scans', function(req, res) {
+  var manifestId = req.params.id;
+  var events = scanEvents.events.filter(function(e) {
+    return e.manifestId === manifestId;
+  });
+
+  // Group by line number
+  var grouped = {};
+  for (var i = 0; i < events.length; i++) {
+    var lineKey = events[i].lineNumber !== null && events[i].lineNumber !== undefined ? String(events[i].lineNumber) : 'unassigned';
+    if (!grouped[lineKey]) {
+      grouped[lineKey] = [];
+    }
+    grouped[lineKey].push(events[i]);
+  }
+
+  res.json({ manifestId: manifestId, scansByLine: grouped, totalEvents: events.length });
+});
+
+// --- Get loading status for a manifest (office+) ---
+app.get('/api/manifests/:id/loading-status', function(req, res) {
+  var manifestId = req.params.id;
+
+  // Find all associations for this manifest
+  var associations = [];
+  var serials = Object.keys(scanAssociations);
+  for (var i = 0; i < serials.length; i++) {
+    if (scanAssociations[serials[i]].manifestId === manifestId) {
+      associations.push(scanAssociations[serials[i]]);
+    }
+  }
+
+  // Find all scan events for this manifest
+  var events = scanEvents.events.filter(function(e) {
+    return e.manifestId === manifestId;
+  });
+
+  // Count loaded/unloaded per line
+  var lineStatus = {};
+  for (var j = 0; j < associations.length; j++) {
+    var assoc = associations[j];
+    var lineKey = String(assoc.lineNumber);
+    if (!lineStatus[lineKey]) {
+      lineStatus[lineKey] = { drums: [], loaded: 0, unloaded: 0 };
+    }
+    var drumEvents = events.filter(function(e) {
+      return e.serial === assoc.serial;
+    });
+    var lastLoadEvent = null;
+    var lastUnloadEvent = null;
+    for (var k = 0; k < drumEvents.length; k++) {
+      if (drumEvents[k].type === 'load') lastLoadEvent = drumEvents[k];
+      if (drumEvents[k].type === 'unload') lastUnloadEvent = drumEvents[k];
+    }
+    var drumStatus = 'associated';
+    if (lastUnloadEvent) {
+      drumStatus = 'unloaded';
+      lineStatus[lineKey].unloaded++;
+    } else if (lastLoadEvent) {
+      drumStatus = 'loaded';
+      lineStatus[lineKey].loaded++;
+    }
+    lineStatus[lineKey].drums.push({
+      serial: assoc.serial,
+      status: drumStatus,
+      lastEvent: drumEvents.length > 0 ? drumEvents[drumEvents.length - 1] : null
+    });
+  }
+
+  res.json({
+    manifestId: manifestId,
+    totalDrums: associations.length,
+    lineStatus: lineStatus,
+    totalEvents: events.length
+  });
+});
+
+// --- Unassigned scans (office+) ---
+app.get('/api/unassigned-scans', function(req, res) {
+  var pending = unassignedScans.scans.filter(function(s) {
+    return !s.resolved;
+  });
+  res.json(pending);
+});
+
+// --- Assign an unassigned scan (office+) ---
+app.post('/api/unassigned-scans/:id/assign', function(req, res) {
+  var scanId = req.params.id;
+  var manifestId = (req.body.manifestId || '').trim();
+  var lineNumber = req.body.lineNumber;
+
+  if (!manifestId || lineNumber === undefined || lineNumber === null || lineNumber === '') {
+    return res.status(400).json({ error: 'Manifest ID and line number required' });
+  }
+
+  // Find the unassigned scan
+  var scan = null;
+  var scanIdx = -1;
+  for (var i = 0; i < unassignedScans.scans.length; i++) {
+    if (unassignedScans.scans[i].id === scanId) {
+      scan = unassignedScans.scans[i];
+      scanIdx = i;
+      break;
+    }
+  }
+
+  if (!scan) {
+    return res.status(404).json({ error: 'Unassigned scan not found' });
+  }
+
+  if (scan.resolved) {
+    return res.status(400).json({ error: 'Scan already resolved' });
+  }
+
+  // Create association
+  var association = {
+    serial: scan.serial,
+    manifestId: manifestId,
+    lineNumber: Number(lineNumber),
+    wasteDescription: (req.body.wasteDescription || '').trim(),
+    associatedBy: req.userId,
+    associatedByName: req.userName,
+    associatedAt: new Date().toISOString()
+  };
+
+  scanAssociations[scan.serial] = association;
+  saveScanAssociations(scanAssociations);
+
+  // Mark as resolved
+  unassignedScans.scans[scanIdx].resolved = true;
+  unassignedScans.scans[scanIdx].resolvedBy = req.userId;
+  unassignedScans.scans[scanIdx].resolvedAt = new Date().toISOString();
+  unassignedScans.scans[scanIdx].assignedManifestId = manifestId;
+  unassignedScans.scans[scanIdx].assignedLineNumber = Number(lineNumber);
+  saveUnassignedScans(unassignedScans);
+
+  // Update the original scan event with the association
+  for (var j = 0; j < scanEvents.events.length; j++) {
+    if (scanEvents.events[j].id === scanId) {
+      scanEvents.events[j].manifestId = manifestId;
+      scanEvents.events[j].lineNumber = Number(lineNumber);
+      scanEvents.events[j].associated = true;
+      break;
+    }
+  }
+  saveScanEvents(scanEvents);
+
+  broadcast('scan', { action: 'assign-unassigned', association: association });
+  res.json({ success: true, association: association });
+});
+
+// ============================================================
+// PAGE ROUTES
+// ============================================================
+
+app.get('/login', function(req, res) {
+  res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+app.get('/scan', function(req, res) {
+  res.sendFile(path.join(__dirname, 'scan.html'));
+});
+
+app.get('/admin/users', function(req, res) {
+  res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
 // Serve static files

@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Management - IES Manifest Platform</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #f4f6f9;
+  color: #333;
+  min-height: 100vh;
+}
+
+/* Header */
+.header {
+  background: #1B4F72;
+  color: #fff;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.header h1 {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.header a.back-link {
+  color: #AED6F1;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.header a.back-link:hover {
+  text-decoration: underline;
+  color: #fff;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 14px;
+}
+
+.header-right .user-info {
+  color: #D6EAF8;
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid #AED6F1;
+  color: #AED6F1;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn-logout:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  border-color: #fff;
+}
+
+/* Main content */
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+/* Section titles */
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1B4F72;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #2E86C1;
+}
+
+/* Add User Form */
+.add-user-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+}
+
+.form-group input,
+.form-group select {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #2E86C1;
+}
+
+.form-group .hint {
+  font-size: 11px;
+  color: #999;
+}
+
+.btn-add {
+  background: #2E86C1;
+  color: #fff;
+  border: none;
+  padding: 9px 24px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  height: 38px;
+}
+
+.btn-add:hover {
+  background: #1B4F72;
+}
+
+.btn-add:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+}
+
+/* User table */
+.table-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1B4F72;
+  border-bottom: 2px solid #e0e0e0;
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 10px 12px;
+  font-size: 14px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+
+tbody tr:hover {
+  background: #f8fbfd;
+}
+
+tbody tr.inactive-row {
+  color: #aaa;
+  background: #fafafa;
+}
+
+tbody tr.inactive-row:hover {
+  background: #f5f5f5;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-inactive {
+  background: #e2e3e5;
+  color: #6c757d;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.role-admin {
+  background: #fce4ec;
+  color: #c0392b;
+}
+
+.role-office {
+  background: #e8eaf6;
+  color: #283593;
+}
+
+.role-driver {
+  background: #e0f2f1;
+  color: #00695c;
+}
+
+.actions-cell {
+  white-space: nowrap;
+}
+
+.btn-action {
+  background: transparent;
+  border: 1px solid #2E86C1;
+  color: #2E86C1;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-right: 6px;
+}
+
+.btn-action:hover {
+  background: #2E86C1;
+  color: #fff;
+}
+
+.btn-action.danger {
+  border-color: #c0392b;
+  color: #c0392b;
+}
+
+.btn-action.danger:hover {
+  background: #c0392b;
+  color: #fff;
+}
+
+.btn-action.reactivate {
+  border-color: #27ae60;
+  color: #27ae60;
+}
+
+.btn-action.reactivate:hover {
+  background: #27ae60;
+  color: #fff;
+}
+
+/* Inline PIN reset */
+.pin-reset-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pin-reset-inline input {
+  width: 70px;
+  padding: 4px 8px;
+  border: 1px solid #2E86C1;
+  border-radius: 4px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.pin-reset-inline .btn-confirm {
+  background: #2E86C1;
+  color: #fff;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pin-reset-inline .btn-confirm:hover {
+  background: #1B4F72;
+}
+
+.pin-reset-inline .btn-cancel {
+  background: transparent;
+  color: #999;
+  border: 1px solid #ccc;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pin-reset-inline .btn-cancel:hover {
+  background: #f0f0f0;
+}
+
+/* Messages */
+.msg {
+  padding: 10px 16px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  display: none;
+}
+
+.msg.success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.msg.error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.msg.visible {
+  display: block;
+}
+
+/* Loading */
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-size: 15px;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-size: 15px;
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 12px 16px;
+  }
+  .container {
+    padding: 16px 12px;
+  }
+  .form-row {
+    flex-direction: column;
+  }
+  .form-group {
+    min-width: 100%;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>User Management</h1>
+    <a href="/" class="back-link">&larr; Back to Platform</a>
+  </div>
+  <div class="header-right">
+    <span class="user-info" id="currentUser">Loading...</span>
+    <button class="btn-logout" id="logoutBtn" onclick="doLogout()">Logout</button>
+  </div>
+</div>
+
+<div class="container">
+  <div id="msgBox" class="msg"></div>
+
+  <!-- Add User Form -->
+  <div class="add-user-card">
+    <div class="section-title">Add New User</div>
+    <form id="addUserForm" onsubmit="handleAddUser(event)">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="displayName">Display Name</label>
+          <input type="text" id="displayName" name="displayName" required
+                 placeholder="e.g. John Smith"
+                 oninput="autoGenerateId()">
+        </div>
+        <div class="form-group">
+          <label for="userId">User ID</label>
+          <input type="text" id="userId" name="userId" required
+                 placeholder="auto-generated">
+          <span class="hint">Auto-generated from name; editable</span>
+        </div>
+        <div class="form-group">
+          <label for="pin">PIN</label>
+          <input type="password" id="pin" name="pin" required
+                 pattern="[0-9]{4}" maxlength="4"
+                 placeholder="4 digits" inputmode="numeric">
+          <span class="hint">Exactly 4 digits</span>
+        </div>
+        <div class="form-group">
+          <label for="role">Role</label>
+          <select id="role" name="role" required>
+            <option value="driver">Driver</option>
+            <option value="office">Office</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:0;">
+          <label>&nbsp;</label>
+          <button type="submit" class="btn-add" id="addBtn">Add User</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- User List -->
+  <div class="table-card">
+    <div class="section-title">Users</div>
+    <div id="tableLoading" class="loading">Loading users...</div>
+    <div id="tableEmpty" class="empty-state" style="display:none;">No users found.</div>
+    <table id="userTable" style="display:none;">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>User ID</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="userTableBody">
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+var currentUserId = null;
+var users = [];
+var pinResetUserId = null;
+
+// ---- Utility ----
+
+function escapeHtml(str) {
+  var div = document.createElement("div");
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+function showMsg(text, type) {
+  var box = document.getElementById("msgBox");
+  box.textContent = text;
+  box.className = "msg " + type + " visible";
+  setTimeout(function() {
+    box.className = "msg";
+  }, 5000);
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return "--";
+  var d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  var month = d.getMonth() + 1;
+  var day = d.getDate();
+  var year = d.getFullYear();
+  return month + "/" + day + "/" + year;
+}
+
+function autoGenerateId() {
+  var name = document.getElementById("displayName").value.trim();
+  var idField = document.getElementById("userId");
+  if (!name) {
+    idField.value = "";
+    return;
+  }
+  var id = name.toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, "");
+  idField.value = id;
+}
+
+function getRoleBadgeClass(role) {
+  if (role === "admin") return "role-admin";
+  if (role === "office") return "role-office";
+  return "role-driver";
+}
+
+// ---- API Calls ----
+
+function apiRequest(method, url, body, callback) {
+  var xhr = new XMLHttpRequest();
+  xhr.open(method, url, true);
+  xhr.setRequestHeader("Content-Type", "application/json");
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4) {
+      var data = null;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch (e) {
+        data = null;
+      }
+      callback(xhr.status, data);
+    }
+  };
+  if (body) {
+    xhr.send(JSON.stringify(body));
+  } else {
+    xhr.send();
+  }
+}
+
+function fetchCurrentUser() {
+  apiRequest("GET", "/api/auth/me", null, function(status, data) {
+    var el = document.getElementById("currentUser");
+    if (status === 200 && data) {
+      var name = data.displayName || data.name || data.id || "Admin";
+      currentUserId = data.id || null;
+      el.textContent = "Logged in as " + name;
+    } else {
+      el.textContent = "";
+    }
+  });
+}
+
+function fetchUsers() {
+  var loading = document.getElementById("tableLoading");
+  var empty = document.getElementById("tableEmpty");
+  var table = document.getElementById("userTable");
+
+  loading.style.display = "block";
+  empty.style.display = "none";
+  table.style.display = "none";
+
+  apiRequest("GET", "/api/admin/users", null, function(status, data) {
+    loading.style.display = "none";
+    if (status === 200 && data && data.length > 0) {
+      users = data;
+      renderTable();
+      table.style.display = "table";
+    } else if (status === 200 && data && data.length === 0) {
+      users = [];
+      empty.style.display = "block";
+    } else {
+      showMsg("Failed to load users. Server returned status " + status + ".", "error");
+    }
+  });
+}
+
+// ---- Render ----
+
+function renderTable() {
+  var tbody = document.getElementById("userTableBody");
+  var html = "";
+
+  for (var i = 0; i < users.length; i++) {
+    var u = users[i];
+    var isActive = u.active !== false;
+    var rowClass = isActive ? "" : " class=\"inactive-row\"";
+    var statusClass = isActive ? "status-active" : "status-inactive";
+    var statusText = isActive ? "Active" : "Inactive";
+    var roleClass = getRoleBadgeClass(u.role);
+    var isSelf = (u.id === currentUserId);
+
+    html += "<tr" + rowClass + " id=\"row-" + escapeHtml(u.id) + "\">";
+    html += "<td>" + escapeHtml(u.displayName || u.name || u.id) + "</td>";
+    html += "<td>" + escapeHtml(u.id) + "</td>";
+    html += "<td><span class=\"role-badge " + roleClass + "\">" + escapeHtml(u.role || "driver") + "</span></td>";
+    html += "<td><span class=\"status-badge " + statusClass + "\">" + statusText + "</span></td>";
+    html += "<td>" + escapeHtml(formatDate(u.createdAt || u.created)) + "</td>";
+    html += "<td class=\"actions-cell\">";
+
+    // PIN reset area
+    html += "<span id=\"pin-area-" + escapeHtml(u.id) + "\">";
+    if (pinResetUserId === u.id) {
+      html += "<span class=\"pin-reset-inline\">";
+      html += "<input type=\"password\" id=\"pin-input-" + escapeHtml(u.id) + "\" maxlength=\"4\" pattern=\"[0-9]{4}\" placeholder=\"PIN\" inputmode=\"numeric\">";
+      html += "<button class=\"btn-confirm\" onclick=\"submitPinReset('" + escapeHtml(u.id) + "')\">Save</button>";
+      html += "<button class=\"btn-cancel\" onclick=\"cancelPinReset()\">Cancel</button>";
+      html += "</span>";
+    } else {
+      html += "<button class=\"btn-action\" onclick=\"startPinReset('" + escapeHtml(u.id) + "')\">Reset PIN</button>";
+    }
+    html += "</span>";
+
+    // Deactivate/Reactivate
+    if (isSelf) {
+      html += "<button class=\"btn-action\" disabled title=\"Cannot deactivate yourself\">Deactivate</button>";
+    } else if (isActive) {
+      html += "<button class=\"btn-action danger\" onclick=\"deactivateUser('" + escapeHtml(u.id) + "', '" + escapeHtml(u.displayName || u.name || u.id) + "')\">Deactivate</button>";
+    } else {
+      html += "<button class=\"btn-action reactivate\" onclick=\"reactivateUser('" + escapeHtml(u.id) + "')\">Reactivate</button>";
+    }
+
+    html += "</td>";
+    html += "</tr>";
+  }
+
+  tbody.innerHTML = html;
+}
+
+// ---- Add User ----
+
+function handleAddUser(e) {
+  e.preventDefault();
+
+  var displayName = document.getElementById("displayName").value.trim();
+  var id = document.getElementById("userId").value.trim();
+  var pin = document.getElementById("pin").value.trim();
+  var role = document.getElementById("role").value;
+
+  if (!displayName || !id || !pin || !role) {
+    showMsg("Please fill in all fields.", "error");
+    return;
+  }
+
+  if (!/^[0-9]{4}$/.test(pin)) {
+    showMsg("PIN must be exactly 4 digits.", "error");
+    return;
+  }
+
+  var btn = document.getElementById("addBtn");
+  btn.disabled = true;
+  btn.textContent = "Adding...";
+
+  var body = {
+    id: id,
+    displayName: displayName,
+    pin: pin,
+    role: role
+  };
+
+  apiRequest("POST", "/api/admin/users", body, function(status, data) {
+    btn.disabled = false;
+    btn.textContent = "Add User";
+
+    if (status === 200 || status === 201) {
+      showMsg("User \"" + displayName + "\" added successfully.", "success");
+      document.getElementById("addUserForm").reset();
+      fetchUsers();
+    } else {
+      var errMsg = (data && data.error) ? data.error : "Failed to add user (status " + status + ").";
+      showMsg(errMsg, "error");
+    }
+  });
+}
+
+// ---- PIN Reset ----
+
+function startPinReset(userId) {
+  pinResetUserId = userId;
+  renderTable();
+  var input = document.getElementById("pin-input-" + userId);
+  if (input) input.focus();
+}
+
+function cancelPinReset() {
+  pinResetUserId = null;
+  renderTable();
+}
+
+function submitPinReset(userId) {
+  var input = document.getElementById("pin-input-" + userId);
+  if (!input) return;
+
+  var newPin = input.value.trim();
+  if (!/^[0-9]{4}$/.test(newPin)) {
+    showMsg("PIN must be exactly 4 digits.", "error");
+    return;
+  }
+
+  apiRequest("PUT", "/api/admin/users/" + encodeURIComponent(userId), { pin: newPin }, function(status, data) {
+    pinResetUserId = null;
+    if (status === 200) {
+      showMsg("PIN reset successfully for user \"" + userId + "\".", "success");
+    } else {
+      var errMsg = (data && data.error) ? data.error : "Failed to reset PIN (status " + status + ").";
+      showMsg(errMsg, "error");
+    }
+    renderTable();
+  });
+}
+
+// ---- Deactivate / Reactivate ----
+
+function deactivateUser(userId, displayName) {
+  var confirmed = confirm("Are you sure you want to deactivate \"" + displayName + "\"?\n\nThis will prevent the user from logging in.");
+  if (!confirmed) return;
+
+  apiRequest("DELETE", "/api/admin/users/" + encodeURIComponent(userId), null, function(status, data) {
+    if (status === 200) {
+      showMsg("User \"" + displayName + "\" has been deactivated.", "success");
+      fetchUsers();
+    } else {
+      var errMsg = (data && data.error) ? data.error : "Failed to deactivate user (status " + status + ").";
+      showMsg(errMsg, "error");
+    }
+  });
+}
+
+function reactivateUser(userId) {
+  apiRequest("PUT", "/api/admin/users/" + encodeURIComponent(userId), { active: true }, function(status, data) {
+    if (status === 200) {
+      showMsg("User \"" + userId + "\" has been reactivated.", "success");
+      fetchUsers();
+    } else {
+      var errMsg = (data && data.error) ? data.error : "Failed to reactivate user (status " + status + ").";
+      showMsg(errMsg, "error");
+    }
+  });
+}
+
+// ---- Logout ----
+
+function doLogout() {
+  apiRequest("POST", "/api/auth/logout", {}, function(status) {
+    window.location.href = "/login";
+  });
+}
+
+// ---- Init ----
+
+function init() {
+  fetchCurrentUser();
+  fetchUsers();
+}
+
+init();
+</script>
+
+</body>
+</html>

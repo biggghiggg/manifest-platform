@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>IES Drum Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+      background: #F0F2F5;
+      color: #333;
+      font-size: 16px;
+      -webkit-text-size-adjust: 100%;
+      min-height: 100vh;
+      padding-top: 60px;
+    }
+
+    /* ---- HEADER ---- */
+    .header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      background: #1B4F72;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .header-title {
+      font-size: 18px;
+      font-weight: 700;
+      flex: 1;
+    }
+    .header-counter {
+      font-size: 13px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 4px 10px;
+      margin-right: 10px;
+      white-space: nowrap;
+    }
+    .header-user {
+      font-size: 13px;
+      margin-right: 8px;
+      white-space: nowrap;
+    }
+    .header-btn {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: #fff;
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .header-btn:active { background: rgba(255,255,255,0.3); }
+
+    /* ---- SCREENS ---- */
+    .screen { display: none; padding: 12px; }
+    .screen.active { display: block; }
+
+    /* ---- SCANNER SCREEN ---- */
+    #reader {
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .scanner-controls {
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    /* ---- BUTTONS ---- */
+    .btn {
+      display: inline-block;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 14px 24px;
+      cursor: pointer;
+      text-align: center;
+      min-height: 48px;
+      transition: opacity 0.15s;
+    }
+    .btn:active { opacity: 0.7; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-full {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+    }
+    .btn-primary {
+      background: #1B4F72;
+      color: #fff;
+    }
+    .btn-success {
+      background: #27AE60;
+      color: #fff;
+      min-height: 56px;
+      font-size: 18px;
+    }
+    .btn-danger {
+      background: #E74C3C;
+      color: #fff;
+    }
+    .btn-warn {
+      background: #F39C12;
+      color: #fff;
+    }
+    .btn-secondary {
+      background: #BDC3C7;
+      color: #333;
+    }
+    .btn-outline {
+      background: transparent;
+      border: 2px solid #1B4F72;
+      color: #1B4F72;
+    }
+
+    /* ---- CARDS ---- */
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #1B4F72;
+    }
+
+    /* ---- SERIAL DISPLAY ---- */
+    .serial-display {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 24px;
+      font-weight: 700;
+      color: #1B4F72;
+      text-align: center;
+      padding: 12px;
+      background: #EBF5FB;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      word-break: break-all;
+    }
+
+    /* ---- INFO ROW ---- */
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #ECF0F1;
+      font-size: 15px;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label {
+      color: #7F8C8D;
+      font-weight: 600;
+    }
+    .info-value {
+      color: #2C3E50;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    /* ---- RADIO GROUP ---- */
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 12px 0;
+    }
+    .radio-option {
+      display: flex;
+      align-items: center;
+      padding: 12px 14px;
+      background: #F8F9FA;
+      border: 2px solid #DEE2E6;
+      border-radius: 8px;
+      cursor: pointer;
+      min-height: 48px;
+      font-size: 16px;
+    }
+    .radio-option.selected {
+      border-color: #1B4F72;
+      background: #EBF5FB;
+    }
+    .radio-option input[type="radio"] {
+      margin-right: 10px;
+      width: 20px;
+      height: 20px;
+    }
+
+    /* ---- FORM INPUTS ---- */
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 4px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 16px;
+      font-family: inherit;
+      border: 2px solid #DEE2E6;
+      border-radius: 8px;
+      background: #fff;
+      min-height: 48px;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: #1B4F72;
+    }
+
+    /* ---- MANIFEST LIST ---- */
+    .manifest-card {
+      background: #fff;
+      border: 2px solid #DEE2E6;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .manifest-card:active,
+    .manifest-card.selected {
+      border-color: #1B4F72;
+      background: #EBF5FB;
+    }
+    .manifest-card-tracking {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 17px;
+      font-weight: 700;
+      color: #1B4F72;
+    }
+    .manifest-card-gen {
+      font-size: 14px;
+      color: #555;
+      margin-top: 2px;
+    }
+    .manifest-card-status {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-top: 4px;
+    }
+    .status-active { background: #D5F5E3; color: #27AE60; }
+    .status-field-stub { background: #FEF9E7; color: #F39C12; }
+    .status-completed { background: #EAECEE; color: #7F8C8D; }
+
+    /* ---- LINE ITEM CARD ---- */
+    .line-card {
+      background: #F8F9FA;
+      border: 2px solid #DEE2E6;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .line-card:active,
+    .line-card.selected {
+      border-color: #27AE60;
+      background: #EAFAF1;
+    }
+    .line-num {
+      font-weight: 700;
+      color: #1B4F72;
+      font-size: 16px;
+    }
+    .line-desc {
+      font-size: 14px;
+      color: #555;
+      margin-top: 2px;
+    }
+    .line-count {
+      font-size: 13px;
+      color: #7F8C8D;
+      margin-top: 2px;
+    }
+
+    /* ---- SEARCH BAR ---- */
+    .search-bar {
+      position: sticky;
+      top: 60px;
+      z-index: 100;
+      padding: 8px 0;
+      background: #F0F2F5;
+    }
+    .search-bar input {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 16px;
+      font-family: inherit;
+      border: 2px solid #DEE2E6;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .search-bar input:focus {
+      outline: none;
+      border-color: #1B4F72;
+    }
+
+    /* ---- SCROLL CONTAINER ---- */
+    .scroll-list {
+      max-height: calc(100vh - 220px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ---- OVERLAYS ---- */
+    .flash-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .flash-overlay.show { display: flex; }
+    .flash-success { background: rgba(39,174,96,0.92); }
+    .flash-error { background: rgba(231,76,60,0.92); }
+
+    .flash-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+    .flash-content {
+      text-align: center;
+    }
+
+    /* ---- RAPID SCAN BANNER ---- */
+    .rapid-banner {
+      background: #FEF9E7;
+      border: 2px solid #F39C12;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .rapid-banner.show { display: block; }
+    .rapid-banner-title {
+      font-weight: 700;
+      color: #E67E22;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+    .rapid-banner-info {
+      font-size: 14px;
+      color: #555;
+    }
+
+    /* ---- SECTION TITLE ---- */
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #7F8C8D;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      margin-top: 16px;
+    }
+
+    /* ---- FACILITY PICKER ---- */
+    .facility-picker {
+      display: none;
+      margin: 8px 0;
+    }
+    .facility-picker.show { display: block; }
+
+    /* ---- BUTTON ROW ---- */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .btn-row .btn { flex: 1; }
+
+    /* ---- LOADING SPINNER ---- */
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- EMPTY STATE ---- */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #95A5A6;
+    }
+    .empty-state-icon {
+      font-size: 40px;
+      margin-bottom: 8px;
+    }
+
+    /* ---- DYNAMIC LINE INPUTS ---- */
+    .dynamic-lines {
+      margin-top: 8px;
+    }
+    .dynamic-line-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .dynamic-line-label {
+      font-weight: 600;
+      font-size: 14px;
+      color: #555;
+      min-width: 60px;
+    }
+    .dynamic-line-input {
+      flex: 1;
+      padding: 10px 12px;
+      font-size: 16px;
+      font-family: inherit;
+      border: 2px solid #DEE2E6;
+      border-radius: 8px;
+      min-height: 44px;
+    }
+    .dynamic-line-input:focus {
+      outline: none;
+      border-color: #1B4F72;
+    }
+
+    /* ---- CAMERA DENIED MESSAGE ---- */
+    .camera-denied {
+      text-align: center;
+      padding: 30px 20px;
+      background: #FDEDEC;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .camera-denied.show { display: block; }
+    .camera-denied-title {
+      font-weight: 700;
+      color: #E74C3C;
+      font-size: 16px;
+      margin-bottom: 6px;
+    }
+    .camera-denied-text {
+      color: #555;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ======== HEADER ======== -->
+  <div class="header">
+    <div class="header-title">IES Drum Scanner</div>
+    <div class="header-counter" id="scanCounter">0 scanned</div>
+    <span class="header-user" id="headerUser"></span>
+    <button class="header-btn" id="logoutBtn">Logout</button>
+  </div>
+
+  <!-- ======== FLASH OVERLAYS ======== -->
+  <div class="flash-overlay flash-success" id="flashSuccess">
+    <div class="flash-content">
+      <div class="flash-icon">&#10003;</div>
+      <div id="flashSuccessMsg">Success!</div>
+    </div>
+  </div>
+  <div class="flash-overlay flash-error" id="flashError">
+    <div class="flash-content">
+      <div class="flash-icon">&#10007;</div>
+      <div id="flashErrorMsg">Error</div>
+    </div>
+  </div>
+
+  <!-- ======== SCREEN 1: SCANNER ======== -->
+  <div class="screen active" id="screenScanner">
+    <div class="camera-denied" id="cameraDenied">
+      <div class="camera-denied-title">Camera Not Available</div>
+      <div class="camera-denied-text">Camera permission was denied or is not available. Use manual entry below.</div>
+    </div>
+
+    <div id="reader"></div>
+
+    <div class="scanner-controls">
+      <button class="btn btn-primary btn-full" id="btnToggleCamera">Start Camera</button>
+    </div>
+
+    <div style="margin-top: 16px;">
+      <div class="section-title">Manual Entry</div>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" class="form-input" id="manualSerial" placeholder="Enter serial number" style="flex:1;" />
+        <button class="btn btn-primary" id="btnManualLookup" style="white-space: nowrap;">Look Up</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== SCREEN 2: KNOWN SERIAL ======== -->
+  <div class="screen" id="screenKnown">
+    <div class="serial-display" id="knownSerial"></div>
+    <div class="card">
+      <div class="info-row">
+        <span class="info-label">Manifest</span>
+        <span class="info-value" id="knownManifest"></span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Line</span>
+        <span class="info-value" id="knownLine"></span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Description</span>
+        <span class="info-value" id="knownDesc"></span>
+      </div>
+    </div>
+
+    <div class="section-title">Scan Type</div>
+    <div class="radio-group" id="scanTypeGroup">
+      <label class="radio-option selected" id="optStaged">
+        <input type="radio" name="scanType" value="staged" checked /> Staged
+      </label>
+      <label class="radio-option" id="optLoaded">
+        <input type="radio" name="scanType" value="load" /> Loaded
+      </label>
+      <label class="radio-option" id="opt10day">
+        <input type="radio" name="scanType" value="10day-in" /> 10-Day In
+      </label>
+    </div>
+
+    <div class="facility-picker" id="facilityPicker">
+      <div class="form-group">
+        <label>Receiving Facility</label>
+        <select class="form-input" id="facilitySelect">
+          <option value="">-- Select Facility --</option>
+          <option value="ies-fresno">IES Yard - Fresno</option>
+          <option value="ies-bakersfield">IES Yard - Bakersfield</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn btn-success btn-full" id="btnConfirmScan">Confirm Scan</button>
+    <button class="btn btn-secondary btn-full" id="btnCancelKnown">Cancel</button>
+  </div>
+
+  <!-- ======== SCREEN 3: UNKNOWN SERIAL ======== -->
+  <div class="screen" id="screenUnknown">
+    <div class="serial-display" id="unknownSerial"></div>
+    <div class="card">
+      <div class="card-title">New Serial - Not Yet Associated</div>
+      <p style="font-size: 14px; color: #555;">This serial is not linked to any manifest. Choose an action:</p>
+    </div>
+
+    <!-- Rapid Scan Banner -->
+    <div class="rapid-banner" id="rapidBanner">
+      <div class="rapid-banner-title">Quick Associate</div>
+      <div class="rapid-banner-info" id="rapidInfo"></div>
+      <button class="btn btn-success btn-full" id="btnRapidConfirm" style="margin-top: 8px;">Confirm</button>
+    </div>
+
+    <button class="btn btn-primary btn-full" id="btnAssociate">Associate to Manifest</button>
+    <button class="btn btn-warn btn-full" id="btnParkLater">Park for Later</button>
+    <button class="btn btn-secondary btn-full" id="btnCancelUnknown">Cancel</button>
+  </div>
+
+  <!-- ======== SCREEN 3a: ASSOCIATION PICKER ======== -->
+  <div class="screen" id="screenPicker">
+    <div class="serial-display" id="pickerSerial"></div>
+
+    <!-- Sub-state: manifest selection -->
+    <div id="pickerManifests">
+      <div class="section-title">Select Manifest</div>
+      <div class="search-bar">
+        <input type="text" id="manifestSearch" placeholder="Search by tracking # or generator..." />
+      </div>
+      <div class="scroll-list" id="manifestList"></div>
+      <button class="btn btn-outline btn-full" id="btnNewFieldManifest" style="margin-top: 8px;">+ New Field Manifest</button>
+      <button class="btn btn-secondary btn-full" id="btnBackToPicker">Back</button>
+    </div>
+
+    <!-- Sub-state: line selection -->
+    <div id="pickerLines" style="display: none;">
+      <div class="section-title">Select Waste Line</div>
+      <div class="card" style="margin-bottom: 8px;">
+        <div style="font-size: 14px; color: #7F8C8D;">Manifest</div>
+        <div class="manifest-card-tracking" id="pickerSelectedManifest"></div>
+      </div>
+      <div class="scroll-list" id="lineList"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="btnBackToManifests">Back</button>
+        <button class="btn btn-success" id="btnConfirmAssoc" disabled>Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== SCREEN 3b: FIELD STUB CREATION ======== -->
+  <div class="screen" id="screenFieldStub">
+    <div class="section-title">Create Field Manifest</div>
+    <div class="card">
+      <div class="form-group">
+        <label>Tracking Number *</label>
+        <input type="text" class="form-input" id="stubTracking" placeholder="e.g. 026543210JJK" />
+      </div>
+      <div class="form-group">
+        <label>Generator Name</label>
+        <input type="text" class="form-input" id="stubGenerator" placeholder="Optional" />
+      </div>
+      <div class="form-group">
+        <label>Number of Waste Lines</label>
+        <input type="number" class="form-input" id="stubLineCount" min="1" max="40" value="1" />
+      </div>
+      <div class="dynamic-lines" id="stubContainerInputs">
+        <div class="dynamic-line-row">
+          <span class="dynamic-line-label">Line 1</span>
+          <input type="number" class="dynamic-line-input" min="0" value="1" placeholder="Container count" />
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-success btn-full" id="btnCreateStub">Create Manifest</button>
+    <button class="btn btn-secondary btn-full" id="btnCancelStub">Cancel</button>
+  </div>
+
+  <!-- ======== SCREEN: ALREADY ASSOCIATED (409) ======== -->
+  <div class="screen" id="screenConflict">
+    <div class="serial-display" id="conflictSerial"></div>
+    <div class="card">
+      <div class="card-title" style="color: #E74C3C;">Already Associated</div>
+      <div class="info-row">
+        <span class="info-label">Manifest</span>
+        <span class="info-value" id="conflictManifest"></span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Line</span>
+        <span class="info-value" id="conflictLine"></span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Associated By</span>
+        <span class="info-value" id="conflictBy"></span>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" id="btnLogScanInstead">Log Scan Event Instead</button>
+    <button class="btn btn-secondary btn-full" id="btnCancelConflict">Back to Scanner</button>
+  </div>
+
+
+  <!-- ======== JAVASCRIPT ======== -->
+  <script>
+    // ============================================================
+    // STATE
+    // ============================================================
+    var currentUser = null;
+    var scanCount = parseInt(localStorage.getItem('ies_scan_count') || '0');
+    var cameraRunning = false;
+    var scanner = null;
+    var processingQR = false;
+
+    // Current scan context
+    var currentSerial = '';
+    var currentAssociation = null;
+    var currentHistory = [];
+
+    // Picker state
+    var allManifests = [];
+    var selectedManifestId = '';
+    var selectedManifestTracking = '';
+    var selectedLineNumber = null;
+    var manifestScanCounts = {};
+
+    // Rapid scan state
+    var rapidManifestId = localStorage.getItem('ies_rapid_manifest_id') || '';
+    var rapidManifestTracking = localStorage.getItem('ies_rapid_manifest_tracking') || '';
+    var rapidNextLine = parseInt(localStorage.getItem('ies_rapid_next_line') || '0');
+
+    // Audio context for beep
+    var audioCtx = null;
+
+    // ============================================================
+    // HELPERS
+    // ============================================================
+    function $(id) { return document.getElementById(id); }
+
+    function xhr(method, url, body, callback) {
+      var req = new XMLHttpRequest();
+      req.open(method, url, true);
+      req.setRequestHeader('Content-Type', 'application/json');
+      req.onreadystatechange = function() {
+        if (req.readyState === 4) {
+          var resp = null;
+          try { resp = JSON.parse(req.responseText); } catch(e) { resp = null; }
+          callback(req.status, resp);
+        }
+      };
+      req.onerror = function() {
+        callback(0, null);
+      };
+      if (body) {
+        req.send(JSON.stringify(body));
+      } else {
+        req.send();
+      }
+    }
+
+    function showScreen(id) {
+      var screens = document.querySelectorAll('.screen');
+      for (var i = 0; i < screens.length; i++) {
+        screens[i].className = screens[i].className.replace(' active', '');
+      }
+      var target = $(id);
+      if (target) {
+        target.className = target.className + ' active';
+      }
+    }
+
+    function updateCounter() {
+      $('scanCounter').textContent = scanCount + ' scanned';
+      localStorage.setItem('ies_scan_count', String(scanCount));
+    }
+
+    function playBeep() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'square';
+        gain.gain.value = 0.15;
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.12);
+      } catch(e) {
+        // Audio not available
+      }
+    }
+
+    function vibrate() {
+      try {
+        if (navigator.vibrate) {
+          navigator.vibrate(100);
+        }
+      } catch(e) {}
+    }
+
+    function flashSuccess(msg) {
+      $('flashSuccessMsg').textContent = msg || 'Success!';
+      $('flashSuccess').className = 'flash-overlay flash-success show';
+      setTimeout(function() {
+        $('flashSuccess').className = 'flash-overlay flash-success';
+      }, 1500);
+    }
+
+    function flashError(msg) {
+      $('flashErrorMsg').textContent = msg || 'Error';
+      $('flashError').className = 'flash-overlay flash-error show';
+      setTimeout(function() {
+        $('flashError').className = 'flash-overlay flash-error';
+      }, 2000);
+    }
+
+    function getManifestTrackingNum(m) {
+      return m.manifestTrackingNum || m.manifestTrackingNumber || m.trackingNumber || '';
+    }
+
+    function getGeneratorName(m) {
+      return m.generatorName || m.genName || m.generatorMailName || '';
+    }
+
+    // Find the tracking number for a manifest by ID from the loaded list
+    function findManifestTracking(manifestId) {
+      for (var i = 0; i < allManifests.length; i++) {
+        if (allManifests[i].id === manifestId) {
+          return getManifestTrackingNum(allManifests[i]);
+        }
+      }
+      return manifestId;
+    }
+
+    // ============================================================
+    // AUTH
+    // ============================================================
+    function checkAuth() {
+      xhr('GET', '/api/auth/me', null, function(status, resp) {
+        if (status === 200 && resp) {
+          currentUser = resp;
+          $('headerUser').textContent = resp.userName || '';
+        } else {
+          window.location.href = '/login';
+        }
+      });
+    }
+
+    function doLogout() {
+      xhr('POST', '/api/auth/logout', {}, function() {
+        window.location.href = '/login';
+      });
+    }
+
+    // ============================================================
+    // QR SCANNER
+    // ============================================================
+    function initScanner() {
+      scanner = new Html5Qrcode("reader");
+    }
+
+    function startCamera() {
+      if (cameraRunning || !scanner) return;
+
+      var config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+      scanner.start(
+        { facingMode: "environment" },
+        config,
+        function(decodedText) {
+          onQRScanned(decodedText);
+        },
+        function(errorMessage) {
+          // Ignore scan misses
+        }
+      ).then(function() {
+        cameraRunning = true;
+        $('btnToggleCamera').textContent = 'Stop Camera';
+        $('cameraDenied').className = 'camera-denied';
+      }).catch(function(err) {
+        cameraRunning = false;
+        $('cameraDenied').className = 'camera-denied show';
+        $('btnToggleCamera').textContent = 'Start Camera';
+      });
+    }
+
+    function stopCamera(callback) {
+      if (!cameraRunning || !scanner) {
+        if (callback) callback();
+        return;
+      }
+      scanner.stop().then(function() {
+        cameraRunning = false;
+        $('btnToggleCamera').textContent = 'Start Camera';
+        if (callback) callback();
+      }).catch(function() {
+        cameraRunning = false;
+        $('btnToggleCamera').textContent = 'Start Camera';
+        if (callback) callback();
+      });
+    }
+
+    function onQRScanned(text) {
+      if (processingQR) return;
+      processingQR = true;
+
+      playBeep();
+      vibrate();
+
+      // Stop camera briefly to prevent double-scans
+      stopCamera(function() {
+        lookupSerial(text.trim());
+      });
+    }
+
+    // ============================================================
+    // SERIAL LOOKUP
+    // ============================================================
+    function lookupSerial(serial) {
+      if (!serial) {
+        processingQR = false;
+        return;
+      }
+
+      currentSerial = serial;
+
+      xhr('GET', '/api/scans/lookup/' + encodeURIComponent(serial), null, function(status, resp) {
+        processingQR = false;
+
+        if (status === 200 && resp) {
+          currentAssociation = resp.association;
+          currentHistory = resp.history || [];
+
+          if (resp.association) {
+            // Known serial - has association
+            showKnownScreen(serial, resp.association);
+          } else {
+            // Unknown serial - no association
+            showUnknownScreen(serial);
+          }
+        } else if (status === 0) {
+          flashError('Network error - check connection');
+        } else {
+          // Treat as unknown
+          currentAssociation = null;
+          currentHistory = [];
+          showUnknownScreen(serial);
+        }
+      });
+    }
+
+    // ============================================================
+    // SCREEN 2: KNOWN SERIAL
+    // ============================================================
+    function showKnownScreen(serial, assoc) {
+      $('knownSerial').textContent = serial;
+
+      // Look up manifest tracking number
+      var manifestDisplay = assoc.manifestId || '';
+      // Try to find tracking number from manifests list
+      if (allManifests.length > 0) {
+        var tracking = findManifestTracking(assoc.manifestId);
+        if (tracking) manifestDisplay = tracking;
+      }
+
+      $('knownManifest').textContent = manifestDisplay;
+      $('knownLine').textContent = 'Line ' + (assoc.lineNumber || '?');
+      $('knownDesc').textContent = assoc.wasteDescription || '(no description)';
+
+      // Reset scan type
+      selectScanType('staged');
+
+      showScreen('screenKnown');
+    }
+
+    function selectScanType(value) {
+      var options = document.querySelectorAll('#scanTypeGroup .radio-option');
+      for (var i = 0; i < options.length; i++) {
+        var radio = options[i].querySelector('input[type="radio"]');
+        if (radio.value === value) {
+          options[i].className = 'radio-option selected';
+          radio.checked = true;
+        } else {
+          options[i].className = 'radio-option';
+          radio.checked = false;
+        }
+      }
+
+      // Show/hide facility picker for 10-day-in
+      if (value === '10day-in') {
+        $('facilityPicker').className = 'facility-picker show';
+      } else {
+        $('facilityPicker').className = 'facility-picker';
+      }
+    }
+
+    function getSelectedScanType() {
+      var radios = document.querySelectorAll('#scanTypeGroup input[type="radio"]');
+      for (var i = 0; i < radios.length; i++) {
+        if (radios[i].checked) return radios[i].value;
+      }
+      return 'staged';
+    }
+
+    function confirmScan() {
+      var scanType = getSelectedScanType();
+      var payload = {
+        serial: currentSerial,
+        type: scanType
+      };
+
+      if (scanType === '10day-in') {
+        var facilityId = $('facilitySelect').value;
+        if (!facilityId) {
+          flashError('Please select a facility');
+          return;
+        }
+        payload.location = facilityId;
+      }
+
+      $('btnConfirmScan').disabled = true;
+      $('btnConfirmScan').textContent = 'Submitting...';
+
+      xhr('POST', '/api/scans', payload, function(status, resp) {
+        $('btnConfirmScan').disabled = false;
+        $('btnConfirmScan').textContent = 'Confirm Scan';
+
+        if (status === 200 && resp && resp.success) {
+          scanCount++;
+          updateCounter();
+          playBeep();
+          flashSuccess('Scan logged: ' + scanType);
+          setTimeout(function() {
+            returnToScanner();
+          }, 1500);
+        } else {
+          var errMsg = (resp && resp.error) ? resp.error : 'Failed to log scan';
+          flashError(errMsg);
+        }
+      });
+    }
+
+    // ============================================================
+    // SCREEN 3: UNKNOWN SERIAL
+    // ============================================================
+    function showUnknownScreen(serial) {
+      $('unknownSerial').textContent = serial;
+
+      // Check rapid scan mode
+      if (rapidManifestId && rapidNextLine > 0) {
+        $('rapidBanner').className = 'rapid-banner show';
+        $('rapidInfo').textContent = 'Associate to ' + rapidManifestTracking + ' Line ' + rapidNextLine + '?';
+      } else {
+        $('rapidBanner').className = 'rapid-banner';
+      }
+
+      showScreen('screenUnknown');
+    }
+
+    function rapidConfirm() {
+      if (!rapidManifestId || !rapidNextLine) return;
+
+      $('btnRapidConfirm').disabled = true;
+      $('btnRapidConfirm').textContent = 'Associating...';
+
+      var payload = {
+        serial: currentSerial,
+        manifestId: rapidManifestId,
+        lineNumber: rapidNextLine
+      };
+
+      xhr('POST', '/api/scans/associate', payload, function(status, resp) {
+        $('btnRapidConfirm').disabled = false;
+        $('btnRapidConfirm').textContent = 'Confirm';
+
+        if (status === 200 && resp && resp.success) {
+          scanCount++;
+          updateCounter();
+          playBeep();
+
+          // Increment rapid next line
+          rapidNextLine = rapidNextLine + 1;
+          localStorage.setItem('ies_rapid_next_line', String(rapidNextLine));
+
+          flashSuccess('Associated to ' + rapidManifestTracking + ' Line ' + (rapidNextLine - 1));
+          setTimeout(function() {
+            returnToScanner();
+          }, 1500);
+        } else if (status === 409) {
+          showConflictScreen(currentSerial, resp);
+        } else {
+          var errMsg = (resp && resp.error) ? resp.error : 'Association failed';
+          flashError(errMsg);
+        }
+      });
+    }
+
+    function parkForLater() {
+      $('btnParkLater').disabled = true;
+      $('btnParkLater').textContent = 'Parking...';
+
+      var payload = {
+        serial: currentSerial,
+        type: 'park'
+      };
+
+      xhr('POST', '/api/scans', payload, function(status, resp) {
+        $('btnParkLater').disabled = false;
+        $('btnParkLater').textContent = 'Park for Later';
+
+        if (status === 200) {
+          scanCount++;
+          updateCounter();
+          flashSuccess('Parked: ' + currentSerial);
+          setTimeout(function() {
+            returnToScanner();
+          }, 1500);
+        } else {
+          var errMsg = (resp && resp.error) ? resp.error : 'Failed to park scan';
+          flashError(errMsg);
+        }
+      });
+    }
+
+    // ============================================================
+    // SCREEN 3a: ASSOCIATION PICKER
+    // ============================================================
+    function showAssociationPicker() {
+      $('pickerSerial').textContent = currentSerial;
+      selectedManifestId = '';
+      selectedManifestTracking = '';
+      selectedLineNumber = null;
+
+      // Show manifest sub-state, hide lines
+      $('pickerManifests').style.display = 'block';
+      $('pickerLines').style.display = 'none';
+
+      showScreen('screenPicker');
+      loadManifests();
+    }
+
+    function loadManifests() {
+      $('manifestList').innerHTML = '<div class="empty-state"><div class="spinner" style="border-color: #95A5A6; border-top-color: #1B4F72;"></div> Loading...</div>';
+
+      xhr('GET', '/api/manifests', null, function(status, resp) {
+        if (status === 200 && resp) {
+          allManifests = resp;
+          renderManifestList('');
+        } else {
+          $('manifestList').innerHTML = '<div class="empty-state">Failed to load manifests</div>';
+        }
+      });
+    }
+
+    function renderManifestList(filter) {
+      var filterLower = (filter || '').toLowerCase();
+
+      // Filter to active/field-stub and by search term
+      var filtered = [];
+      for (var i = 0; i < allManifests.length; i++) {
+        var m = allManifests[i];
+        var mStatus = (m.status || '').toLowerCase();
+
+        // Include active, field-stub, pending, or no-status manifests
+        if (mStatus === 'completed' || mStatus === 'cancelled' || mStatus === 'void') continue;
+
+        if (filterLower) {
+          var tracking = getManifestTrackingNum(m).toLowerCase();
+          var gen = getGeneratorName(m).toLowerCase();
+          if (tracking.indexOf(filterLower) === -1 && gen.indexOf(filterLower) === -1) continue;
+        }
+
+        filtered.push(m);
+      }
+
+      if (filtered.length === 0) {
+        $('manifestList').innerHTML = '<div class="empty-state">No matching manifests found</div>';
+        return;
+      }
+
+      var html = '';
+      for (var j = 0; j < filtered.length; j++) {
+        var manifest = filtered[j];
+        var tracking = getManifestTrackingNum(manifest) || '(no tracking #)';
+        var gen = getGeneratorName(manifest) || '(no generator)';
+        var status = manifest.status || 'active';
+        var statusClass = 'status-active';
+        if (status === 'field-stub') statusClass = 'status-field-stub';
+        else if (status === 'completed') statusClass = 'status-completed';
+
+        html += '<div class="manifest-card" data-id="' + manifest.id + '" onclick="selectManifest(\'' + manifest.id + '\')">';
+        html += '<div class="manifest-card-tracking">' + escapeHtml(tracking) + '</div>';
+        html += '<div class="manifest-card-gen">' + escapeHtml(gen) + '</div>';
+        html += '<div class="manifest-card-status ' + statusClass + '">' + escapeHtml(status) + '</div>';
+        html += '</div>';
+      }
+
+      $('manifestList').innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(str));
+      return div.innerHTML;
+    }
+
+    function selectManifest(manifestId) {
+      selectedManifestId = manifestId;
+
+      // Find manifest
+      var manifest = null;
+      for (var i = 0; i < allManifests.length; i++) {
+        if (allManifests[i].id === manifestId) {
+          manifest = allManifests[i];
+          break;
+        }
+      }
+
+      if (!manifest) return;
+
+      selectedManifestTracking = getManifestTrackingNum(manifest);
+      $('pickerSelectedManifest').textContent = selectedManifestTracking || manifestId;
+
+      // Load line items and scan counts
+      loadLineItems(manifest);
+    }
+
+    function loadLineItems(manifest) {
+      // Switch to lines sub-state
+      $('pickerManifests').style.display = 'none';
+      $('pickerLines').style.display = 'block';
+      $('btnConfirmAssoc').disabled = true;
+      selectedLineNumber = null;
+
+      // Fetch scan counts for this manifest
+      xhr('GET', '/api/manifests/' + manifest.id + '/scans', null, function(status, resp) {
+        if (status === 200 && resp) {
+          manifestScanCounts = resp.scansByLine || {};
+        } else {
+          manifestScanCounts = {};
+        }
+        renderLineItems(manifest);
+      });
+    }
+
+    function renderLineItems(manifest) {
+      var lineCount = parseInt(manifest.wasteLineCount) || 4;
+      var html = '';
+      var hasAnyLine = false;
+
+      for (var w = 1; w <= lineCount; w++) {
+        var desc = manifest['waste' + w + 'Description'] || '';
+        var containerCount = manifest['waste' + w + 'ContainerCount'] || manifest['waste' + w + 'Qty'] || '';
+        var containerType = manifest['waste' + w + 'ContainerType'] || '';
+
+        // Count how many drums already associated to this line
+        var assocCount = 0;
+        var lineKey = String(w);
+        if (manifestScanCounts[lineKey]) {
+          // Count unique associate events
+          var seen = {};
+          for (var k = 0; k < manifestScanCounts[lineKey].length; k++) {
+            var evt = manifestScanCounts[lineKey][k];
+            if (evt.type === 'associate') {
+              seen[evt.serial] = true;
+            }
+          }
+          var serials = Object.keys(seen);
+          assocCount = serials.length;
+        }
+
+        var lineLabel = 'Line ' + w;
+        if (desc) lineLabel = lineLabel + ': ' + desc;
+
+        html += '<div class="line-card" data-line="' + w + '" onclick="selectLine(' + w + ')">';
+        html += '<div class="line-num">Line ' + w + '</div>';
+        if (desc) {
+          html += '<div class="line-desc">' + escapeHtml(desc) + '</div>';
+        }
+        var countText = '';
+        if (containerCount) {
+          countText = assocCount + ' / ' + containerCount + ' drums associated';
+        } else {
+          countText = assocCount + ' drums associated';
+        }
+        if (containerType) {
+          countText = countText + ' (' + escapeHtml(containerType) + ')';
+        }
+        html += '<div class="line-count">' + countText + '</div>';
+        html += '</div>';
+
+        hasAnyLine = true;
+      }
+
+      if (!hasAnyLine) {
+        html = '<div class="empty-state">No waste lines found for this manifest</div>';
+      }
+
+      $('lineList').innerHTML = html;
+    }
+
+    function selectLine(lineNum) {
+      selectedLineNumber = lineNum;
+      $('btnConfirmAssoc').disabled = false;
+
+      // Highlight selected line
+      var cards = document.querySelectorAll('#lineList .line-card');
+      for (var i = 0; i < cards.length; i++) {
+        if (parseInt(cards[i].getAttribute('data-line')) === lineNum) {
+          cards[i].className = 'line-card selected';
+        } else {
+          cards[i].className = 'line-card';
+        }
+      }
+    }
+
+    function confirmAssociation() {
+      if (!selectedManifestId || selectedLineNumber === null) return;
+
+      $('btnConfirmAssoc').disabled = true;
+      $('btnConfirmAssoc').textContent = 'Associating...';
+
+      var payload = {
+        serial: currentSerial,
+        manifestId: selectedManifestId,
+        lineNumber: selectedLineNumber
+      };
+
+      xhr('POST', '/api/scans/associate', payload, function(status, resp) {
+        $('btnConfirmAssoc').disabled = false;
+        $('btnConfirmAssoc').textContent = 'Confirm';
+
+        if (status === 200 && resp && resp.success) {
+          scanCount++;
+          updateCounter();
+          playBeep();
+
+          // Set rapid scan mode
+          rapidManifestId = selectedManifestId;
+          rapidManifestTracking = selectedManifestTracking;
+          rapidNextLine = selectedLineNumber + 1;
+          localStorage.setItem('ies_rapid_manifest_id', rapidManifestId);
+          localStorage.setItem('ies_rapid_manifest_tracking', rapidManifestTracking);
+          localStorage.setItem('ies_rapid_next_line', String(rapidNextLine));
+
+          flashSuccess('Associated: ' + currentSerial + ' -> Line ' + selectedLineNumber);
+          setTimeout(function() {
+            returnToScanner();
+          }, 1500);
+        } else if (status === 409) {
+          showConflictScreen(currentSerial, resp);
+        } else {
+          var errMsg = (resp && resp.error) ? resp.error : 'Association failed';
+          flashError(errMsg);
+        }
+      });
+    }
+
+    // ============================================================
+    // SCREEN 3b: FIELD STUB CREATION
+    // ============================================================
+    function showFieldStubScreen() {
+      $('stubTracking').value = '';
+      $('stubGenerator').value = '';
+      $('stubLineCount').value = '1';
+      renderContainerInputs(1);
+      showScreen('screenFieldStub');
+    }
+
+    function renderContainerInputs(count) {
+      var html = '';
+      for (var i = 1; i <= count; i++) {
+        html += '<div class="dynamic-line-row">';
+        html += '<span class="dynamic-line-label">Line ' + i + '</span>';
+        html += '<input type="number" class="dynamic-line-input" min="0" value="1" placeholder="Container count" />';
+        html += '</div>';
+      }
+      $('stubContainerInputs').innerHTML = html;
+    }
+
+    function createFieldStub() {
+      var tracking = $('stubTracking').value.trim();
+      if (!tracking) {
+        flashError('Tracking number is required');
+        return;
+      }
+
+      var genName = $('stubGenerator').value.trim();
+      var lineCount = parseInt($('stubLineCount').value) || 1;
+      if (lineCount < 1) lineCount = 1;
+      if (lineCount > 40) lineCount = 40;
+
+      // Build manifest payload
+      var payload = {
+        manifestTrackingNum: tracking,
+        status: 'field-stub',
+        wasteLineCount: lineCount,
+        generatorName: genName
+      };
+
+      // Add container counts per line
+      var containerInputs = $('stubContainerInputs').querySelectorAll('.dynamic-line-input');
+      for (var i = 0; i < containerInputs.length; i++) {
+        var count = parseInt(containerInputs[i].value) || 0;
+        payload['waste' + (i + 1) + 'ContainerCount'] = count;
+      }
+
+      $('btnCreateStub').disabled = true;
+      $('btnCreateStub').textContent = 'Creating...';
+
+      xhr('POST', '/api/manifests', payload, function(status, resp) {
+        $('btnCreateStub').disabled = false;
+        $('btnCreateStub').textContent = 'Create Manifest';
+
+        if (status === 200 && resp) {
+          // Add to local list
+          allManifests.push(resp);
+
+          // Auto-select this manifest and go to line picker
+          flashSuccess('Field manifest created');
+          setTimeout(function() {
+            showScreen('screenPicker');
+            selectManifest(resp.id);
+          }, 800);
+        } else {
+          var errMsg = (resp && resp.error) ? resp.error : 'Failed to create manifest';
+          flashError(errMsg);
+        }
+      });
+    }
+
+    // ============================================================
+    // CONFLICT SCREEN (409)
+    // ============================================================
+    function showConflictScreen(serial, resp) {
+      $('conflictSerial').textContent = serial;
+      var existing = (resp && resp.existing) ? resp.existing : {};
+      $('conflictManifest').textContent = findManifestTracking(existing.manifestId || '') || existing.manifestId || '?';
+      $('conflictLine').textContent = 'Line ' + (existing.lineNumber || '?');
+      $('conflictBy').textContent = existing.associatedByName || '?';
+
+      showScreen('screenConflict');
+    }
+
+    function logScanInstead() {
+      $('btnLogScanInstead').disabled = true;
+      $('btnLogScanInstead').textContent = 'Logging...';
+
+      var payload = {
+        serial: currentSerial,
+        type: 'scan',
+        notes: 'Logged via scanner (serial already associated)'
+      };
+
+      xhr('POST', '/api/scans', payload, function(status, resp) {
+        $('btnLogScanInstead').disabled = false;
+        $('btnLogScanInstead').textContent = 'Log Scan Event Instead';
+
+        if (status === 200) {
+          scanCount++;
+          updateCounter();
+          flashSuccess('Scan event logged');
+          setTimeout(function() {
+            returnToScanner();
+          }, 1500);
+        } else {
+          flashError('Failed to log scan event');
+        }
+      });
+    }
+
+    // ============================================================
+    // NAVIGATION
+    // ============================================================
+    function returnToScanner() {
+      showScreen('screenScanner');
+      $('manualSerial').value = '';
+      // Auto-restart camera after returning
+      setTimeout(function() {
+        startCamera();
+      }, 500);
+    }
+
+    // ============================================================
+    // EVENT BINDINGS
+    // ============================================================
+    function bindEvents() {
+      // Header
+      $('logoutBtn').addEventListener('click', doLogout);
+
+      // Scanner screen
+      $('btnToggleCamera').addEventListener('click', function() {
+        if (cameraRunning) {
+          stopCamera(null);
+        } else {
+          startCamera();
+        }
+      });
+
+      $('btnManualLookup').addEventListener('click', function() {
+        var serial = $('manualSerial').value.trim();
+        if (serial) {
+          stopCamera(function() {
+            lookupSerial(serial);
+          });
+        }
+      });
+
+      $('manualSerial').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+          var serial = $('manualSerial').value.trim();
+          if (serial) {
+            stopCamera(function() {
+              lookupSerial(serial);
+            });
+          }
+        }
+      });
+
+      // Known serial screen
+      var radioOptions = document.querySelectorAll('#scanTypeGroup .radio-option');
+      for (var r = 0; r < radioOptions.length; r++) {
+        (function(opt) {
+          opt.addEventListener('click', function() {
+            var radio = opt.querySelector('input[type="radio"]');
+            selectScanType(radio.value);
+          });
+        })(radioOptions[r]);
+      }
+
+      $('btnConfirmScan').addEventListener('click', confirmScan);
+      $('btnCancelKnown').addEventListener('click', returnToScanner);
+
+      // Unknown serial screen
+      $('btnRapidConfirm').addEventListener('click', rapidConfirm);
+      $('btnAssociate').addEventListener('click', showAssociationPicker);
+      $('btnParkLater').addEventListener('click', parkForLater);
+      $('btnCancelUnknown').addEventListener('click', returnToScanner);
+
+      // Picker screen - manifests
+      $('manifestSearch').addEventListener('input', function() {
+        renderManifestList(this.value);
+      });
+      $('btnNewFieldManifest').addEventListener('click', showFieldStubScreen);
+      $('btnBackToPicker').addEventListener('click', function() {
+        showScreen('screenUnknown');
+      });
+
+      // Picker screen - lines
+      $('btnBackToManifests').addEventListener('click', function() {
+        $('pickerManifests').style.display = 'block';
+        $('pickerLines').style.display = 'none';
+        selectedManifestId = '';
+        selectedLineNumber = null;
+      });
+      $('btnConfirmAssoc').addEventListener('click', confirmAssociation);
+
+      // Field stub screen
+      $('stubLineCount').addEventListener('input', function() {
+        var count = parseInt(this.value) || 1;
+        if (count < 1) count = 1;
+        if (count > 40) count = 40;
+        renderContainerInputs(count);
+      });
+      $('btnCreateStub').addEventListener('click', createFieldStub);
+      $('btnCancelStub').addEventListener('click', function() {
+        showScreen('screenPicker');
+      });
+
+      // Conflict screen
+      $('btnLogScanInstead').addEventListener('click', logScanInstead);
+      $('btnCancelConflict').addEventListener('click', returnToScanner);
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    function init() {
+      updateCounter();
+      checkAuth();
+      bindEvents();
+
+      // Pre-load manifests for tracking number lookups
+      xhr('GET', '/api/manifests', null, function(status, resp) {
+        if (status === 200 && resp) {
+          allManifests = resp;
+        }
+      });
+
+      // Initialize the QR scanner
+      try {
+        initScanner();
+      } catch(e) {
+        $('cameraDenied').className = 'camera-denied show';
+      }
+    }
+
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+
+</body>
+</html>
