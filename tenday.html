@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>10-Day Tracking - IES</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+      background: #F0F2F5;
+      color: #333;
+      font-size: 16px;
+      min-height: 100vh;
+      padding-top: 60px;
+    }
+
+    .header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      background: #1B4F72;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .header a { color: #fff; text-decoration: none; font-size: 22px; margin-right: 10px; }
+    .header-title { font-size: 18px; font-weight: 700; flex: 1; }
+    .header-btn {
+      background: rgba(255,255,255,0.15);
+      border: none; color: #fff; font-size: 13px;
+      padding: 6px 12px; border-radius: 6px; cursor: pointer; font-family: inherit;
+      margin-left: 6px;
+    }
+    .header-btn:active { background: rgba(255,255,255,0.3); }
+
+    .content { padding: 12px; max-width: 900px; margin: 0 auto; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 12px; overflow-x: auto; }
+    .tab {
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      padding: 8px 14px; border-radius: 6px; border: none;
+      background: #DEE2E6; color: #555; cursor: pointer; white-space: nowrap;
+    }
+    .tab.active { background: #1B4F72; color: #fff; }
+    .tab:active { opacity: 0.7; }
+
+    /* Facility filter */
+    .filter-row {
+      display: flex; gap: 8px; margin-bottom: 12px; align-items: center;
+    }
+    .filter-row select {
+      font-family: inherit; font-size: 14px; padding: 8px 10px;
+      border-radius: 6px; border: 1px solid #DEE2E6; background: #fff;
+    }
+    .filter-row .label { font-size: 13px; color: #7F8C8D; font-weight: 600; }
+
+    /* Summary cards */
+    .summary-row {
+      display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+    }
+    .summary-card {
+      background: #fff; border-radius: 10px; padding: 14px 18px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08); flex: 1; min-width: 120px;
+      text-align: center;
+    }
+    .summary-num { font-size: 28px; font-weight: 700; }
+    .summary-label { font-size: 12px; color: #7F8C8D; margin-top: 2px; }
+    .num-overdue { color: #E74C3C; }
+    .num-urgent { color: #E67E22; }
+    .num-warning { color: #F1C40F; }
+    .num-ok { color: #27AE60; }
+
+    /* Period cards */
+    .card {
+      background: #fff; border-radius: 10px; padding: 14px 16px;
+      margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 8px;
+    }
+    .card-serial {
+      font-family: 'Courier New', monospace; font-weight: 700;
+      font-size: 16px; color: #2C3E50;
+    }
+    .urgency-badge {
+      font-size: 11px; font-weight: 700; padding: 3px 10px;
+      border-radius: 12px; text-transform: uppercase;
+    }
+    .badge-overdue { background: #FADBD8; color: #E74C3C; }
+    .badge-urgent { background: #FDEBD0; color: #E67E22; }
+    .badge-warning { background: #FEF9E7; color: #B7950B; }
+    .badge-ok { background: #D5F5E3; color: #27AE60; }
+    .badge-closed { background: #E8E8E8; color: #777; }
+
+    .card-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 14px; padding: 3px 0;
+    }
+    .card-row .label { color: #7F8C8D; }
+    .card-row .value { font-weight: 600; color: #2C3E50; }
+
+    .days-display {
+      font-size: 20px; font-weight: 700; text-align: center;
+      padding: 6px 0;
+    }
+    .days-overdue { color: #E74C3C; }
+    .days-urgent { color: #E67E22; }
+    .days-warning { color: #B7950B; }
+    .days-ok { color: #27AE60; }
+
+    .progress-bar-wrap {
+      background: #ECF0F1; border-radius: 6px; height: 8px;
+      overflow: hidden; margin: 6px 0;
+    }
+    .progress-bar-fill {
+      height: 100%; border-radius: 6px; transition: width 0.3s;
+    }
+
+    .empty-state {
+      text-align: center; padding: 60px 20px; color: #95A5A6;
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 18px; color: #7F8C8D; margin-bottom: 6px; }
+    .empty-state p { font-size: 14px; }
+
+    .loading-spinner {
+      text-align: center; padding: 40px; color: #95A5A6; font-size: 14px;
+    }
+
+    .border-left-overdue { border-left: 4px solid #E74C3C; }
+    .border-left-urgent { border-left: 4px solid #E67E22; }
+    .border-left-warning { border-left: 4px solid #F1C40F; }
+    .border-left-ok { border-left: 4px solid #27AE60; }
+    .border-left-closed { border-left: 4px solid #BDC3C7; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <a href="/">&#8592;</a>
+    <div class="header-title">10-Day Tracking</div>
+    <button class="header-btn" onclick="loadData()">Refresh</button>
+  </div>
+
+  <div class="content">
+    <div class="tabs" id="statusTabs">
+      <button class="tab active" data-status="open">Open</button>
+      <button class="tab" data-status="">All</button>
+      <button class="tab" data-status="departed">Departed</button>
+      <button class="tab" data-status="transferred">Transferred</button>
+    </div>
+
+    <div class="filter-row">
+      <span class="label">Facility:</span>
+      <select id="facilityFilter">
+        <option value="">All Facilities</option>
+      </select>
+    </div>
+
+    <div id="summaryArea"></div>
+    <div id="listArea">
+      <div class="loading-spinner">Loading 10-day periods...</div>
+    </div>
+  </div>
+
+  <script>
+    var currentStatus = 'open';
+    var currentFacility = '';
+    var allPeriods = [];
+    var facilities = [];
+
+    // Tab clicks
+    document.getElementById('statusTabs').addEventListener('click', function(e) {
+      if (e.target.classList.contains('tab')) {
+        var tabs = document.querySelectorAll('.tab');
+        for (var i = 0; i < tabs.length; i++) { tabs[i].classList.remove('active'); }
+        e.target.classList.add('active');
+        currentStatus = e.target.getAttribute('data-status');
+        loadData();
+      }
+    });
+
+    document.getElementById('facilityFilter').addEventListener('change', function() {
+      currentFacility = this.value;
+      loadData();
+    });
+
+    // Load facilities for filter
+    function loadFacilities() {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/yard-facilities', true);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          var result = JSON.parse(xhr.responseText);
+          facilities = result.facilities || [];
+          var sel = document.getElementById('facilityFilter');
+          for (var i = 0; i < facilities.length; i++) {
+            var opt = document.createElement('option');
+            opt.value = facilities[i].id;
+            opt.textContent = facilities[i].name;
+            sel.appendChild(opt);
+          }
+        }
+      };
+      xhr.send();
+    }
+
+    function loadData() {
+      var url = '/api/10-day/periods';
+      var params = [];
+      if (currentStatus) params.push('status=' + currentStatus);
+      if (currentFacility) params.push('facilityId=' + currentFacility);
+      if (params.length) url += '?' + params.join('&');
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          var result = JSON.parse(xhr.responseText);
+          allPeriods = result.periods || [];
+          render();
+        } else if (xhr.status === 401) {
+          window.location.href = '/login';
+        } else {
+          document.getElementById('listArea').innerHTML = '<div class="loading-spinner">Error loading data</div>';
+        }
+      };
+      xhr.onerror = function() {
+        document.getElementById('listArea').innerHTML = '<div class="loading-spinner">Network error</div>';
+      };
+      xhr.send();
+    }
+
+    function render() {
+      var summaryEl = document.getElementById('summaryArea');
+      var listEl = document.getElementById('listArea');
+
+      if (allPeriods.length === 0) {
+        summaryEl.innerHTML = '';
+        listEl.innerHTML = '<div class="empty-state"><div class="icon">&#9201;</div><h3>No Periods</h3><p>No 10-day tracking periods match this filter.</p></div>';
+        return;
+      }
+
+      // Summary counts
+      var overdue = 0; var urgent = 0; var warning = 0; var ok = 0;
+      for (var s = 0; s < allPeriods.length; s++) {
+        var u = allPeriods[s].urgency;
+        if (u === 'overdue') overdue++;
+        else if (u === 'urgent') urgent++;
+        else if (u === 'warning') warning++;
+        else ok++;
+      }
+
+      var showSummary = currentStatus === 'open' || currentStatus === '';
+      if (showSummary) {
+        var sHtml = '<div class="summary-row">';
+        if (overdue > 0) {
+          sHtml += '<div class="summary-card"><div class="summary-num num-overdue">' + overdue + '</div><div class="summary-label">Overdue</div></div>';
+        }
+        if (urgent > 0) {
+          sHtml += '<div class="summary-card"><div class="summary-num num-urgent">' + urgent + '</div><div class="summary-label">Urgent (1-2 days)</div></div>';
+        }
+        if (warning > 0) {
+          sHtml += '<div class="summary-card"><div class="summary-num num-warning">' + warning + '</div><div class="summary-label">Warning (3-5 days)</div></div>';
+        }
+        sHtml += '<div class="summary-card"><div class="summary-num num-ok">' + ok + '</div><div class="summary-label">On Track</div></div>';
+        sHtml += '</div>';
+        summaryEl.innerHTML = sHtml;
+      } else {
+        summaryEl.innerHTML = '';
+      }
+
+      // Sort: overdue first, then by days remaining ascending
+      var sorted = allPeriods.slice().sort(function(a, b) {
+        var order = {overdue: 0, urgent: 1, warning: 2, ok: 3};
+        var aOrd = order[a.urgency] !== undefined ? order[a.urgency] : 4;
+        var bOrd = order[b.urgency] !== undefined ? order[b.urgency] : 4;
+        if (aOrd !== bOrd) return aOrd - bOrd;
+        return (a.daysRemaining || 0) - (b.daysRemaining || 0);
+      });
+
+      var html = '';
+      for (var i = 0; i < sorted.length; i++) {
+        var p = sorted[i];
+        var borderClass = 'border-left-' + (p.status === 'open' ? p.urgency : 'closed');
+        var badgeClass = 'badge-' + (p.status === 'open' ? p.urgency : 'closed');
+        var badgeText = p.status === 'open' ? p.urgency : p.status;
+        if (p.urgency === 'overdue' && p.status === 'open') {
+          badgeText = Math.abs(p.daysRemaining) + ' day' + (Math.abs(p.daysRemaining) !== 1 ? 's' : '') + ' overdue';
+        }
+
+        html += '<div class="card ' + borderClass + '">';
+        html += '<div class="card-header">';
+        html += '<span class="card-serial">' + escapeHtml(p.serial) + '</span>';
+        html += '<span class="urgency-badge ' + badgeClass + '">' + badgeText + '</span>';
+        html += '</div>';
+
+        if (p.status === 'open') {
+          // Days remaining display
+          var daysClass = 'days-' + p.urgency;
+          var daysText = '';
+          if (p.daysRemaining < 0) {
+            daysText = Math.abs(p.daysRemaining) + ' day' + (Math.abs(p.daysRemaining) !== 1 ? 's' : '') + ' OVERDUE';
+          } else if (p.daysRemaining === 0) {
+            daysText = 'DUE TODAY';
+          } else {
+            daysText = p.daysRemaining + ' day' + (p.daysRemaining !== 1 ? 's' : '') + ' remaining';
+          }
+          html += '<div class="days-display ' + daysClass + '">' + daysText + '</div>';
+
+          // Progress bar (10 days total)
+          var elapsed = 10 - p.daysRemaining;
+          if (elapsed < 0) elapsed = 10;
+          var pct = Math.min(Math.round((elapsed / 10) * 100), 100);
+          var barColor = p.urgency === 'overdue' ? '#E74C3C' : p.urgency === 'urgent' ? '#E67E22' : p.urgency === 'warning' ? '#F1C40F' : '#27AE60';
+          html += '<div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>';
+        }
+
+        html += '<div class="card-row"><span class="label">Facility</span><span class="value">' + escapeHtml(p.facilityName) + '</span></div>';
+        html += '<div class="card-row"><span class="label">Pickup Date</span><span class="value">' + escapeHtml(p.startDate) + '</span></div>';
+        html += '<div class="card-row"><span class="label">Deadline</span><span class="value">' + escapeHtml(p.deadline) + '</span></div>';
+
+        if (p.closedAt) {
+          html += '<div class="card-row"><span class="label">Closed</span><span class="value">' + formatDate(p.closedAt) + '</span></div>';
+        }
+        if (p.closedReason) {
+          html += '<div class="card-row"><span class="label">Reason</span><span class="value">' + escapeHtml(p.closedReason) + '</span></div>';
+        }
+
+        html += '</div>';
+      }
+
+      listEl.innerHTML = html;
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '-';
+      var d = new Date(iso);
+      var month = d.getMonth() + 1;
+      var day = d.getDate();
+      var yr = d.getFullYear();
+      var hr = d.getHours();
+      var min = d.getMinutes();
+      var ampm = hr >= 12 ? 'pm' : 'am';
+      hr = hr % 12; if (hr === 0) hr = 12;
+      return month + '/' + day + '/' + yr + ' ' + hr + ':' + (min < 10 ? '0' : '') + min + ampm;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Init
+    loadFacilities();
+    loadData();
+    // Auto-refresh every 60 seconds
+    setInterval(loadData, 60000);
+  </script>
+</body>
+</html>

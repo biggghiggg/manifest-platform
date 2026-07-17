@@ -7234,6 +7234,10 @@ app.get('/loads', function(req, res) {
   res.sendFile(path.join(__dirname, 'loads.html'));
 });
 
+app.get('/tenday', function(req, res) {
+  res.sendFile(path.join(__dirname, 'tenday.html'));
+});
+
 app.get('/loads/new', function(req, res) {
   res.sendFile(path.join(__dirname, 'loads.html'));
 });

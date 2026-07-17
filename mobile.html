@@ -89,6 +89,9 @@
       color: #333;
     }
     .btn-loads .desc { color: rgba(0,0,0,0.5); }
+    .btn-tenday {
+      background: linear-gradient(135deg, #E74C3C, #F1948A);
+    }
     .btn-admin {
       background: linear-gradient(135deg, #7D3C98, #A569BD);
     }
@@ -138,6 +141,13 @@
         <div class="desc">Manage outbound loads</div>
       </div>
     </a>
+    <a href="/tenday" class="nav-btn btn-tenday" id="tendayBtn">
+      <div class="icon">&#x23F1;</div>
+      <div class="label-group">
+        <div>10-Day Tracking</div>
+        <div class="desc">Transfer facility compliance</div>
+      </div>
+    </a>
     <a href="/admin/users" class="nav-btn btn-admin" id="adminBtn">
       <div class="icon">&#x1F465;</div>
       <div class="label-group">
@@ -174,6 +184,8 @@
             if (checkinBtn) checkinBtn.style.display = 'none';
             var loadsBtn = document.getElementById('loadsBtn');
             if (loadsBtn) loadsBtn.style.display = 'none';
+            var tendayBtn = document.getElementById('tendayBtn');
+            if (tendayBtn) tendayBtn.style.display = 'none';
           } else if (data.role !== 'admin') {
             var adminBtn = document.getElementById('adminBtn');
             if (adminBtn) adminBtn.style.display = 'none';
