@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Check-In Verification - IES</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+      background: #F0F2F5;
+      color: #333;
+      font-size: 16px;
+      min-height: 100vh;
+      padding-top: 60px;
+    }
+
+    .header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      background: #1B4F72;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .header a {
+      color: #fff;
+      text-decoration: none;
+      font-size: 22px;
+      margin-right: 10px;
+    }
+    .header-title {
+      font-size: 18px;
+      font-weight: 700;
+      flex: 1;
+    }
+    .header-btn {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: #fff;
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .header-btn:active { background: rgba(255,255,255,0.3); }
+
+    .content { padding: 12px; max-width: 800px; margin: 0 auto; }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #95A5A6;
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 18px; margin-bottom: 6px; color: #7F8C8D; }
+    .empty-state p { font-size: 14px; }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1B4F72;
+      margin-bottom: 4px;
+    }
+    .card-subtitle {
+      font-size: 13px;
+      color: #7F8C8D;
+      margin-bottom: 12px;
+    }
+
+    .progress-bar-wrap {
+      background: #ECF0F1;
+      border-radius: 6px;
+      height: 10px;
+      margin-bottom: 6px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      background: #27AE60;
+      transition: width 0.3s;
+    }
+    .progress-text {
+      font-size: 13px;
+      color: #7F8C8D;
+      margin-bottom: 12px;
+    }
+
+    .drum-list { list-style: none; }
+    .drum-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #ECF0F1;
+      font-size: 14px;
+    }
+    .drum-item:last-child { border-bottom: none; }
+    .drum-serial {
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      color: #2C3E50;
+      flex: 1;
+    }
+    .drum-line {
+      font-size: 12px;
+      color: #7F8C8D;
+      margin-right: 8px;
+    }
+    .drum-waste {
+      font-size: 12px;
+      color: #95A5A6;
+      flex: 2;
+      margin: 0 8px;
+    }
+    .status-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .badge-pending { background: #FDEBD0; color: #E67E22; }
+    .badge-done { background: #D5F5E3; color: #27AE60; }
+
+    .section-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #7F8C8D;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 8px 0 4px;
+    }
+
+    .unexpected-card {
+      border-left: 4px solid #E74C3C;
+    }
+
+    .loading-spinner {
+      text-align: center;
+      padding: 40px;
+      color: #95A5A6;
+      font-size: 14px;
+    }
+
+    .refresh-note {
+      text-align: center;
+      font-size: 12px;
+      color: #BDC3C7;
+      padding: 8px;
+    }
+
+    @media (min-width: 600px) {
+      .drum-item { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <a href="/">&#8592;</a>
+    <div class="header-title">Check-In Verification</div>
+    <button class="header-btn" id="refreshBtn" onclick="loadData()">Refresh</button>
+  </div>
+
+  <div class="content" id="content">
+    <div class="loading-spinner" id="loadingMsg">Loading expected drums...</div>
+  </div>
+
+  <script>
+    var contentEl = document.getElementById('content');
+
+    function loadData() {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/checkin/expected', true);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          try {
+            var result = JSON.parse(xhr.responseText);
+            renderData(result);
+          } catch(e) {
+            contentEl.innerHTML = '<div class="loading-spinner">Error parsing data</div>';
+          }
+        } else if (xhr.status === 401) {
+          window.location.href = '/login';
+        } else {
+          contentEl.innerHTML = '<div class="loading-spinner">Error loading data</div>';
+        }
+      };
+      xhr.onerror = function() {
+        contentEl.innerHTML = '<div class="loading-spinner">Network error</div>';
+      };
+      xhr.send();
+    }
+
+    function renderData(result) {
+      var manifests = result.manifests || [];
+      var unexpected = result.unexpectedCheckins || [];
+      var html = '';
+
+      if (manifests.length === 0 && unexpected.length === 0) {
+        html += '<div class="empty-state">';
+        html += '<div class="icon">&#9989;</div>';
+        html += '<h3>All Caught Up</h3>';
+        html += '<p>No drums are pending check-in right now.</p>';
+        html += '</div>';
+        contentEl.innerHTML = html;
+        return;
+      }
+
+      // Summary
+      var totalPending = 0;
+      for (var s = 0; s < manifests.length; s++) {
+        totalPending += manifests[s].expected.length;
+      }
+      if (totalPending > 0) {
+        html += '<div class="card">';
+        html += '<div style="font-size:24px;font-weight:700;color:#1B4F72;">' + totalPending + '</div>';
+        html += '<div style="font-size:13px;color:#7F8C8D;">drums awaiting check-in across ' + manifests.length + ' manifest' + (manifests.length !== 1 ? 's' : '') + '</div>';
+        html += '</div>';
+      }
+
+      // Each manifest
+      for (var i = 0; i < manifests.length; i++) {
+        var m = manifests[i];
+        html += '<div class="card">';
+        html += '<div class="card-title">' + escapeHtml(m.trackingNum) + '</div>';
+        if (m.generator) {
+          html += '<div class="card-subtitle">' + escapeHtml(m.generator) + '</div>';
+        }
+
+        // Progress
+        html += '<div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:' + m.progress + '%"></div></div>';
+        html += '<div class="progress-text">' + m.checkedInCount + ' of ' + m.totalDrums + ' drums checked in (' + m.progress + '%)</div>';
+
+        // Pending drums
+        if (m.expected.length > 0) {
+          html += '<div class="section-label">Awaiting Check-In</div>';
+          html += '<ul class="drum-list">';
+          for (var j = 0; j < m.expected.length; j++) {
+            var d = m.expected[j];
+            html += '<li class="drum-item">';
+            html += '<span class="drum-serial">' + escapeHtml(d.serial) + '</span>';
+            html += '<span class="drum-line">Line ' + d.lineNum + '</span>';
+            html += '<span class="status-badge badge-pending">Pending</span>';
+            html += '</li>';
+          }
+          html += '</ul>';
+        }
+
+        // Checked in drums
+        if (m.checkedIn.length > 0) {
+          html += '<div class="section-label">Checked In</div>';
+          html += '<ul class="drum-list">';
+          for (var k = 0; k < m.checkedIn.length; k++) {
+            var ci = m.checkedIn[k];
+            html += '<li class="drum-item">';
+            html += '<span class="drum-serial">' + escapeHtml(ci.serial) + '</span>';
+            html += '<span class="drum-line">Line ' + ci.lineNum + '</span>';
+            html += '<span class="status-badge badge-done">Done</span>';
+            html += '</li>';
+          }
+          html += '</ul>';
+        }
+
+        html += '</div>';
+      }
+
+      // Unexpected check-ins
+      if (unexpected.length > 0) {
+        html += '<div class="card unexpected-card">';
+        html += '<div class="card-title" style="color:#E74C3C;">Unexpected Check-Ins</div>';
+        html += '<div class="card-subtitle">These serials were checked in but have no association on file</div>';
+        html += '<ul class="drum-list">';
+        for (var u = 0; u < unexpected.length; u++) {
+          html += '<li class="drum-item">';
+          html += '<span class="drum-serial">' + escapeHtml(unexpected[u].serial) + '</span>';
+          html += '<span class="drum-line">' + escapeHtml(unexpected[u].checkedInBy || '') + '</span>';
+          html += '</li>';
+        }
+        html += '</ul>';
+        html += '</div>';
+      }
+
+      html += '<div class="refresh-note">Pull down or tap Refresh to update</div>';
+      contentEl.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    loadData();
+    // Auto-refresh every 30 seconds
+    setInterval(loadData, 30000);
+  </script>
+</body>
+</html>

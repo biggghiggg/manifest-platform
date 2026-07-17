@@ -1412,9 +1412,87 @@
               <div style={{marginTop:12,textAlign:'right'}}>
                 <span className={'badge badge-'+(d.status||'draft')} style={{fontSize:14,padding:'6px 16px'}}>Status: {d.status || 'draft'}</span>
               </div>
+
+              {/* Scan History + Loading Status */}
+              {d.id ? React.createElement(ManifestScanHistory, {manifestId: d.id}) : null}
             </div>
           </div>
         </div>
+      );
+    }
+
+    function ManifestScanHistory(props) {
+      var manifestId = props.manifestId;
+      var s1 = useState(null); var scanData = s1[0]; var setScanData = s1[1];
+      var s2 = useState(false); var expanded = s2[0]; var setExpanded = s2[1];
+      var s3 = useState(false); var loading = s3[0]; var setLoading = s3[1];
+
+      function loadScans() {
+        if (scanData) { setExpanded(!expanded); return; }
+        setLoading(true);
+        fetch('/api/manifests/' + manifestId + '/loading-status').then(function(r) { return r.json(); }).then(function(data) {
+          setScanData(data);
+          setExpanded(true);
+          setLoading(false);
+        }).catch(function() { setLoading(false); });
+      }
+
+      var statusColors = {associated:'#3498DB',checkin:'#2471A3',staged:'#F39C12',loaded:'#27AE60'};
+      var statusLabels = {associated:'Associated',checkin:'Checked In',staged:'Staged',loaded:'Loaded'};
+
+      return React.createElement('div', {style:{marginTop:16,borderTop:'2px solid #eee',paddingTop:12}},
+        React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},
+          React.createElement('button', {
+            className:'btn btn-sm',
+            style:{background:'#1B4F72',color:'#fff'},
+            onClick:loadScans
+          }, loading ? 'Loading...' : (expanded ? 'Hide Scan History' : 'Show Scan History')),
+          React.createElement('a', {
+            href:'/loading?manifest=' + manifestId,
+            target:'_blank',
+            style:{fontSize:12,color:'#1B4F72',textDecoration:'underline'}
+          }, 'Full Loading Status')
+        ),
+        expanded && scanData ? React.createElement('div', {style:{marginTop:12}},
+          React.createElement('div', {style:{display:'flex',gap:16,marginBottom:12,fontSize:13,color:'#555'}},
+            React.createElement('span', null, 'Total drums: '),
+            React.createElement('strong', null, scanData.totalDrums || 0),
+            React.createElement('span', {style:{marginLeft:16}}, 'Events: '),
+            React.createElement('strong', null, scanData.totalEvents || 0)
+          ),
+          (function() {
+            var lineEls = [];
+            var theLines = scanData.lines || [];
+            for (var i = 0; i < theLines.length; i++) {
+              (function(line) {
+                var pct = line.expectedCount > 0 ? Math.round((line.loaded / line.expectedCount) * 100) : 0;
+                lineEls.push(React.createElement('div', {key:i, style:{background:'#f8f9fa',borderRadius:6,padding:10,marginBottom:8}},
+                  React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}},
+                    React.createElement('span', {style:{fontWeight:700,fontSize:13}}, 'Line ' + line.lineNum + (line.wasteDescription ? ' - ' + line.wasteDescription : '')),
+                    React.createElement('span', {style:{fontSize:11,color:'#7F8C8D'}}, line.scannedCount + '/' + line.expectedCount + ' scanned, ' + line.loaded + ' loaded')
+                  ),
+                  React.createElement('div', {style:{background:'#ecf0f1',borderRadius:4,height:6,overflow:'hidden',marginBottom:6}},
+                    React.createElement('div', {style:{height:'100%',borderRadius:4,background:line.complete?'#27AE60':'#F39C12',width:pct+'%'}})
+                  ),
+                  (function() {
+                    var drumEls = [];
+                    var drums = line.drums || [];
+                    for (var j = 0; j < drums.length; j++) {
+                      var drum = drums[j];
+                      var col = statusColors[drum.status] || '#999';
+                      drumEls.push(React.createElement('div', {key:j, style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'3px 0',borderBottom:'1px solid #eee',fontSize:12}},
+                        React.createElement('span', {style:{fontFamily:'monospace',fontWeight:600}}, drum.serial),
+                        React.createElement('span', {style:{background:col,color:'#fff',padding:'1px 6px',borderRadius:3,fontSize:10,fontWeight:700}}, statusLabels[drum.status] || drum.status)
+                      ));
+                    }
+                    return drumEls.length > 0 ? React.createElement('div', null, drumEls) : null;
+                  })()
+                ));
+              })(theLines[i]);
+            }
+            return lineEls.length > 0 ? lineEls : React.createElement('div', {style:{fontSize:13,color:'#999',textAlign:'center',padding:12}}, 'No drums scanned yet');
+          })()
+        ) : null
       );
     }
 

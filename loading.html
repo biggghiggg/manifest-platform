@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Loading Status - IES</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+      background: #F0F2F5;
+      color: #333;
+      font-size: 16px;
+      min-height: 100vh;
+      padding-top: 60px;
+    }
+
+    .header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      background: #1B4F72;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .header a { color: #fff; text-decoration: none; font-size: 22px; margin-right: 10px; }
+    .header-title { font-size: 18px; font-weight: 700; flex: 1; }
+    .header-btn {
+      background: rgba(255,255,255,0.15);
+      border: none; color: #fff; font-size: 13px;
+      padding: 6px 12px; border-radius: 6px; cursor: pointer; font-family: inherit;
+    }
+    .header-btn:active { background: rgba(255,255,255,0.3); }
+
+    .content { padding: 12px; max-width: 800px; margin: 0 auto; }
+
+    .search-bar {
+      display: flex; gap: 8px; margin-bottom: 12px;
+    }
+    .search-bar select, .search-bar input {
+      font-family: inherit; font-size: 15px;
+      padding: 10px 12px; border-radius: 8px;
+      border: 1px solid #DEE2E6; background: #fff;
+      flex: 1;
+    }
+    .search-bar button {
+      font-family: inherit; font-size: 14px; font-weight: 600;
+      padding: 10px 16px; border-radius: 8px; border: none;
+      background: #1B4F72; color: #fff; cursor: pointer; white-space: nowrap;
+    }
+    .search-bar button:active { opacity: 0.7; }
+
+    .card {
+      background: #fff; border-radius: 10px; padding: 16px;
+      margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .card-title { font-size: 16px; font-weight: 700; color: #1B4F72; margin-bottom: 4px; }
+    .card-subtitle { font-size: 13px; color: #7F8C8D; margin-bottom: 12px; }
+
+    .manifest-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+    }
+    .manifest-header h2 { font-size: 18px; color: #1B4F72; }
+    .manifest-header .tsdf { font-size: 13px; color: #7F8C8D; }
+
+    .line-card {
+      background: #F8F9FA; border-radius: 8px; padding: 12px; margin-bottom: 10px;
+    }
+    .line-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+    }
+    .line-num { font-weight: 700; color: #2C3E50; font-size: 15px; }
+    .line-waste { font-size: 13px; color: #7F8C8D; }
+    .line-counts {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;
+    }
+    .count-chip {
+      font-size: 11px; font-weight: 700; padding: 3px 8px;
+      border-radius: 4px; text-transform: uppercase;
+    }
+    .chip-expected { background: #EBF5FB; color: #1B4F72; }
+    .chip-checkedin { background: #D6EAF8; color: #2471A3; }
+    .chip-staged { background: #FEF9E7; color: #F39C12; }
+    .chip-loaded { background: #D5F5E3; color: #27AE60; }
+    .chip-warning { background: #FADBD8; color: #E74C3C; }
+
+    .progress-bar-wrap {
+      background: #ECF0F1; border-radius: 6px; height: 8px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; border-radius: 6px; transition: width 0.3s;
+    }
+    .fill-green { background: #27AE60; }
+    .fill-yellow { background: #F39C12; }
+
+    .drum-list { list-style: none; margin-top: 8px; }
+    .drum-item {
+      display: flex; align-items: center; padding: 6px 0;
+      border-bottom: 1px solid #ECF0F1; font-size: 13px;
+    }
+    .drum-item:last-child { border-bottom: none; }
+    .drum-serial {
+      font-family: 'Courier New', monospace; font-weight: 700;
+      color: #2C3E50; flex: 1;
+    }
+    .status-badge {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      padding: 2px 6px; border-radius: 3px; text-transform: uppercase;
+    }
+    .badge-associated { background: #EBF5FB; color: #1B4F72; }
+    .badge-checkin { background: #D6EAF8; color: #2471A3; }
+    .badge-staged { background: #FEF9E7; color: #F39C12; }
+    .badge-loaded { background: #D5F5E3; color: #27AE60; }
+
+    .toggle-drums {
+      background: none; border: none; color: #2471A3; font-size: 13px;
+      cursor: pointer; padding: 4px 0; font-family: inherit; margin-top: 4px;
+    }
+    .toggle-drums:active { opacity: 0.6; }
+
+    .empty-state {
+      text-align: center; padding: 60px 20px; color: #95A5A6;
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 18px; color: #7F8C8D; margin-bottom: 6px; }
+    .empty-state p { font-size: 14px; }
+
+    .loading-spinner {
+      text-align: center; padding: 40px; color: #95A5A6; font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <a href="/">&#8592;</a>
+    <div class="header-title">Loading Status</div>
+    <button class="header-btn" id="refreshBtn">Refresh</button>
+  </div>
+
+  <div class="content">
+    <div class="search-bar">
+      <input type="text" id="manifestInput" placeholder="Manifest ID or tracking #" />
+      <button id="searchBtn">View</button>
+    </div>
+    <div id="result">
+      <div class="empty-state">
+        <div class="icon">&#128230;</div>
+        <h3>Loading Checklist</h3>
+        <p>Enter a manifest ID or tracking number to see drum loading status for that manifest.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var resultEl = document.getElementById('result');
+    var manifestInput = document.getElementById('manifestInput');
+    var currentManifestId = null;
+
+    // Check if there's a manifest ID in the URL query
+    var urlParams = window.location.search;
+    if (urlParams) {
+      var match = urlParams.match(/[?&]manifest=([^&]+)/);
+      if (match) {
+        manifestInput.value = decodeURIComponent(match[1]);
+        search();
+      }
+    }
+
+    document.getElementById('searchBtn').addEventListener('click', search);
+    document.getElementById('refreshBtn').addEventListener('click', function() {
+      if (currentManifestId) {
+        loadManifest(currentManifestId);
+      }
+    });
+    manifestInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') search();
+    });
+
+    function search() {
+      var val = manifestInput.value.trim();
+      if (!val) return;
+      resultEl.innerHTML = '<div class="loading-spinner">Loading...</div>';
+
+      // First try loading directly as an ID
+      loadManifest(val);
+    }
+
+    function loadManifest(manifestId) {
+      currentManifestId = manifestId;
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/manifests/' + encodeURIComponent(manifestId) + '/loading-status', true);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          try {
+            var result = JSON.parse(xhr.responseText);
+            if (result.lines && result.lines.length > 0) {
+              renderStatus(result);
+            } else if (result.totalDrums === 0 && result.lines.length === 0) {
+              // Might be a tracking number, try to find manifest by tracking num
+              findByTrackingNum(manifestId);
+            } else {
+              renderStatus(result);
+            }
+          } catch(e) {
+            resultEl.innerHTML = '<div class="loading-spinner">Error parsing data</div>';
+          }
+        } else if (xhr.status === 401) {
+          window.location.href = '/login';
+        } else {
+          // Might be a tracking number
+          findByTrackingNum(manifestId);
+        }
+      };
+      xhr.onerror = function() {
+        resultEl.innerHTML = '<div class="loading-spinner">Network error</div>';
+      };
+      xhr.send();
+    }
+
+    function findByTrackingNum(trackingNum) {
+      // Search manifests list
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/manifests', true);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          try {
+            var manifests = JSON.parse(xhr.responseText);
+            var found = null;
+            for (var i = 0; i < manifests.length; i++) {
+              var m = manifests[i];
+              var tn = m.manifestTrackingNum || m.manifestTrackingNumber || '';
+              if (tn.toLowerCase() === trackingNum.toLowerCase() || m.id === trackingNum) {
+                found = m;
+                break;
+              }
+            }
+            if (found) {
+              currentManifestId = found.id;
+              loadManifest(found.id);
+            } else {
+              resultEl.innerHTML = '<div class="empty-state"><div class="icon">&#128269;</div><h3>Not Found</h3><p>No manifest found matching "' + escapeHtml(trackingNum) + '"</p></div>';
+            }
+          } catch(e) {
+            resultEl.innerHTML = '<div class="loading-spinner">Error searching manifests</div>';
+          }
+        }
+      };
+      xhr.send();
+    }
+
+    function renderStatus(data) {
+      var html = '';
+      html += '<div class="card">';
+      html += '<div class="manifest-header">';
+      html += '<div>';
+      html += '<h2>' + escapeHtml(data.manifestTrackingNum || data.manifestId) + '</h2>';
+      if (data.tsdFacility) {
+        html += '<div class="tsdf">TSDF: ' + escapeHtml(data.tsdFacility) + '</div>';
+      }
+      html += '</div>';
+      html += '<div style="text-align:right;">';
+      html += '<div style="font-size:22px;font-weight:700;color:#1B4F72;">' + data.totalDrums + '</div>';
+      html += '<div style="font-size:11px;color:#7F8C8D;">total drums</div>';
+      html += '</div>';
+      html += '</div>';
+
+      // Per-line status
+      var lines = data.lines || [];
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        var loadedPct = line.expectedCount > 0 ? Math.round((line.loaded / line.expectedCount) * 100) : 0;
+        var allLoaded = line.complete;
+
+        html += '<div class="line-card">';
+        html += '<div class="line-header">';
+        html += '<div>';
+        html += '<span class="line-num">Line ' + line.lineNum + '</span>';
+        if (line.wasteDescription) {
+          html += ' <span class="line-waste">- ' + escapeHtml(line.wasteDescription) + '</span>';
+        }
+        html += '</div>';
+        if (line.containerType) {
+          html += '<span class="line-waste">' + escapeHtml(line.containerType) + '</span>';
+        }
+        html += '</div>';
+
+        // Count chips
+        html += '<div class="line-counts">';
+        html += '<span class="count-chip chip-expected">Expected: ' + line.expectedCount + '</span>';
+        html += '<span class="count-chip chip-expected">Scanned: ' + line.scannedCount + '</span>';
+        if (line.checkedIn > 0) {
+          html += '<span class="count-chip chip-checkedin">Checked In: ' + line.checkedIn + '</span>';
+        }
+        if (line.staged > 0) {
+          html += '<span class="count-chip chip-staged">Staged: ' + line.staged + '</span>';
+        }
+        html += '<span class="count-chip chip-loaded">Loaded: ' + line.loaded + '</span>';
+        if (line.warning) {
+          html += '<span class="count-chip chip-warning">' + escapeHtml(line.warning) + '</span>';
+        }
+        html += '</div>';
+
+        // Progress bar
+        var fillClass = allLoaded ? 'fill-green' : 'fill-yellow';
+        html += '<div class="progress-bar-wrap"><div class="progress-bar-fill ' + fillClass + '" style="width:' + loadedPct + '%"></div></div>';
+
+        // Drum list (collapsible)
+        if (line.drums && line.drums.length > 0) {
+          var lineId = 'drums-' + i;
+          html += '<button class="toggle-drums" onclick="toggleDrums(\'' + lineId + '\', this)">';
+          html += 'Show ' + line.drums.length + ' drum' + (line.drums.length !== 1 ? 's' : '') + ' &#9660;</button>';
+          html += '<ul class="drum-list" id="' + lineId + '" style="display:none;">';
+          for (var j = 0; j < line.drums.length; j++) {
+            var drum = line.drums[j];
+            var badgeClass = 'badge-associated';
+            var badgeText = drum.status;
+            if (drum.status === 'checkin') { badgeClass = 'badge-checkin'; badgeText = 'checked in'; }
+            else if (drum.status === 'staged') { badgeClass = 'badge-staged'; }
+            else if (drum.status === 'loaded') { badgeClass = 'badge-loaded'; }
+            html += '<li class="drum-item">';
+            html += '<span class="drum-serial">' + escapeHtml(drum.serial) + '</span>';
+            html += '<span class="status-badge ' + badgeClass + '">' + badgeText + '</span>';
+            html += '</li>';
+          }
+          html += '</ul>';
+        }
+
+        html += '</div>'; // line-card
+      }
+
+      if (lines.length === 0) {
+        html += '<div style="text-align:center;padding:20px;color:#95A5A6;font-size:14px;">No waste lines found on this manifest.</div>';
+      }
+
+      html += '</div>'; // card
+      resultEl.innerHTML = html;
+    }
+
+    function toggleDrums(id, btn) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (el.style.display === 'none') {
+        el.style.display = 'block';
+        btn.innerHTML = btn.innerHTML.replace('Show', 'Hide').replace('&#9660;', '&#9650;');
+      } else {
+        el.style.display = 'none';
+        btn.innerHTML = btn.innerHTML.replace('Hide', 'Show').replace('&#9650;', '&#9660;');
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>

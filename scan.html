@@ -541,11 +541,14 @@
 
     <div class="section-title">Scan Type</div>
     <div class="radio-group" id="scanTypeGroup">
+      <label class="radio-option" id="optCheckin">
+        <input type="radio" name="scanType" value="checkin" /> Check In
+      </label>
       <label class="radio-option selected" id="optStaged">
         <input type="radio" name="scanType" value="staged" checked /> Staged
       </label>
       <label class="radio-option" id="optLoaded">
-        <input type="radio" name="scanType" value="load" /> Loaded
+        <input type="radio" name="scanType" value="loaded" /> Loaded
       </label>
       <label class="radio-option" id="opt10day">
         <input type="radio" name="scanType" value="10day-in" /> 10-Day In
@@ -557,8 +560,6 @@
         <label>Receiving Facility</label>
         <select class="form-input" id="facilitySelect">
           <option value="">-- Select Facility --</option>
-          <option value="ies-fresno">IES Yard - Fresno</option>
-          <option value="ies-bakersfield">IES Yard - Bakersfield</option>
         </select>
       </div>
     </div>
@@ -955,8 +956,8 @@
         }
       }
 
-      // Show/hide facility picker for 10-day-in
-      if (value === '10day-in') {
+      // Show/hide facility picker for checkin and 10-day-in
+      if (value === '10day-in' || value === 'checkin') {
         $('facilityPicker').className = 'facility-picker show';
       } else {
         $('facilityPicker').className = 'facility-picker';
@@ -978,13 +979,13 @@
         type: scanType
       };
 
-      if (scanType === '10day-in') {
+      if (scanType === '10day-in' || scanType === 'checkin') {
         var facilityId = $('facilitySelect').value;
         if (!facilityId) {
           flashError('Please select a facility');
           return;
         }
-        payload.location = facilityId;
+        payload.facilityId = facilityId;
       }
 
       $('btnConfirmScan').disabled = true;
@@ -1553,6 +1554,21 @@
       xhr('GET', '/api/manifests', null, function(status, resp) {
         if (status === 200 && resp) {
           allManifests = resp;
+        }
+      });
+
+      // Load facilities for the facility picker
+      xhr('GET', '/api/yard-facilities', null, function(status, resp) {
+        if (status === 200 && resp && resp.facilities) {
+          var sel = $('facilitySelect');
+          for (var i = 0; i < resp.facilities.length; i++) {
+            var fac = resp.facilities[i];
+            if (!fac.active) continue;
+            var opt = document.createElement('option');
+            opt.value = fac.id;
+            opt.textContent = fac.name;
+            sel.appendChild(opt);
+          }
         }
       });
 

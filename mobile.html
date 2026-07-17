@@ -81,6 +81,14 @@
     .btn-scan {
       background: linear-gradient(135deg, #1B4F72, #2471A3);
     }
+    .btn-checkin {
+      background: linear-gradient(135deg, #1E8449, #27AE60);
+    }
+    .btn-loads {
+      background: linear-gradient(135deg, #B7950B, #F1C40F);
+      color: #333;
+    }
+    .btn-loads .desc { color: rgba(0,0,0,0.5); }
     .btn-admin {
       background: linear-gradient(135deg, #7D3C98, #A569BD);
     }
@@ -116,6 +124,20 @@
         <div class="desc">Scan QR codes, associate drums</div>
       </div>
     </a>
+    <a href="/checkin" class="nav-btn btn-checkin" id="checkinBtn">
+      <div class="icon">&#x2611;</div>
+      <div class="label-group">
+        <div>Check-In</div>
+        <div class="desc">Verify incoming drums</div>
+      </div>
+    </a>
+    <a href="/loads" class="nav-btn btn-loads" id="loadsBtn">
+      <div class="icon">&#x1F69A;</div>
+      <div class="label-group">
+        <div>Loads</div>
+        <div class="desc">Manage outbound loads</div>
+      </div>
+    </a>
     <a href="/admin/users" class="nav-btn btn-admin" id="adminBtn">
       <div class="icon">&#x1F465;</div>
       <div class="label-group">
@@ -144,8 +166,15 @@
           if (data.userName) {
             el.textContent = 'Hi, ' + data.userName;
           }
-          // Hide admin button for non-admin users
-          if (data.role !== 'admin') {
+          // Hide admin/office buttons for drivers
+          if (data.role === 'driver') {
+            var adminBtn = document.getElementById('adminBtn');
+            if (adminBtn) adminBtn.style.display = 'none';
+            var checkinBtn = document.getElementById('checkinBtn');
+            if (checkinBtn) checkinBtn.style.display = 'none';
+            var loadsBtn = document.getElementById('loadsBtn');
+            if (loadsBtn) loadsBtn.style.display = 'none';
+          } else if (data.role !== 'admin') {
             var adminBtn = document.getElementById('adminBtn');
             if (adminBtn) adminBtn.style.display = 'none';
           }

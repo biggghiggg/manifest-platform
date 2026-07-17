@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Loads - IES</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+      background: #F0F2F5;
+      color: #333;
+      font-size: 16px;
+      min-height: 100vh;
+      padding-top: 60px;
+    }
+
+    .header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      background: #1B4F72;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .header a { color: #fff; text-decoration: none; font-size: 22px; margin-right: 10px; }
+    .header-title { font-size: 18px; font-weight: 700; flex: 1; }
+    .header-btn {
+      background: rgba(255,255,255,0.15);
+      border: none; color: #fff; font-size: 13px;
+      padding: 6px 12px; border-radius: 6px; cursor: pointer; font-family: inherit;
+      margin-left: 6px;
+    }
+    .header-btn:active { background: rgba(255,255,255,0.3); }
+    .header-btn-green { background: #27AE60; }
+    .header-btn-green:active { background: #229954; }
+
+    .content { padding: 12px; max-width: 800px; margin: 0 auto; }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ---- TABS ---- */
+    .tabs {
+      display: flex; gap: 4px; margin-bottom: 12px; overflow-x: auto;
+    }
+    .tab {
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      padding: 8px 14px; border-radius: 6px; border: none;
+      background: #DEE2E6; color: #555; cursor: pointer; white-space: nowrap;
+    }
+    .tab.active { background: #1B4F72; color: #fff; }
+    .tab:active { opacity: 0.7; }
+
+    /* ---- CARDS ---- */
+    .card {
+      background: #fff; border-radius: 10px; padding: 16px;
+      margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      cursor: pointer; transition: box-shadow 0.15s;
+    }
+    .card:active { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .card-title { font-size: 16px; font-weight: 700; color: #1B4F72; margin-bottom: 2px; }
+    .card-subtitle { font-size: 13px; color: #7F8C8D; margin-bottom: 8px; }
+
+    .card-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 14px; padding: 4px 0;
+    }
+    .card-row .label { color: #7F8C8D; }
+    .card-row .value { font-weight: 600; color: #2C3E50; }
+
+    .status-pill {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 12px; text-transform: uppercase;
+    }
+    .pill-loading { background: #FEF9E7; color: #F39C12; }
+    .pill-departed { background: #D6EAF8; color: #2471A3; }
+    .pill-delivered { background: #D5F5E3; color: #27AE60; }
+
+    /* ---- FORM ---- */
+    .form-group { margin-bottom: 14px; }
+    .form-label {
+      display: block; font-size: 13px; font-weight: 700;
+      color: #7F8C8D; margin-bottom: 4px; text-transform: uppercase;
+    }
+    .form-input {
+      width: 100%; font-family: inherit; font-size: 15px;
+      padding: 10px 12px; border-radius: 8px;
+      border: 1px solid #DEE2E6; background: #fff;
+    }
+    .form-input:focus { outline: none; border-color: #1B4F72; }
+    .form-select {
+      width: 100%; font-family: inherit; font-size: 15px;
+      padding: 10px 12px; border-radius: 8px;
+      border: 1px solid #DEE2E6; background: #fff;
+    }
+
+    .manifest-picker { margin: 8px 0; }
+    .manifest-option {
+      display: flex; align-items: center; padding: 10px 12px;
+      background: #F8F9FA; border: 2px solid #DEE2E6;
+      border-radius: 8px; margin-bottom: 6px; cursor: pointer;
+      font-size: 14px;
+    }
+    .manifest-option.selected {
+      border-color: #1B4F72; background: #EBF5FB;
+    }
+    .manifest-option .check {
+      width: 20px; height: 20px; border-radius: 4px;
+      border: 2px solid #BDC3C7; margin-right: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: #fff;
+    }
+    .manifest-option.selected .check {
+      background: #1B4F72; border-color: #1B4F72;
+    }
+    .manifest-option .info { flex: 1; }
+    .manifest-option .track-num { font-weight: 700; color: #2C3E50; }
+    .manifest-option .gen-name { font-size: 12px; color: #7F8C8D; }
+
+    .btn {
+      display: inline-block; font-family: inherit; font-size: 16px; font-weight: 600;
+      border: none; border-radius: 8px; padding: 14px 24px;
+      cursor: pointer; text-align: center; min-height: 48px;
+    }
+    .btn:active { opacity: 0.7; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-full { display: block; width: 100%; margin-top: 10px; }
+    .btn-primary { background: #1B4F72; color: #fff; }
+    .btn-success { background: #27AE60; color: #fff; }
+    .btn-danger { background: #E74C3C; color: #fff; }
+    .btn-warn { background: #F39C12; color: #fff; }
+    .btn-secondary { background: #BDC3C7; color: #333; }
+
+    /* ---- DETAIL VIEW ---- */
+    .detail-section { margin-bottom: 16px; }
+    .detail-section h3 {
+      font-size: 14px; font-weight: 700; color: #7F8C8D;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+    }
+    .manifest-status-card {
+      background: #F8F9FA; border-radius: 8px; padding: 12px; margin-bottom: 8px;
+    }
+    .manifest-status-header {
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .manifest-status-header .track { font-weight: 700; color: #2C3E50; }
+    .manifest-status-header .count { font-size: 13px; color: #7F8C8D; }
+    .manifest-progress {
+      background: #ECF0F1; border-radius: 4px; height: 6px; margin-top: 6px; overflow: hidden;
+    }
+    .manifest-progress-fill {
+      height: 100%; border-radius: 4px; background: #27AE60;
+    }
+
+    .action-buttons {
+      display: flex; gap: 8px; margin-top: 16px;
+    }
+    .action-buttons .btn { flex: 1; }
+
+    .empty-state {
+      text-align: center; padding: 60px 20px; color: #95A5A6;
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 18px; color: #7F8C8D; margin-bottom: 6px; }
+    .empty-state p { font-size: 14px; }
+
+    .loading-spinner {
+      text-align: center; padding: 40px; color: #95A5A6; font-size: 14px;
+    }
+
+    .toast {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: #2C3E50; color: #fff; padding: 12px 24px; border-radius: 8px;
+      font-size: 14px; z-index: 2000; display: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .toast.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <a href="/">&#8592;</a>
+    <div class="header-title" id="headerTitle">Loads</div>
+    <button class="header-btn" id="refreshBtn" onclick="refreshCurrent()">Refresh</button>
+    <button class="header-btn header-btn-green" id="newLoadBtn" onclick="showNewLoad()">+ New</button>
+  </div>
+
+  <div class="content">
+    <!-- LIST SCREEN -->
+    <div class="screen active" id="listScreen">
+      <div class="tabs" id="statusTabs">
+        <button class="tab active" data-status="">All</button>
+        <button class="tab" data-status="loading">Loading</button>
+        <button class="tab" data-status="departed">Departed</button>
+        <button class="tab" data-status="delivered">Delivered</button>
+      </div>
+      <div id="loadsList">
+        <div class="loading-spinner">Loading...</div>
+      </div>
+    </div>
+
+    <!-- NEW LOAD SCREEN -->
+    <div class="screen" id="newLoadScreen">
+      <div class="card">
+        <div class="card-title">Create New Load</div>
+        <div class="card-subtitle">Select manifests and assign a truck</div>
+
+        <div class="form-group">
+          <label class="form-label">TSD Facility</label>
+          <input type="text" class="form-input" id="newTsdf" placeholder="Destination facility name" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Truck</label>
+          <input type="text" class="form-input" id="newTruck" placeholder="Truck # or license plate" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Driver</label>
+          <input type="text" class="form-input" id="newDriver" placeholder="Driver name" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <input type="text" class="form-input" id="newNotes" placeholder="Optional notes" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Manifests</label>
+          <div class="manifest-picker" id="manifestPicker">
+            <div class="loading-spinner">Loading manifests...</div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="createLoadBtn" onclick="createLoad()">Create Load</button>
+        <button class="btn btn-secondary btn-full" onclick="showList()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- DETAIL SCREEN -->
+    <div class="screen" id="detailScreen">
+      <div id="detailContent">
+        <div class="loading-spinner">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    var currentTab = '';
+    var selectedManifests = [];
+    var allManifests = [];
+    var currentLoadId = null;
+
+    // Tab clicks
+    document.getElementById('statusTabs').addEventListener('click', function(e) {
+      if (e.target.classList.contains('tab')) {
+        var tabs = document.querySelectorAll('.tab');
+        for (var i = 0; i < tabs.length; i++) { tabs[i].classList.remove('active'); }
+        e.target.classList.add('active');
+        currentTab = e.target.getAttribute('data-status');
+        loadLoadsList();
+      }
+    });
+
+    // Check URL for routing
+    function checkRoute() {
+      var path = window.location.pathname;
+      if (path === '/loads/new') {
+        showNewLoad();
+      } else if (path.indexOf('/loads/') === 0 && path !== '/loads/new') {
+        var id = path.replace('/loads/', '');
+        if (id) showDetail(id);
+        else loadLoadsList();
+      } else {
+        loadLoadsList();
+      }
+    }
+
+    function showScreen(name) {
+      var screens = document.querySelectorAll('.screen');
+      for (var i = 0; i < screens.length; i++) { screens[i].classList.remove('active'); }
+      document.getElementById(name + 'Screen').classList.add('active');
+
+      var newBtn = document.getElementById('newLoadBtn');
+      if (name === 'list') {
+        document.getElementById('headerTitle').textContent = 'Loads';
+        newBtn.style.display = '';
+      } else if (name === 'newLoad') {
+        document.getElementById('headerTitle').textContent = 'New Load';
+        newBtn.style.display = 'none';
+      } else {
+        document.getElementById('headerTitle').textContent = 'Load Detail';
+        newBtn.style.display = 'none';
+      }
+    }
+
+    function showList() {
+      showScreen('list');
+      loadLoadsList();
+      history.pushState(null, '', '/loads');
+    }
+
+    function showNewLoad() {
+      showScreen('newLoad');
+      selectedManifests = [];
+      document.getElementById('newTsdf').value = '';
+      document.getElementById('newTruck').value = '';
+      document.getElementById('newDriver').value = '';
+      document.getElementById('newNotes').value = '';
+      loadManifestsForPicker();
+      history.pushState(null, '', '/loads/new');
+    }
+
+    function showDetail(id) {
+      currentLoadId = id;
+      showScreen('detail');
+      loadDetail(id);
+      history.pushState(null, '', '/loads/' + id);
+    }
+
+    function refreshCurrent() {
+      var listScreen = document.getElementById('listScreen');
+      if (listScreen.classList.contains('active')) {
+        loadLoadsList();
+      } else if (currentLoadId) {
+        loadDetail(currentLoadId);
+      }
+    }
+
+    // ---- LIST ----
+    function loadLoadsList() {
+      var url = '/api/loads';
+      if (currentTab) url += '?status=' + currentTab;
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          var result = JSON.parse(xhr.responseText);
+          renderLoadsList(result.loads || []);
+        } else if (xhr.status === 401) {
+          window.location.href = '/login';
+        }
+      };
+      xhr.send();
+    }
+
+    function renderLoadsList(loads) {
+      var el = document.getElementById('loadsList');
+      if (loads.length === 0) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">&#128666;</div><h3>No Loads</h3><p>Tap "+ New" to create a load.</p></div>';
+        return;
+      }
+
+      var html = '';
+      // Sort newest first
+      loads.sort(function(a, b) { return (b.createdAt || '').localeCompare(a.createdAt || ''); });
+
+      for (var i = 0; i < loads.length; i++) {
+        var load = loads[i];
+        var pillClass = 'pill-loading';
+        if (load.status === 'departed') pillClass = 'pill-departed';
+        if (load.status === 'delivered') pillClass = 'pill-delivered';
+
+        html += '<div class="card" onclick="showDetail(\'' + load.id + '\')">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+        html += '<div class="card-title">' + escapeHtml(load.tsdFacility || 'Load') + '</div>';
+        html += '<span class="status-pill ' + pillClass + '">' + load.status + '</span>';
+        html += '</div>';
+
+        var details = [];
+        if (load.truck) details.push('Truck: ' + load.truck);
+        if (load.driver) details.push('Driver: ' + load.driver);
+        details.push(load.manifestIds.length + ' manifest' + (load.manifestIds.length !== 1 ? 's' : ''));
+        html += '<div class="card-subtitle">' + escapeHtml(details.join(' | ')) + '</div>';
+
+        html += '<div class="card-row"><span class="label">Created</span><span class="value">' + formatDate(load.createdAt) + '</span></div>';
+        if (load.departedAt) {
+          html += '<div class="card-row"><span class="label">Departed</span><span class="value">' + formatDate(load.departedAt) + '</span></div>';
+        }
+        if (load.deliveredAt) {
+          html += '<div class="card-row"><span class="label">Delivered</span><span class="value">' + formatDate(load.deliveredAt) + '</span></div>';
+        }
+        html += '</div>';
+      }
+      el.innerHTML = html;
+    }
+
+    // ---- NEW LOAD ----
+    function loadManifestsForPicker() {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/manifests', true);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          allManifests = JSON.parse(xhr.responseText);
+          renderManifestPicker();
+        }
+      };
+      xhr.send();
+    }
+
+    function renderManifestPicker() {
+      var el = document.getElementById('manifestPicker');
+      if (allManifests.length === 0) {
+        el.innerHTML = '<div style="color:#95A5A6;font-size:14px;padding:8px;">No manifests available</div>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < allManifests.length; i++) {
+        var m = allManifests[i];
+        var trackNum = m.manifestTrackingNum || m.manifestTrackingNumber || m.id;
+        var genName = m.generatorName || '';
+        var isSelected = selectedManifests.indexOf(m.id) !== -1;
+        html += '<div class="manifest-option' + (isSelected ? ' selected' : '') + '" onclick="toggleManifest(\'' + m.id + '\')">';
+        html += '<div class="check">' + (isSelected ? '&#10003;' : '') + '</div>';
+        html += '<div class="info">';
+        html += '<div class="track-num">' + escapeHtml(trackNum) + '</div>';
+        if (genName) html += '<div class="gen-name">' + escapeHtml(genName) + '</div>';
+        html += '</div>';
+        html += '</div>';
+      }
+      el.innerHTML = html;
+    }
+
+    function toggleManifest(id) {
+      var idx = selectedManifests.indexOf(id);
+      if (idx === -1) {
+        selectedManifests.push(id);
+      } else {
+        selectedManifests.splice(idx, 1);
+      }
+      renderManifestPicker();
+    }
+
+    function createLoad() {
+      if (selectedManifests.length === 0) {
+        showToast('Select at least one manifest');
+        return;
+      }
+
+      var payload = {
+        manifestIds: selectedManifests,
+        tsdFacility: document.getElementById('newTsdf').value.trim(),
+        truck: document.getElementById('newTruck').value.trim(),
+        driver: document.getElementById('newDriver').value.trim(),
+        notes: document.getElementById('newNotes').value.trim()
+      };
+
+      var btn = document.getElementById('createLoadBtn');
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/loads', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function() {
+        btn.disabled = false;
+        btn.textContent = 'Create Load';
+        if (xhr.status === 201) {
+          var result = JSON.parse(xhr.responseText);
+          showToast('Load created');
+          showDetail(result.load.id);
+        } else {
+          try {
+            var err = JSON.parse(xhr.responseText);
+            showToast(err.error || 'Error creating load');
+          } catch(e) {
+            showToast('Error creating load');
+          }
+        }
+      };
+      xhr.onerror = function() {
+        btn.disabled = false;
+        btn.textContent = 'Create Load';
+        showToast('Network error');
+      };
+      xhr.send(JSON.stringify(payload));
+    }
+
+    // ---- DETAIL ----
+    function loadDetail(id) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/loads/' + encodeURIComponent(id), true);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          var result = JSON.parse(xhr.responseText);
+          renderDetail(result);
+        } else if (xhr.status === 404) {
+          document.getElementById('detailContent').innerHTML = '<div class="empty-state"><div class="icon">&#128269;</div><h3>Load Not Found</h3></div>';
+        } else if (xhr.status === 401) {
+          window.location.href = '/login';
+        }
+      };
+      xhr.send();
+    }
+
+    function renderDetail(data) {
+      var load = data.load;
+      var manifests = data.manifests || [];
+      var pillClass = 'pill-loading';
+      if (load.status === 'departed') pillClass = 'pill-departed';
+      if (load.status === 'delivered') pillClass = 'pill-delivered';
+
+      var html = '<div class="card">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+      html += '<div class="card-title">' + escapeHtml(load.tsdFacility || 'Load') + '</div>';
+      html += '<span class="status-pill ' + pillClass + '">' + load.status + '</span>';
+      html += '</div>';
+
+      html += '<div class="card-row"><span class="label">Truck</span><span class="value">' + escapeHtml(load.truck || '-') + '</span></div>';
+      html += '<div class="card-row"><span class="label">Driver</span><span class="value">' + escapeHtml(load.driver || '-') + '</span></div>';
+      html += '<div class="card-row"><span class="label">Created</span><span class="value">' + formatDate(load.createdAt) + '</span></div>';
+      if (load.departedAt) {
+        html += '<div class="card-row"><span class="label">Departed</span><span class="value">' + formatDate(load.departedAt) + '</span></div>';
+      }
+      if (load.deliveredAt) {
+        html += '<div class="card-row"><span class="label">Delivered</span><span class="value">' + formatDate(load.deliveredAt) + '</span></div>';
+      }
+      if (load.notes) {
+        html += '<div class="card-row"><span class="label">Notes</span><span class="value">' + escapeHtml(load.notes) + '</span></div>';
+      }
+      html += '</div>';
+
+      // Manifests section
+      html += '<div class="detail-section">';
+      html += '<h3>Manifests (' + manifests.length + ')</h3>';
+      for (var i = 0; i < manifests.length; i++) {
+        var m = manifests[i];
+        var pct = m.totalDrums > 0 ? Math.round((m.loadedCount / m.totalDrums) * 100) : 0;
+        html += '<div class="manifest-status-card">';
+        html += '<div class="manifest-status-header">';
+        html += '<span class="track">' + escapeHtml(m.trackingNum) + '</span>';
+        html += '<span class="count">' + m.loadedCount + '/' + m.totalDrums + ' loaded' + (m.complete ? ' &#9989;' : '') + '</span>';
+        html += '</div>';
+        if (m.generator) {
+          html += '<div style="font-size:12px;color:#7F8C8D;">' + escapeHtml(m.generator) + '</div>';
+        }
+        html += '<div class="manifest-progress"><div class="manifest-progress-fill" style="width:' + pct + '%"></div></div>';
+        html += '</div>';
+      }
+      html += '</div>';
+
+      // Action buttons
+      if (load.status === 'loading') {
+        html += '<div class="action-buttons">';
+        html += '<button class="btn btn-warn" onclick="updateLoadStatus(\'' + load.id + '\', \'departed\')">Mark Departed</button>';
+        html += '<button class="btn btn-danger" onclick="deleteLoad(\'' + load.id + '\')">Delete</button>';
+        html += '</div>';
+      } else if (load.status === 'departed') {
+        html += '<div class="action-buttons">';
+        html += '<button class="btn btn-success" onclick="updateLoadStatus(\'' + load.id + '\', \'delivered\')">Mark Delivered</button>';
+        html += '</div>';
+      }
+
+      html += '<button class="btn btn-secondary btn-full" style="margin-top:8px;" onclick="showList()">Back to Loads</button>';
+
+      document.getElementById('detailContent').innerHTML = html;
+    }
+
+    function updateLoadStatus(id, newStatus) {
+      var confirmMsg = newStatus === 'departed' ?
+        'Mark this load as departed? This will close 10-day clocks for all drums on this load.' :
+        'Mark this load as delivered? This will update all manifests.';
+      if (!confirm(confirmMsg)) return;
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('PUT', '/api/loads/' + encodeURIComponent(id), true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          showToast('Load ' + newStatus);
+          loadDetail(id);
+        } else {
+          showToast('Error updating load');
+        }
+      };
+      xhr.send(JSON.stringify({ status: newStatus }));
+    }
+
+    function deleteLoad(id) {
+      if (!confirm('Delete this load? This cannot be undone.')) return;
+      var xhr = new XMLHttpRequest();
+      xhr.open('DELETE', '/api/loads/' + encodeURIComponent(id), true);
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          showToast('Load deleted');
+          showList();
+        } else {
+          try {
+            var err = JSON.parse(xhr.responseText);
+            showToast(err.error || 'Error deleting load');
+          } catch(e) {
+            showToast('Error deleting');
+          }
+        }
+      };
+      xhr.send();
+    }
+
+    // ---- UTILS ----
+    function formatDate(iso) {
+      if (!iso) return '-';
+      var d = new Date(iso);
+      var month = d.getMonth() + 1;
+      var day = d.getDate();
+      var hr = d.getHours();
+      var min = d.getMinutes();
+      var ampm = hr >= 12 ? 'pm' : 'am';
+      hr = hr % 12; if (hr === 0) hr = 12;
+      return month + '/' + day + ' ' + hr + ':' + (min < 10 ? '0' : '') + min + ampm;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function showToast(msg) {
+      var el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(function() { el.classList.remove('show'); }, 2500);
+    }
+
+    // Init
+    checkRoute();
+    window.addEventListener('popstate', function() { checkRoute(); });
+  </script>
+</body>
+</html>
