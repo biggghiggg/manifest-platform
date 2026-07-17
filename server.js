@@ -6719,6 +6719,10 @@ app.get('/scan', function(req, res) {
   res.sendFile(path.join(__dirname, 'scan.html'));
 });
 
+app.get('/admin', function(req, res) {
+  res.redirect('/admin/users');
+});
+
 app.get('/admin/users', function(req, res) {
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
