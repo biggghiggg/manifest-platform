@@ -17,6 +17,9 @@
     .nav-tab{background:transparent;border:none;color:rgba(255,255,255,0.6);padding:8px 16px;border-radius:8px 8px 0 0;cursor:pointer;font-size:14px;font-weight:500;transition:all 0.2s}
     .nav-tab:hover{color:#fff;background:rgba(255,255,255,0.1)}
     .nav-tab.active{color:#fff;background:rgba(255,255,255,0.15);border-bottom:2px solid #e94560}
+    .nav-link{background:transparent;border:none;color:rgba(255,255,255,0.6);padding:8px 16px;border-radius:8px 8px 0 0;cursor:pointer;font-size:14px;font-weight:500;transition:all 0.2s;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .nav-link:hover{color:#fff;background:rgba(255,255,255,0.1)}
+    .nav-divider{width:1px;height:24px;background:rgba(255,255,255,0.2);margin:0 8px}
     .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:12px}
     .status-dot.connected{background:#4ade80;box-shadow:0 0 6px #4ade80}
     .status-dot.disconnected{background:#f87171}
@@ -320,7 +323,10 @@
             React.createElement('button',{className:'nav-tab'+(tab==='profiles'?' active':''),onClick:function(){setTab('profiles')}},'Profiles'),
             React.createElement('button',{className:'nav-tab'+(tab==='pickups'?' active':''),onClick:function(){setTab('pickups')},style:{color:tab==='pickups'?'#fff':'rgba(255,255,255,0.85)'}},'Pickups'),
             React.createElement('button',{className:'nav-tab'+(tab==='import'?' active':''),onClick:function(){setTab('import')}},'Import'),
-            React.createElement('button',{className:'nav-tab'+(tab==='alignment'?' active':''),onClick:function(){setTab('alignment')},style:{color:tab==='alignment'?'#fff':'rgba(255,255,255,0.4)'}},'Alignment')
+            React.createElement('button',{className:'nav-tab'+(tab==='alignment'?' active':''),onClick:function(){setTab('alignment')},style:{color:tab==='alignment'?'#fff':'rgba(255,255,255,0.4)'}},'Alignment'),
+            React.createElement('span',{className:'nav-divider'}),
+            React.createElement('a',{className:'nav-link',href:'/scan'},'Scan'),
+            React.createElement('a',{className:'nav-link',href:'/admin'},'Admin')
           ),
           React.createElement('span',{className:'status-dot '+(connected?'connected':'disconnected'),title:connected?'Connected':'Disconnected'})
         ),
