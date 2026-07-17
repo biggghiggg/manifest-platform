@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IES Manifest Platform</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #fff;
+    }
+    .logo {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+    .logo span { color: #e94560; }
+    .subtitle {
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 40px;
+    }
+    .user-greeting {
+      font-size: 16px;
+      color: rgba(255,255,255,0.8);
+      margin-bottom: 32px;
+    }
+    .nav-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      width: 100%;
+      max-width: 360px;
+    }
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 24px;
+      border-radius: 14px;
+      text-decoration: none;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 600;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .nav-btn:active {
+      transform: scale(0.97);
+    }
+    .nav-btn .icon {
+      font-size: 28px;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.15);
+      flex-shrink: 0;
+    }
+    .nav-btn .label-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .nav-btn .desc {
+      font-size: 13px;
+      font-weight: 400;
+      opacity: 0.7;
+      margin-top: 2px;
+    }
+    .btn-scan {
+      background: linear-gradient(135deg, #1B4F72, #2471A3);
+    }
+    .btn-admin {
+      background: linear-gradient(135deg, #7D3C98, #A569BD);
+    }
+    .btn-platform {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      box-shadow: none;
+    }
+    .btn-platform .desc {
+      opacity: 0.5;
+    }
+    .logout-link {
+      margin-top: 40px;
+      color: rgba(255,255,255,0.4);
+      font-size: 14px;
+      text-decoration: none;
+      padding: 8px 16px;
+    }
+    .logout-link:active {
+      color: rgba(255,255,255,0.7);
+    }
+  </style>
+</head>
+<body>
+  <div class="logo"><span>IES</span> Manifest Platform</div>
+  <div class="subtitle">Independence Environmental Services</div>
+  <div class="user-greeting" id="greeting">Welcome</div>
+  <div class="nav-buttons" id="navButtons">
+    <a href="/scan" class="nav-btn btn-scan">
+      <div class="icon">&#x1F4F7;</div>
+      <div class="label-group">
+        <div>Drum Scanner</div>
+        <div class="desc">Scan QR codes, associate drums</div>
+      </div>
+    </a>
+    <a href="/admin/users" class="nav-btn btn-admin" id="adminBtn">
+      <div class="icon">&#x1F465;</div>
+      <div class="label-group">
+        <div>Admin</div>
+        <div class="desc">Manage users and PINs</div>
+      </div>
+    </a>
+    <a href="/platform" class="nav-btn btn-platform">
+      <div class="icon">&#x1F4CB;</div>
+      <div class="label-group">
+        <div>Full Platform</div>
+        <div class="desc">Manifests, generators, labels, BOLs</div>
+      </div>
+    </a>
+  </div>
+  <a href="#" class="logout-link" id="logoutLink">Logout</a>
+
+  <script>
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/auth/me', true);
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          var el = document.getElementById('greeting');
+          if (data.userName) {
+            el.textContent = 'Hi, ' + data.userName;
+          }
+          // Hide admin button for non-admin users
+          if (data.role !== 'admin') {
+            var adminBtn = document.getElementById('adminBtn');
+            if (adminBtn) adminBtn.style.display = 'none';
+          }
+        } catch(e) {}
+      } else if (xhr.status === 401) {
+        window.location.href = '/login';
+      }
+    };
+    xhr.onerror = function() {
+      window.location.href = '/login';
+    };
+    xhr.send();
+
+    document.getElementById('logoutLink').addEventListener('click', function(e) {
+      e.preventDefault();
+      var lx = new XMLHttpRequest();
+      lx.open('POST', '/api/auth/logout', true);
+      lx.onload = function() { window.location.href = '/login'; };
+      lx.onerror = function() { window.location.href = '/login'; };
+      lx.send();
+    });
+  </script>
+</body>
+</html>

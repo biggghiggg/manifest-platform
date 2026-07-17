@@ -6711,6 +6711,21 @@ app.post('/api/unassigned-scans/:id/assign', function(req, res) {
 // PAGE ROUTES
 // ============================================================
 
+// Root route: mobile devices get landing page, desktop gets full platform
+app.get('/', function(req, res) {
+  var ua = (req.headers['user-agent'] || '').toLowerCase();
+  var isMobile = /iphone|ipod|android.*mobile|windows phone|blackberry/i.test(ua);
+  if (isMobile) {
+    return res.sendFile(path.join(__dirname, 'mobile.html'));
+  }
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Full platform (accessible from mobile landing page)
+app.get('/platform', function(req, res) {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 app.get('/login', function(req, res) {
   res.sendFile(path.join(__dirname, 'login.html'));
 });
