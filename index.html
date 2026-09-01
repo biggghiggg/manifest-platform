@@ -86,7 +86,7 @@
       var formType = 'main';
       if (url.indexOf('/label/') !== -1 || url.indexOf('/labels/') !== -1) formType = 'label';
       else if (url.indexOf('/bol/') !== -1) formType = 'bol';
-      else if (url.indexOf('/nonhaz/') !== -1 || url.indexOf('/non-haz/') !== -1) formType = 'nonhaz';
+      else if (url.indexOf('/nonhaz') !== -1 || url.indexOf('/non-haz') !== -1) formType = 'nonhaz';
       else if (url.indexOf('/continuation/') !== -1) formType = 'cont';
       var storageKey = 'ies_myPrinter_' + formType;
       var stored = {};

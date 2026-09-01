@@ -3175,8 +3175,9 @@ app.get('/api/print/label/:id', function(req, res) {
   var BASE_TOP_OFFSET = 0;
   var labelColShift = (typeof data.colShiftLabel === 'number') ? data.colShiftLabel : 0;
   var labelRowShift = (typeof data.rowShiftLabel === 'number') ? data.rowShiftLabel : 0;
-  var colOffsetIn = BASE_LEFT_OFFSET + (labelColShift / CPI) + (parseFloat(req.query.colOffset) || 0);
-  var rowOffsetIn = BASE_TOP_OFFSET + (labelRowShift / LPI) + (parseFloat(req.query.rowOffset) || 0);
+  // My Printer per-browser offsets are in character/row positions - convert to inches
+  var colOffsetIn = BASE_LEFT_OFFSET + (labelColShift / CPI) + ((parseFloat(req.query.colOffset) || 0) / CPI);
+  var rowOffsetIn = BASE_TOP_OFFSET + (labelRowShift / LPI) + ((parseFloat(req.query.rowOffset) || 0) / LPI);
 
   var placements = [];
 
@@ -3354,8 +3355,9 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
   var LPI = 6;
   var labelColShiftB = (typeof data.colShiftLabel === 'number') ? data.colShiftLabel : 0;
   var labelRowShiftB = (typeof data.rowShiftLabel === 'number') ? data.rowShiftLabel : 0;
-  var colOffsetIn = (labelColShiftB / CPI) + (parseFloat(req.query.colOffset) || 0);
-  var rowOffsetIn = (labelRowShiftB / LPI) + (parseFloat(req.query.rowOffset) || 0);
+  // My Printer per-browser offsets are in character/row positions - convert to inches
+  var colOffsetIn = (labelColShiftB / CPI) + ((parseFloat(req.query.colOffset) || 0) / CPI);
+  var rowOffsetIn = (labelRowShiftB / LPI) + ((parseFloat(req.query.rowOffset) || 0) / LPI);
 
   var totalHeight = 6 * manifestLabels.length;
   var html = '<!DOCTYPE html><html><head><title>Print Labels</title><style>';
@@ -3815,8 +3817,9 @@ app.get('/api/print/bol/:id', function(req, res) {
   applyFieldOffsets(M, _fo);
   var CPI = 10;
   var LPI = 6;
-  var colOffsetIn = parseFloat(req.query.colOffset) || 0;
-  var rowOffsetIn = parseFloat(req.query.rowOffset) || 0;
+  // My Printer per-browser offsets are in character/row positions - convert to inches
+  var colOffsetIn = (parseFloat(req.query.colOffset) || 0) / CPI;
+  var rowOffsetIn = (parseFloat(req.query.rowOffset) || 0) / LPI;
 
   var placements = [];
   function place(fieldKey, text) {
@@ -4939,7 +4942,9 @@ app.get('/api/print/direct/:id', function(req, res) {
   rowShift = (typeof data.rowShift === 'number') ? data.rowShift : 0;
   customAlignment = data.customAlignment || null;
   customAlignment22a = data.customAlignment22a || null;
-  console.log('Direct Print: using colShift=' + colShift + ', rowShift=' + rowShift + ', hasCustomAlignment=' + !!customAlignment);
+  var myPrinterCol = parseFloat(req.query.colOffset) || 0;
+  var myPrinterRow = parseFloat(req.query.rowOffset) || 0;
+  console.log('Direct Print: using colShift=' + colShift + ', rowShift=' + rowShift + ', myPrinterCol=' + myPrinterCol + ', myPrinterRow=' + myPrinterRow + ', hasCustomAlignment=' + !!customAlignment);
 
   var manifest = null;
   for (var i = 0; i < data.manifests.length; i++) {
@@ -5308,15 +5313,19 @@ app.get('/api/print/direct/:id', function(req, res) {
   // Apply saved alignment shifts (colShift/rowShift from Alignment tab) + query param overrides
   var savedColShiftIn = colShift / CPI;  // convert column shift to inches
   var savedRowShiftIn = rowShift / LPI;  // convert row shift to inches
-  var colOffsetIn = BASE_LEFT_OFFSET + savedColShiftIn + (parseFloat(req.query.colOffset) || 0);
-  var rowOffsetIn = BASE_TOP_OFFSET + savedRowShiftIn + (parseFloat(req.query.rowOffset) || 0);
+  // My Printer per-browser offsets are in character/row positions (same units as server alignment)
+  // Must convert to inches by dividing by CPI/LPI, just like savedColShiftIn/savedRowShiftIn
+  var myPrinterColIn = (parseFloat(req.query.colOffset) || 0) / CPI;
+  var myPrinterRowIn = (parseFloat(req.query.rowOffset) || 0) / LPI;
+  var colOffsetIn = BASE_LEFT_OFFSET + savedColShiftIn + myPrinterColIn;
+  var rowOffsetIn = BASE_TOP_OFFSET + savedRowShiftIn + myPrinterRowIn;
   // Continuation page (22A) shifts - applied to page 2+
   var colShift22aVal = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
   var rowShift22aVal = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
   var contColExtra = (parseFloat(req.query.colOffset22a) || 0) || (parseFloat(req.query.colOffset) || 0);
   var contRowExtra = (parseFloat(req.query.rowOffset22a) || 0) || (parseFloat(req.query.rowOffset) || 0);
-  var contColOffsetIn = BASE_LEFT_OFFSET + (colShift22aVal / CPI) + contColExtra;
-  var contRowOffsetIn = BASE_TOP_OFFSET + (rowShift22aVal / LPI) + contRowExtra;
+  var contColOffsetIn = BASE_LEFT_OFFSET + (colShift22aVal / CPI) + (contColExtra / CPI);
+  var contRowOffsetIn = BASE_TOP_OFFSET + (rowShift22aVal / LPI) + (contRowExtra / LPI);
 
   var html = '<!DOCTYPE html><html><head><title>Print Manifest</title><style>';
   html += '@page { margin: 0; size: 8.5in 11in; }';
@@ -5790,7 +5799,9 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
   // Use non-haz alignment shifts
   var nhColShift = (typeof data.colShiftNonhaz === 'number') ? data.colShiftNonhaz : 0;
   var nhRowShift = (typeof data.rowShiftNonhaz === 'number') ? data.rowShiftNonhaz : 0;
-  console.log('Non-Haz Direct Print: using colShift=' + nhColShift + ', rowShift=' + nhRowShift + ', hasCustomAlignment=' + !!customAlignmentNonhaz);
+  var nhMyPrinterCol = parseFloat(req.query.colOffset) || 0;
+  var nhMyPrinterRow = parseFloat(req.query.rowOffset) || 0;
+  console.log('Non-Haz Direct Print: using colShift=' + nhColShift + ', rowShift=' + nhRowShift + ', myPrinterCol=' + nhMyPrinterCol + ', myPrinterRow=' + nhMyPrinterRow + ', hasCustomAlignment=' + !!customAlignmentNonhaz);
 
   var manifest = null;
   for (var i = 0; i < data.manifests.length; i++) {
@@ -6124,15 +6135,18 @@ app.get('/api/print/nonhaz-direct/:id', function(req, res) {
   var BASE_LEFT_OFFSET = 0.0;
   var savedColShiftIn = nhColShift / CPI;
   var savedRowShiftIn = nhRowShift / LPI;
-  var colOffsetIn = BASE_LEFT_OFFSET + savedColShiftIn + (parseFloat(req.query.colOffset) || 0);
-  var rowOffsetIn = BASE_TOP_OFFSET + savedRowShiftIn + (parseFloat(req.query.rowOffset) || 0);
+  // My Printer per-browser offsets are in character/row positions - convert to inches
+  var nhMyPrinterColIn = (parseFloat(req.query.colOffset) || 0) / CPI;
+  var nhMyPrinterRowIn = (parseFloat(req.query.rowOffset) || 0) / LPI;
+  var colOffsetIn = BASE_LEFT_OFFSET + savedColShiftIn + nhMyPrinterColIn;
+  var rowOffsetIn = BASE_TOP_OFFSET + savedRowShiftIn + nhMyPrinterRowIn;
   // Non-haz continuation uses same 22A shifts (shared with haz for now)
   var nhColShift22a = (typeof data.colShift22a === 'number') ? data.colShift22a : 0;
   var nhRowShift22a = (typeof data.rowShift22a === 'number') ? data.rowShift22a : 0;
   var nhContColExtra = (parseFloat(req.query.colOffset22a) || 0) || (parseFloat(req.query.colOffset) || 0);
   var nhContRowExtra = (parseFloat(req.query.rowOffset22a) || 0) || (parseFloat(req.query.rowOffset) || 0);
-  var contColOffsetIn = BASE_LEFT_OFFSET + (nhColShift22a / CPI) + nhContColExtra;
-  var contRowOffsetIn = BASE_TOP_OFFSET + (nhRowShift22a / LPI) + nhContRowExtra;
+  var contColOffsetIn = BASE_LEFT_OFFSET + (nhColShift22a / CPI) + (nhContColExtra / CPI);
+  var contRowOffsetIn = BASE_TOP_OFFSET + (nhRowShift22a / LPI) + (nhContRowExtra / LPI);
 
   var html = '<!DOCTYPE html><html><head><title>Print Non-Haz Manifest</title><style>';
   html += '@page { margin: 0; size: 8.5in 11in; }';
