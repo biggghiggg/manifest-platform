@@ -3364,7 +3364,7 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
   html += '@page { margin: 0; size: 6in ' + totalHeight + 'in; }';
   html += '@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } }';
   html += 'body { margin: 0; padding: 0; }';
-  html += '.label-box { position: relative; width: 6in; height: 6in; overflow: visible; }';
+  html += '.sheet { position: relative; width: 6in; height: ' + totalHeight + 'in; }';
   html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: bold; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
@@ -3378,14 +3378,11 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
   html += '<span style="margin-left:20px;font-size:12px;color:#666">Batch labels - Epson LQ-590II (' + manifestLabels.length + ' labels). Set paper size to 6x' + totalHeight + ' and margins to None.</span>';
   html += '</div>';
 
+  // Single-sheet approach: one container, all fields positioned with pageOffsetIn
+  html += '<div class="sheet">';
   for (var li = 0; li < manifestLabels.length; li++) {
     var label = manifestLabels[li];
     var placements = [];
-
-    function placeB(fieldKey, text) {
-      if (!text || !M[fieldKey]) return;
-      placements.push({ row: M[fieldKey].row, col: M[fieldKey].col, text: String(text) });
-    }
 
     // DOT Shipping Name
     var dotName = (label.dotShippingName || '').trim();
@@ -3398,30 +3395,32 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
         line1 += (line1 ? ' ' : '') + words[wi];
         lineIdx = wi + 1;
       }
-      placeB('dotShippingName1', line1);
-      placeB('dotShippingName2', words.slice(lineIdx).join(' '));
+      if (line1 && M.dotShippingName1) { placements.push({ row: M.dotShippingName1.row, col: M.dotShippingName1.col, text: String(line1) }); }
+      var line2 = words.slice(lineIdx).join(' ');
+      if (line2 && M.dotShippingName2) { placements.push({ row: M.dotShippingName2.row, col: M.dotShippingName2.col, text: String(line2) }); }
     } else {
-      placeB('dotShippingName1', dotName);
+      if (dotName && M.dotShippingName1) { placements.push({ row: M.dotShippingName1.row, col: M.dotShippingName1.col, text: String(dotName) }); }
     }
 
-    placeB('genName', label.genName);
-    placeB('genAddress', label.genAddress);
-    placeB('genCityStateZip', label.genCityStateZip);
-    placeB('genPhone', label.genPhone);
-    placeB('profileNumber', label.profileNumber ? 'Profile # ' + label.profileNumber : '');
-    placeB('epaId', label.epaId);
+    if (label.genName && M.genName) { placements.push({ row: M.genName.row, col: M.genName.col, text: String(label.genName) }); }
+    if (label.genAddress && M.genAddress) { placements.push({ row: M.genAddress.row, col: M.genAddress.col, text: String(label.genAddress) }); }
+    if (label.genCityStateZip && M.genCityStateZip) { placements.push({ row: M.genCityStateZip.row, col: M.genCityStateZip.col, text: String(label.genCityStateZip) }); }
+    if (label.genPhone && M.genPhone) { placements.push({ row: M.genPhone.row, col: M.genPhone.col, text: String(label.genPhone) }); }
+    var profText = label.profileNumber ? 'Profile # ' + label.profileNumber : '';
+    if (profText && M.profileNumber) { placements.push({ row: M.profileNumber.row, col: M.profileNumber.col, text: String(profText) }); }
+    if (label.epaId && M.epaId) { placements.push({ row: M.epaId.row, col: M.epaId.col, text: String(label.epaId) }); }
     var bAllWC = (label.epaWasteNum || '').trim();
     if (bAllWC) {
       var bCodes = bAllWC.replace(/([A-Za-z]\d{3})/g, ' $1').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
       if (bCodes.length > 3) {
-        placeB('epaWasteNum', bCodes.slice(0, 3).join(' '));
-        placeB('epaWasteNum2', bCodes.slice(3).join(' '));
+        if (M.epaWasteNum) { placements.push({ row: M.epaWasteNum.row, col: M.epaWasteNum.col, text: String(bCodes.slice(0, 3).join(' ')) }); }
+        if (M.epaWasteNum2) { placements.push({ row: M.epaWasteNum2.row, col: M.epaWasteNum2.col, text: String(bCodes.slice(3).join(' ')) }); }
       } else {
-        placeB('epaWasteNum', bAllWC);
+        if (M.epaWasteNum) { placements.push({ row: M.epaWasteNum.row, col: M.epaWasteNum.col, text: String(bAllWC) }); }
       }
     }
-    placeB('stateWasteCode', label.stateWasteCode);
-    placeB('accumStartDate', label.accumStartDate);
+    if (label.stateWasteCode && M.stateWasteCode) { placements.push({ row: M.stateWasteCode.row, col: M.stateWasteCode.col, text: String(label.stateWasteCode) }); }
+    if (label.accumStartDate && M.accumStartDate) { placements.push({ row: M.accumStartDate.row, col: M.accumStartDate.col, text: String(label.accumStartDate) }); }
     // Manifest tracking number - fall back to manifest record if label doesn't have it
     var bTrackNo = label.manifestTrackNo || '';
     if (!bTrackNo && label.manifestId) {
@@ -3461,26 +3460,27 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
         }
         cLines[cLineNum] += (cLines[cLineNum] ? ' ' : '') + cWords[ci];
       }
-      if (cLines[0]) placeB('contents1', cLines[0]);
-      if (cLines[1]) placeB('contents2', cLines[1]);
+      if (cLines[0] && M.contents1) { placements.push({ row: M.contents1.row, col: M.contents1.col, text: String(cLines[0]) }); }
+      if (cLines[1] && M.contents2) { placements.push({ row: M.contents2.row, col: M.contents2.col, text: String(cLines[1]) }); }
     }
 
-    if (label.physicalState === 'solid') placeB('physStateSolid', 'X');
-    if (label.physicalState === 'liquid') placeB('physStateLiquid', 'X');
-    if (label.physicalState === 'gas') placeB('physStateGas', 'X');
+    if (label.physicalState === 'solid' && M.physStateSolid) { placements.push({ row: M.physStateSolid.row, col: M.physStateSolid.col, text: 'X' }); }
+    if (label.physicalState === 'liquid' && M.physStateLiquid) { placements.push({ row: M.physStateLiquid.row, col: M.physStateLiquid.col, text: 'X' }); }
+    if (label.physicalState === 'gas' && M.physStateGas) { placements.push({ row: M.physStateGas.row, col: M.physStateGas.col, text: 'X' }); }
 
     var hp = label.hazProps || {};
-    if (hp.flammable) placeB('hazPropFlammable', 'X');
-    if (hp.corrosive) placeB('hazPropCorrosive', 'X');
-    if (hp.reactivity) placeB('hazPropReactivity', 'X');
-    if (hp.toxic) placeB('hazPropToxic', 'X');
-    if (hp.other) placeB('hazPropOther', 'X');
+    if (hp.flammable && M.hazPropFlammable) { placements.push({ row: M.hazPropFlammable.row, col: M.hazPropFlammable.col, text: 'X' }); }
+    if (hp.corrosive && M.hazPropCorrosive) { placements.push({ row: M.hazPropCorrosive.row, col: M.hazPropCorrosive.col, text: 'X' }); }
+    if (hp.reactivity && M.hazPropReactivity) { placements.push({ row: M.hazPropReactivity.row, col: M.hazPropReactivity.col, text: 'X' }); }
+    if (hp.toxic && M.hazPropToxic) { placements.push({ row: M.hazPropToxic.row, col: M.hazPropToxic.col, text: 'X' }); }
+    if (hp.other && M.hazPropOther) { placements.push({ row: M.hazPropOther.row, col: M.hazPropOther.col, text: 'X' }); }
 
-    html += '<div class="label-box">';
+    // Render all fields for this label with pageOffsetIn (same approach as single-label endpoint)
+    var pageOffsetIn = li * 6;
     for (var pi = 0; pi < placements.length; pi++) {
       var p = placements[pi];
       var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
-      var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
+      var topIn = ((p.row - 1) / LPI) + rowOffsetIn + pageOffsetIn;
       var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       if (p.large) {
         html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:36pt;font-weight:bold;letter-spacing:2px;">' + safeText + '</span>';
@@ -3490,8 +3490,8 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
         html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
       }
     }
-    html += '</div>'; // close label-box
   }
+  html += '</div>';
   html += '</body></html>';
   res.type('html').send(html);
 
