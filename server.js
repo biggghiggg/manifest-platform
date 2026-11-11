@@ -3361,10 +3361,10 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
 
   var totalHeight = 6 * manifestLabels.length;
   var html = '<!DOCTYPE html><html><head><title>Print Labels</title><style>';
-  html += '@page { margin: 0; size: 6in 6in; }';
+  html += '@page { margin: 0; size: 6in ' + totalHeight + 'in; }';
   html += '@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } }';
   html += 'body { margin: 0; padding: 0; }';
-  html += '.label-page { position: relative; width: 6in; height: 6in; overflow: visible; page-break-after: always; } .label-page:last-child { page-break-after: auto; }';
+  html += '.sheet { position: relative; width: 6in; height: ' + totalHeight + 'in; overflow: visible; }';
   html += '.field { position: absolute; font-family: "Courier New", Courier, monospace; font-size: 10pt; font-weight: bold; line-height: 1; white-space: pre; margin: 0; padding: 0; }';
   html += '.toolbar { padding: 10px; background: #f0f0f0; text-align: center; font-family: sans-serif; }';
   html += '.toolbar button { padding: 8px 20px; font-size: 16px; margin: 0 5px; cursor: pointer; }';
@@ -3375,14 +3375,15 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
   html += '<div class="no-print toolbar">';
   html += '<button class="print-btn" onclick="window.print()">Print All Labels (' + manifestLabels.length + ')</button>';
   html += '<button class="close-btn" onclick="window.close()">Close</button>';
-  html += '<span style="margin-left:20px;font-size:12px;color:#666">Batch labels - Epson LQ-590II (' + manifestLabels.length + ' labels). Set paper size to 6x6 each, ' + manifestLabels.length + ' pages and margins to None.</span>';
+  html += '<span style="margin-left:20px;font-size:12px;color:#666">Batch labels - Epson LQ-590II (' + manifestLabels.length + ' labels). Set paper size to 6 x ' + totalHeight + ' continuous and margins to None.</span>';
   html += '</div>';
 
   // Single-sheet approach: one container, all fields positioned with pageOffsetIn
+    html += '<div class="sheet">';
     for (var li = 0; li < manifestLabels.length; li++) {
     var label = manifestLabels[li];
-    var placements = [];
-      html += '<div class="label-page">';
+    var pageOffsetIn = li * 6;
+      var placements = [];
 
     // DOT Shipping Name
     var dotName = (label.dotShippingName || '').trim();
@@ -3479,7 +3480,7 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
     for (var pi = 0; pi < placements.length; pi++) {
       var p = placements[pi];
       var leftIn = ((p.col - 1) / CPI) + colOffsetIn;
-      var topIn = ((p.row - 1) / LPI) + rowOffsetIn;
+      var topIn = ((p.row - 1) / LPI) + rowOffsetIn + pageOffsetIn;
       var safeText = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       if (p.large) {
         html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;font-size:36pt;font-weight:bold;letter-spacing:2px;">' + safeText + '</span>';
@@ -3489,8 +3490,8 @@ app.get('/api/print/labels/manifest/:manifestId', function(req, res) {
         html += '<span class="field" style="left:' + leftIn.toFixed(4) + 'in;top:' + topIn.toFixed(4) + 'in;">' + safeText + '</span>';
       }
     }
-      html += '</div>';
   }
+  html += '</div>';
   html += '</body></html>';
   res.type('html').send(html);
 
